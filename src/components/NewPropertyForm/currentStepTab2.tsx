@@ -1,3 +1,4 @@
+// src/components/NewPropertyForm/currentStepTab2.tsx
 import React from "react";
 import { FormDataType } from "../../pages/CostSheetFormProps";
 
@@ -62,6 +63,58 @@ export function currentStepTab2(
     rates: Record<string, string>;
   }[]
 ): React.ReactNode {
+  
+  // Enhanced floor band validation functions
+  const validateFromFloor = (value: string, index: number): boolean => {
+    if (!value || index === 0) return true;
+    
+    const previousToFloor = parseInt(floorBandConfig[index - 1]?.toFloor) || 0;
+    const currentFromFloor = parseInt(value) || 0;
+    
+    return currentFromFloor > previousToFloor;
+  };
+
+  const validateToFloor = (value: string, index: number): boolean => {
+    if (!value) return true;
+    
+    const currentFromFloor = parseInt(floorBandConfig[index]?.fromFloor) || 0;
+    const currentToFloor = parseInt(value) || 0;
+    const previousToFloor = index > 0 ? parseInt(floorBandConfig[index - 1]?.toFloor) || 0 : 0;
+    
+    return currentToFloor > currentFromFloor && (index === 0 || currentToFloor >= previousToFloor + 2);
+  };
+
+  const getFromFloorValidationMessage = (value: string, index: number): string => {
+    if (index === 0) return "";
+    
+    const previousToFloor = parseInt(floorBandConfig[index - 1]?.toFloor) || 0;
+    const currentFromFloor = parseInt(value) || 0;
+    
+    if (value && currentFromFloor <= previousToFloor) {
+      return `Value must be greater than ${previousToFloor}`;
+    }
+    
+    return "";
+  };
+
+  const getToFloorValidationMessage = (value: string, index: number): string => {
+    if (!value) return "";
+    
+    const currentFromFloor = parseInt(floorBandConfig[index]?.fromFloor) || 0;
+    const currentToFloor = parseInt(value) || 0;
+    const previousToFloor = index > 0 ? parseInt(floorBandConfig[index - 1]?.toFloor) || 0 : 0;
+    
+    if (currentToFloor <= currentFromFloor) {
+      return "Value must be greater than From Floor";
+    }
+    
+    if (index > 0 && currentToFloor <= previousToFloor + 1) {
+      return `Value must be at least ${previousToFloor + 2}`;
+    }
+    
+    return "";
+  };
+
   return (
     <div className="space-y-6">
       {/* Payment Configuration Section */}
@@ -244,7 +297,12 @@ export function currentStepTab2(
                     "4 BHK",
                     "4.5 BHK",
                     "5 BHK",
-                    "Penthouse",
+                    "1 + 1 Jodi",
+                    "1 + 2 Jodi",
+                    "2 + 2 Jodi",
+                    "2 + 3 Jodi",
+                    "3 + 3 Jodi",
+                    "Penthouse / Duplex",
                     "Row House",
                     "Bungalow",
                     "Villa",
@@ -252,8 +310,7 @@ export function currentStepTab2(
                   const sortedTypologies = typologies.sort((a, b) => {
                     const indexA = typologyOrder.indexOf(a);
                     const indexB = typologyOrder.indexOf(b);
-                    if (indexA === -1 && indexB === -1)
-                      return a.localeCompare(b);
+                    if (indexA === -1 && indexB === -1) return a.localeCompare(b);
                     if (indexA === -1) return 1;
                     if (indexB === -1) return -1;
                     return indexA - indexB;
@@ -319,7 +376,12 @@ export function currentStepTab2(
                 "4 BHK",
                 "4.5 BHK",
                 "5 BHK",
-                "Penthouse",
+                "1 + 1 Jodi",
+                "1 + 2 Jodi",
+                "2 + 2 Jodi",
+                "2 + 3 Jodi",
+                "3 + 3 Jodi",
+                "Penthouse / Duplex",
                 "Row House",
                 "Bungalow",
                 "Villa",
@@ -382,19 +444,9 @@ export function currentStepTab2(
                         >
                           <div>
                             {(() => {
-                              const currentFromFloor =
-                                parseInt(band.fromFloor) || 0;
-                              const prevToFloor =
-                                index > 0
-                                  ? parseInt(
-                                      floorBandConfig[index - 1].toFloor
-                                    ) || 0
-                                  : 0;
-                              const isInvalid =
-                                band.fromFloor &&
-                                index > 0 &&
-                                currentFromFloor <= prevToFloor;
-
+                              const fromFloorValidation = validateFromFloor(band.fromFloor, index);
+                              const validationMessage = getFromFloorValidationMessage(band.fromFloor, index);
+                              
                               return (
                                 <input
                                   type="number"
@@ -406,13 +458,9 @@ export function currentStepTab2(
                                   }}
                                   onWheel={(e) => e.currentTarget.blur()}
                                   placeholder="e.g., 1"
-                                  title={
-                                    isInvalid
-                                      ? "Must be greater than previous To Floor"
-                                      : ""
-                                  }
+                                  title={validationMessage}
                                   className={`w-full border rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield] ${
-                                    isInvalid
+                                    !fromFloorValidation && band.fromFloor
                                       ? "border-red-500 bg-red-50 text-red-700"
                                       : "border-neutral-300"
                                   }`}
@@ -423,26 +471,9 @@ export function currentStepTab2(
                           <div className="text-sm text-neutral-500">to</div>
                           <div>
                             {(() => {
-                              const currentToFloor =
-                                parseInt(band.toFloor) || 0;
-                              const currentFromFloor =
-                                parseInt(band.fromFloor) || 0;
-                              const prevToFloor =
-                                index > 0
-                                  ? parseInt(
-                                      floorBandConfig[index - 1].toFloor
-                                    ) || 0
-                                  : 0;
-                              const isInvalid =
-                                band.toFloor &&
-                                (currentToFloor <= currentFromFloor ||
-                                  (index > 0 &&
-                                    currentToFloor <= prevToFloor + 1));
-                              const errorMsg =
-                                currentToFloor <= currentFromFloor
-                                  ? "Must be greater than From Floor"
-                                  : "Must be > previous To Floor + 2";
-
+                              const toFloorValidation = validateToFloor(band.toFloor, index);
+                              const validationMessage = getToFloorValidationMessage(band.toFloor, index);
+                              
                               return (
                                 <input
                                   type="number"
@@ -454,9 +485,9 @@ export function currentStepTab2(
                                   }}
                                   onWheel={(e) => e.currentTarget.blur()}
                                   placeholder="e.g., 5"
-                                  title={isInvalid ? errorMsg : ""}
+                                  title={validationMessage}
                                   className={`w-full border rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield] ${
-                                    isInvalid
+                                    !toFloorValidation && band.toFloor
                                       ? "border-red-500 bg-red-50 text-red-700"
                                       : "border-neutral-300"
                                   }`}

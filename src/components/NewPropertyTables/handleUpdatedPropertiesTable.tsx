@@ -167,8 +167,8 @@ export function handleUpdatedPropertiesTable(
                             stateCode: stateObj.iso2,
                             cities: citiesData,
                           });
-                        } catch (error) {
-                          console.error("Failed to preload cities:", error);
+                        } catch {
+                          console.error("Failed to preload cities");
                         }
                       }
                     }
@@ -178,12 +178,14 @@ export function handleUpdatedPropertiesTable(
                 >
                   <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
                     {item.createdAt
-                      ? format(
-                          item.createdAt instanceof Timestamp
+                      ? (() => {
+                          const date = item.createdAt instanceof Timestamp
                             ? item.createdAt.toDate()
-                            : new Date(item.createdAt),
-                          "dd/MM/yyyy"
-                        )
+                            : new Date(item.createdAt);
+                          return !isNaN(date.getTime())
+                            ? format(date, "dd/MM/yyyy")
+                            : "-";
+                        })()
                       : "-"}
                   </td>
                   <td className="px-5 py-3 font-medium text-neutral-900">

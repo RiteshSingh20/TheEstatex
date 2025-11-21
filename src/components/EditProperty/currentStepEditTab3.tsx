@@ -8,6 +8,7 @@ import { FormDataType, toTitleCase } from "../../pages/CostSheetFormProps";
 import { State, City } from "../../types";
 import { db } from "../../utils/firebase";
 import Input from "../ui/Input";
+import { generateMarketingMessage } from "../../lib/propertyFormLogic";
 
 export function currentStepEditTab3(
   activeCategory: { label: string; fields: string[] },
@@ -71,6 +72,46 @@ export function currentStepEditTab3(
   };
 
   const groupedTypologies = getGroupedTypologies();
+
+  // Enhanced marketing message generation function - EXACT SAME LOGIC AS HTML
+  const generateEnhancedMarketingMessage = () => {
+    try {
+      // Collect highlights from form data (if available)
+      const highlights: string[] = [];
+      // Add logic to collect highlights from form fields if needed
+      
+      // Collect amenities from form data (if available)
+      const projectAmenities: string[] = [];
+      const apartmentAmenities: string[] = [];
+      // Add logic to collect amenities from form fields if needed
+      
+      // Collect payment schemes (this would come from step 4 data)
+      const paymentSchemes: Array<{ schemeName: string; description: string }> = [];
+      // This would be passed from parent component or accessed from global state
+      
+      // Use the shared marketing message generation function with EXACT SAME LOGIC AS HTML
+      const message = generateMarketingMessage({
+        formData,
+        subTabData,
+        paymentSchemes,
+        highlights,
+        projectAmenities,
+        apartmentAmenities
+      });
+      
+      // Set the generated message
+      setFormData(prev => ({
+        ...prev,
+        projectMessage: message
+      }));
+      
+      toast.success('Marketing message generated successfully!');
+      
+    } catch (error) {
+      console.error('Error generating marketing message:', error);
+      toast.error('Error generating message. Please check your form data.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -186,6 +227,36 @@ export function currentStepEditTab3(
         </div>
       )}
 
+      {/* Marketing Message Section */}
+      <div className="bg-neutral-50 p-4 rounded-lg border">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <span className="text-blue-600 mr-2">▶</span>
+            <h3 className="text-lg font-medium text-neutral-800">
+              Marketing Message
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={generateEnhancedMarketingMessage}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" />
+            </svg>
+            Generate Marketing Message
+          </button>
+        </div>
+        
+        <textarea
+          value={String(formData.projectMessage || "")}
+          onChange={(e) => setFormData(prev => ({ ...prev, projectMessage: e.target.value }))}
+          rows={8}
+          className="w-full border border-neutral-300 rounded px-3 py-2 text-sm resize-vertical"
+          placeholder="Marketing message will be generated automatically when you click the button above..."
+        />
+      </div>
+      
       {/* Existing Amenities Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {activeCategory.fields.map((fieldId) => {

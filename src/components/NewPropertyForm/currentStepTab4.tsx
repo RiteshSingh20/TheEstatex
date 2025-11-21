@@ -1,3 +1,4 @@
+// src/components/NewPropertyForm/currentStepTab4.tsx
 import React from "react";
 
 export function currentStepTab4(
@@ -34,6 +35,38 @@ export function currentStepTab4(
     >
   >
 ): React.ReactNode {
+  
+  // Enhanced scheme name change handler
+  const handleSchemeNameChange = (value: string, index: number) => {
+    const newSchemes = [...paymentSchemes];
+    newSchemes[index].schemeName = value;
+    
+    // Auto-fill description for CLP scheme
+    if (value === "CLP") {
+      newSchemes[index].description = "Construction Linked Plan";
+    } else {
+      // Set appropriate placeholder based on selection
+      switch(value) {
+        case "Developer Subvention":
+          newSchemes[index].description = "";
+          break;
+        case "Bank Subvention":
+          newSchemes[index].description = "";
+          break;
+        case "Flexible Payment Plan":
+          newSchemes[index].description = "";
+          break;
+        case "Down Payment":
+          newSchemes[index].description = "";
+          break;
+        default:
+          newSchemes[index].description = "";
+      }
+    }
+    
+    setPaymentSchemes(newSchemes);
+  };
+
   return (
     <div className="space-y-4">
       {/* Payment Schemes Section */}
@@ -68,11 +101,7 @@ export function currentStepTab4(
                   <div>
                     <select
                       value={scheme.schemeName}
-                      onChange={(e) => {
-                        const newSchemes = [...paymentSchemes];
-                        newSchemes[index].schemeName = e.target.value;
-                        setPaymentSchemes(newSchemes);
-                      }}
+                      onChange={(e) => handleSchemeNameChange(e.target.value, index)}
                       className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                     >
                       <option value="">Select Scheme</option>
@@ -92,8 +121,17 @@ export function currentStepTab4(
                         newSchemes[index].description = e.target.value;
                         setPaymentSchemes(newSchemes);
                       }}
-                      className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
-                      placeholder="Describe"
+                      readOnly={scheme.schemeName === "CLP"}
+                      className={`w-full border border-neutral-300 rounded px-2 py-1 text-sm ${
+                        scheme.schemeName === "CLP" ? "bg-neutral-100" : ""
+                      }`}
+                      placeholder={
+                        scheme.schemeName === "Developer Subvention" ? "e.g.: 20:80 Scheme" :
+                        scheme.schemeName === "Bank Subvention" ? "e.g.: 10:90 Scheme" :
+                        scheme.schemeName === "Flexible Payment Plan" ? "e.g.: 25:25:25:25" :
+                        scheme.schemeName === "Down Payment" ? "Describe" :
+                        "e.g.: 20:80 Scheme"
+                      }
                     />
                   </div>
                   <div>

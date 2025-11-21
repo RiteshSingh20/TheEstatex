@@ -138,13 +138,15 @@ export function handleRejectedNewPropertiesTable(searchTerm: string, setSearchTe
                             className="hover:bg-neutral-50 transition-all duration-150"
                         >
                             <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                                {item.createdAt
-                                    ? format(
-                                        item.createdAt instanceof Timestamp
-                                            ? item.createdAt.toDate()
-                                            : new Date(item.createdAt),
-                                        "dd/MM/yyyy"
-                                    )
+                                    {item.createdAt
+                                    ? (() => {
+                                        const date = item.createdAt instanceof Timestamp
+                                          ? item.createdAt.toDate()
+                                          : new Date(item.createdAt);
+                                        return !isNaN(date.getTime())
+                                          ? format(date, "dd/MM/yyyy")
+                                          : "-";
+                                      })()
                                     : "-"}
                             </td>
                             <td className="px-5 py-3 font-medium text-neutral-900">

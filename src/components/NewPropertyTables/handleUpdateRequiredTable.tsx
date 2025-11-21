@@ -116,12 +116,14 @@ export function handleUpdateRequiredTable(searchTerm: string, setSearchTerm: Rea
                             >
                                 <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
                                     {item.createdAt
-                                        ? format(
-                                            item.createdAt instanceof Timestamp
-                                                ? item.createdAt.toDate()
-                                                : new Date(item.createdAt),
-                                            "dd/MM/yyyy"
-                                        )
+                                        ? (() => {
+                                            const date = item.createdAt instanceof Timestamp
+                                              ? item.createdAt.toDate()
+                                              : new Date(item.createdAt);
+                                            return !isNaN(date.getTime())
+                                              ? format(date, "dd/MM/yyyy")
+                                              : "-";
+                                          })()
                                         : "-"}
                                 </td>
                                 <td className="px-5 py-3 font-medium text-neutral-900">

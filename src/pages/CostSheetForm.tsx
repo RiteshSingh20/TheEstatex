@@ -247,6 +247,15 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     typologyImages: {} as Record<string, File[]>,
     typologyVideos: {} as Record<string, File | null>,
   });
+  const [existingMedia, setExistingMedia] = useState({
+    brochure: null as string | null,
+    elevationImages: [] as string[],
+    amenitiesImages: [] as string[],
+    floorPlanImages: [] as string[],
+    projectWalkthrough: [] as string[],
+    typologyImages: {} as Record<string, string[]>,
+    typologyVideos: {} as Record<string, string | null>,
+  });
   const [pdfThumbnail, setPdfThumbnail] = useState<string | null>(null);
 
   const generatePdfThumbnail = generatePdfThumbnailFromFile();
@@ -598,10 +607,21 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         setLadderSections(editData.ladderSections);
       }
 
-      // Handle existing media files for display
+      // Handle existing media files for display (map into `existingMedia`)
       if (editData.mediaFiles) {
-        // Note: We don't set mediaFiles state as it's for new uploads
-        // Existing media URLs are accessed directly from editData.mediaFiles
+        try {
+          setExistingMedia((prev) => ({
+            brochure: editData.mediaFiles.brochure || null,
+            elevationImages: editData.mediaFiles.elevationImages || [],
+            amenitiesImages: editData.mediaFiles.amenitiesImages || [],
+            floorPlanImages: editData.mediaFiles.floorPlanImages || [],
+            projectWalkthrough: editData.mediaFiles.projectWalkthrough || [],
+            typologyImages: editData.mediaFiles.typologyImages || {},
+            typologyVideos: editData.mediaFiles.typologyVideos || {},
+          }));
+        } catch (err) {
+          console.warn("Failed to map existing media for edit:", err);
+        }
       }
 
       setFormData({
@@ -938,18 +958,14 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
               }))
               .filter((band) => band.rate);
 
-            // Upload unit plan if exists
-            let unitPlanUrl = "";
-            if (config.unitPlan) {
-              const cleanTypology = config.typology.replace(
-                /[^a-zA-Z0-9]/g,
-                "_"
-              );
+            // Upload unit plan if a new File is provided. If editing and an
+            // existing URL is present, preserve it by default.
+            let unitPlanUrl = config.unitPlanUrl || "";
+            if (config.unitPlan && (config.unitPlan as any).name) {
+              const cleanTypology = config.typology.replace(/[^a-zA-Z0-9]/g, "_");
               unitPlanUrl = await uploadFile(
-                config.unitPlan,
-                `${basePath}/unitPlans/${cleanTypology}/${cleanFileName(
-                  config.unitPlan.name
-                )}`
+                config.unitPlan as File,
+                `${basePath}/unitPlans/${cleanTypology}/${cleanFileName((config.unitPlan as File).name)}`
               );
             }
 
@@ -1374,7 +1390,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   
   // Use EditPropertyTabs for any editing operation (both editProperty and editingProperty)
   if ((editProperty && onSave) || editingProperty) {
-    return handleEditPropertyForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, setEditingProperty, showJurisdictionModal);
+    return handleEditPropertyForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, setEditingProperty, showJurisdictionModal);
   }
 
   return (
@@ -1393,9 +1409,9 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           </Button>
         </div>
         {editingProperty ? (
-          handleEditPropertyForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, setEditingProperty, showJurisdictionModal)
+          handleEditPropertyForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, setEditingProperty, showJurisdictionModal)
         ) : showForm ? (
-          handleNewEntryForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, showJurisdictionModal)
+          handleNewEntryForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, showJurisdictionModal)
         ) : (
           handleNewPropertyTable(costSheets, user, searchTerm, bhkFilter, reraRange, sortBy, sortOrder, setSearchTerm, setBhkFilter, setReraRange, availableBhkTypes, setSortBy, setSortOrder, states, setPreloadedStateData, setSelectedSheet, setEditingProperty, setShowForm, setDuplicateProperty, setCostSheets, selectedSheet, preloadedStateData, setSelectedStateCode, setCities, Section, Field)
         )}

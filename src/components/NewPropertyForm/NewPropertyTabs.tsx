@@ -200,6 +200,26 @@ export function handleNewEntryForm(
     typologyVideos: Record<string, File | null>;
   },
   pdfThumbnail: string | null,
+  existingMedia: {
+    brochure: string | null;
+    elevationImages: string[];
+    amenitiesImages: string[];
+    floorPlanImages: string[];
+    projectWalkthrough: string[];
+    typologyImages: Record<string, string[]>;
+    typologyVideos: Record<string, string | null>;
+  },
+  setExistingMedia: React.Dispatch<
+    React.SetStateAction<{
+      brochure: string | null;
+      elevationImages: string[];
+      amenitiesImages: string[];
+      floorPlanImages: string[];
+      projectWalkthrough: string[];
+      typologyImages: Record<string, string[]>;
+      typologyVideos: Record<string, string | null>;
+    }>
+  >,
   setCurrentStep: React.Dispatch<React.SetStateAction<number>>,
   totalSteps: number,
   isStepValid: boolean,
@@ -309,7 +329,9 @@ export function handleNewEntryForm(
                           setPdfThumbnail,
                           mediaFiles,
                           pdfThumbnail,
-                          subTabData
+                          subTabData,
+                          existingMedia,
+                          setExistingMedia
                         )}
                       </>
                     )

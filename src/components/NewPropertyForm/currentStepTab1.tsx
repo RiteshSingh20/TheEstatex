@@ -1,6 +1,7 @@
 import React from "react";
 import { FormDataType } from "../../pages/CostSheetFormProps";
 import { StampDutyRate } from "../CompareModal";
+import { calculatePricingTotal } from "../../lib/propertyFormLogic";
 
 export function currentStepTab1(
   subTabs: { id: number; name: string }[],
@@ -72,6 +73,115 @@ export function currentStepTab1(
   stampRates: StampDutyRate[],
   formData: FormDataType
 ): React.ReactNode {
+  
+  // Enhanced total package calculation function - EXACT SAME LOGIC AS HTML
+  const calculateTotalPackage = (
+    config: {
+      typology: string;
+      saleableArea: string;
+      reraCarpet: string;
+      psfRate: string;
+      avRate: string;
+      fixedComponent: string;
+      possessionCharges: string;
+      totalPackage: string;
+      negotiationScope: string;
+      availability: string;
+      unitPlan: null;
+    },
+    tabId: number,
+    includesFixedComponentOverride?: boolean
+  ): string => {
+    const saleableArea = parseFloat(config.saleableArea) || 0;
+    const psfRate = parseFloat(parseIndianCurrency(config.psfRate || "")) || 0;
+    const avRate = parseFloat(parseIndianCurrency(config.avRate || "")) || 0;
+    const fixedComponent = parseFloat(parseIndianCurrency(config.fixedComponent || "")) || 0;
+    const possessionCharges = parseFloat(parseIndianCurrency(config.possessionCharges || "")) || 0;
+    const legalCharges = parseFloat(parseIndianCurrency(formData.registration || "")) || 0;
+
+    if (saleableArea && avRate) {
+      const includesFixedComponent = typeof includesFixedComponentOverride === 'boolean'
+        ? includesFixedComponentOverride
+        : (subTabData[tabId]?.psfIncludesFixedComponent || false);
+      const projectStatus = subTabData[tabId]?.projectStatus || "";
+      const typology = config.typology || "";
+      
+      // Use the shared calculation function with EXACT SAME LOGIC AS HTML
+      const total = calculatePricingTotal({
+        saleableArea,
+        psfRate,
+        avRate,
+        fixedComponent,
+        possessionCharges,
+        legalCharges,
+        includesFixedComponent,
+        projectStatus,
+        typology
+      });
+      
+      return formatIndianCurrency(Math.round(total));
+    }
+    return "";
+  };
+
+  // Function to handle changes that require recalculation
+  const handlePricingChange = (
+    field: keyof typeof subTabData[0]['pricingConfigs'][0],
+    value: string,
+    tabId: number,
+    configIndex: number
+  ) => {
+    setSubTabData((prev) => {
+      const newConfigs = [...(prev[tabId]?.pricingConfigs || [])];
+      newConfigs[configIndex] = {
+        ...newConfigs[configIndex],
+        [field]: value,
+      };
+
+      // Recalculate total package when relevant fields change (include typology)
+      if (['saleableArea', 'psfRate', 'avRate', 'fixedComponent', 'possessionCharges', 'typology'].includes(field)) {
+        const updatedConfig = newConfigs[configIndex];
+        newConfigs[configIndex].totalPackage = calculateTotalPackage(updatedConfig, tabId);
+      }
+
+      return {
+        ...prev,
+        [tabId]: {
+          ...prev[tabId],
+          pricingConfigs: newConfigs,
+        },
+      };
+    });
+  };
+
+  // Function to handle checkbox changes that affect all pricing configs
+  const handleCheckboxChange = (field: 'psfIncludesParking' | 'psfIncludesFixedComponent', value: boolean, tabId: number) => {
+    setSubTabData((prev) => {
+      const updatedData = {
+        ...prev,
+        [tabId]: {
+          ...prev[tabId],
+          [field]: value,
+        },
+      };
+
+      // Recalculate all total packages when checkbox changes
+      const newConfigs = updatedData[tabId]?.pricingConfigs.map(config => ({
+        ...config,
+        // pass the new checkbox value so calculation uses the updated state immediately
+        totalPackage: calculateTotalPackage(config, tabId, value)
+      })) || [];
+
+      return {
+        ...updatedData,
+        [tabId]: {
+          ...updatedData[tabId],
+          pricingConfigs: newConfigs,
+        },
+      };
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Sub-tabs for Pricing & Buildings */}
@@ -146,21 +256,37 @@ export function currentStepTab1(
                     <div>
                       <select
                         value={subTabData[tab.id]?.type || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const newValue = e.target.value;
                           setSubTabData((prev) => ({
                             ...prev,
                             [tab.id]: {
                               ...prev[tab.id],
-                              type: e.target.value,
-                              ...(e.target.value === "Pre-launch" && {
+                              type: newValue,
+                              ...(newValue === "Pre-launch" && {
                                 projectStatus: "",
                                 reraPossession: "",
                                 mahaReraNumber: "",
                                 mahaReraLink: "",
                               }),
                             },
-                          }))
-                        }
+                          }));
+
+                          // Recalculate totals when project type changes
+                          if (subTabData[tab.id]?.pricingConfigs) {
+                            const newConfigs = subTabData[tab.id].pricingConfigs.map(config => ({
+                              ...config,
+                              totalPackage: calculateTotalPackage(config, tab.id)
+                            }));
+                            setSubTabData(prev => ({
+                              ...prev,
+                              [tab.id]: {
+                                ...prev[tab.id],
+                                pricingConfigs: newConfigs,
+                              },
+                            }));
+                          }
+                        }}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                       >
                         <option value="">Select</option>
@@ -173,20 +299,36 @@ export function currentStepTab1(
                     <div>
                       <select
                         value={subTabData[tab.id]?.projectStatus || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const newValue = e.target.value;
                           setSubTabData((prev) => ({
                             ...prev,
                             [tab.id]: {
                               ...prev[tab.id],
-                              projectStatus: e.target.value,
-                              ...((e.target.value === "Ready to Move" ||
-                                e.target.value === "OC Received") && {
+                              projectStatus: newValue,
+                              ...((newValue === "Ready to Move" ||
+                                newValue === "OC Received") && {
                                 developerPossession: "",
                                 reraPossession: "",
                               }),
                             },
-                          }))
-                        }
+                          }));
+
+                          // Recalculate totals when project status changes (affects GST)
+                          if (subTabData[tab.id]?.pricingConfigs) {
+                            const newConfigs = subTabData[tab.id].pricingConfigs.map(config => ({
+                              ...config,
+                              totalPackage: calculateTotalPackage(config, tab.id)
+                            }));
+                            setSubTabData(prev => ({
+                              ...prev,
+                              [tab.id]: {
+                                ...prev[tab.id],
+                                pricingConfigs: newConfigs,
+                              },
+                            }));
+                          }
+                        }}
                         disabled={subTabData[tab.id]?.type === "Pre-launch"}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       >
@@ -396,22 +538,7 @@ export function currentStepTab1(
                             <select
                               value={config.typology}
                               onChange={(e) => {
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    typology: e.target.value,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('typology', e.target.value, tab.id, index);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             >
@@ -426,7 +553,12 @@ export function currentStepTab1(
                               <option value="4 BHK">4 BHK</option>
                               <option value="4.5 BHK">4.5 BHK</option>
                               <option value="5 BHK">5 BHK</option>
-                              <option value="Penthouse">Penthouse</option>
+                              <option value="1 + 1 Jodi">1 + 1 Jodi</option>
+                              <option value="1 + 2 Jodi">1 + 2 Jodi</option>
+                              <option value="2 + 2 Jodi">2 + 2 Jodi</option>
+                              <option value="2 + 3 Jodi">2 + 3 Jodi</option>
+                              <option value="3 + 3 Jodi">3 + 3 Jodi</option>
+                              <option value="Penthouse / Duplex">Penthouse / Duplex</option>
                               <option value="Row House">Row House</option>
                               <option value="Bungalow">Bungalow</option>
                               <option value="Villa">Villa</option>
@@ -437,22 +569,7 @@ export function currentStepTab1(
                               type="number"
                               value={config.saleableArea}
                               onChange={(e) => {
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    saleableArea: e.target.value,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('saleableArea', e.target.value, tab.id, index);
                               }}
                               onWheel={(e) => e.currentTarget.blur()}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
@@ -463,22 +580,7 @@ export function currentStepTab1(
                               type="number"
                               value={config.reraCarpet}
                               onChange={(e) => {
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    reraCarpet: e.target.value,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('reraCarpet', e.target.value, tab.id, index);
                               }}
                               onWheel={(e) => e.currentTarget.blur()}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
@@ -492,22 +594,7 @@ export function currentStepTab1(
                                 const numericValue = parseIndianCurrency(
                                   e.target.value
                                 );
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    psfRate: numericValue,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('psfRate', numericValue, tab.id, index);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
@@ -520,22 +607,7 @@ export function currentStepTab1(
                                 const numericValue = parseIndianCurrency(
                                   e.target.value
                                 );
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    avRate: numericValue,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('avRate', numericValue, tab.id, index);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
@@ -550,22 +622,7 @@ export function currentStepTab1(
                                 const numericValue = parseIndianCurrency(
                                   e.target.value
                                 );
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    fixedComponent: numericValue,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('fixedComponent', numericValue, tab.id, index);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
@@ -580,22 +637,7 @@ export function currentStepTab1(
                                 const numericValue = parseIndianCurrency(
                                   e.target.value
                                 );
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    possessionCharges: numericValue,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('possessionCharges', numericValue, tab.id, index);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
@@ -603,85 +645,9 @@ export function currentStepTab1(
                           <div>
                             <input
                               type="text"
-                              value={(() => {
-                                const saleableArea =
-                                  parseFloat(config.saleableArea) || 0;
-                                const psfRate =
-                                  parseFloat(
-                                    parseIndianCurrency(config.psfRate || "")
-                                  ) || 0;
-                                const avRate =
-                                  parseFloat(
-                                    parseIndianCurrency(config.avRate || "")
-                                  ) || 0;
-                                const fixedComponent =
-                                  parseFloat(
-                                    parseIndianCurrency(
-                                      config.fixedComponent || ""
-                                    )
-                                  ) || 0;
-                                const possessionCharges =
-                                  parseFloat(
-                                    parseIndianCurrency(
-                                      config.possessionCharges || ""
-                                    )
-                                  ) || 0;
-
-                                if (saleableArea && avRate) {
-                                  const psfIncludesFixedComponent = subTabData[tab.id]?.psfIncludesFixedComponent || false;
-                                  
-                                  // Calculate base amount for tax calculation
-                                  const taxableAmount = psfIncludesFixedComponent 
-                                    ? saleableArea * avRate - fixedComponent
-                                    : saleableArea * avRate;
-
-                                  const matchingRate = stampRates.find(
-                                    (rate) =>
-                                      rate.jurisdiction.toLowerCase() ===
-                                      (
-                                        formData.district as string
-                                      )?.toLowerCase()
-                                  );
-                                  const stampDutyRate = matchingRate
-                                    ? parseFloat(String(matchingRate.rate)) /
-                                      100
-                                    : 0.0;
-                                  const stampDuty = taxableAmount * stampDutyRate;
-
-                                  const gstRate =
-                                    taxableAmount > 4500000 ? 0.05 : 0.01;
-                                  const gst = taxableAmount * gstRate;
-                                  const registrationFee = 30000;
-                                  const legalCharges =
-                                    parseFloat(
-                                      parseIndianCurrency(
-                                        formData.registration || ""
-                                      )
-                                    ) || 0;
-                                  const perSqFtDifference =
-                                    saleableArea * (psfRate - avRate);
-
-                                  // Add fixed component only if checkbox is unchecked
-                                  const fixedComponentToAdd = psfIncludesFixedComponent ? 0 : fixedComponent;
-
-                                  const total =
-                                    taxableAmount +
-                                    gst +
-                                    stampDuty +
-                                    registrationFee +
-                                    legalCharges +
-                                    possessionCharges +
-                                    fixedComponentToAdd +
-                                    perSqFtDifference;
-                                  return formatIndianCurrency(
-                                    Math.round(total)
-                                  );
-                                }
-                                return "";
-                              })()}
-                              disabled
-                              onWheel={(e) => e.currentTarget.blur()}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm bg-neutral-100 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                              value={config.totalPackage}
+                              readOnly
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm bg-neutral-100"
                             />
                           </div>
                           <div>
@@ -694,22 +660,7 @@ export function currentStepTab1(
                                 const numericValue = parseIndianCurrency(
                                   e.target.value
                                 );
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    negotiationScope: numericValue,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('negotiationScope', numericValue, tab.id, index);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
@@ -718,22 +669,7 @@ export function currentStepTab1(
                             <select
                               value={config.availability}
                               onChange={(e) => {
-                                setSubTabData((prev) => {
-                                  const newConfigs = [
-                                    ...(prev[tab.id]?.pricingConfigs || []),
-                                  ];
-                                  newConfigs[index] = {
-                                    ...newConfigs[index],
-                                    availability: e.target.value,
-                                  };
-                                  return {
-                                    ...prev,
-                                    [tab.id]: {
-                                      ...prev[tab.id],
-                                      pricingConfigs: newConfigs,
-                                    },
-                                  };
-                                });
+                                handlePricingChange('availability', e.target.value, tab.id, index);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             >
@@ -848,15 +784,7 @@ export function currentStepTab1(
                       <input
                         type="checkbox"
                         checked={subTabData[tab.id]?.psfIncludesParking || false}
-                        onChange={(e) =>
-                          setSubTabData((prev) => ({
-                            ...prev,
-                            [tab.id]: {
-                              ...prev[tab.id],
-                              psfIncludesParking: e.target.checked,
-                            },
-                          }))
-                        }
+                        onChange={(e) => handleCheckboxChange('psfIncludesParking', e.target.checked, tab.id)}
                         className="rounded"
                       />
                       <span>Per Sq. Ft. Rate includes 'Parking'</span>
@@ -865,15 +793,7 @@ export function currentStepTab1(
                       <input
                         type="checkbox"
                         checked={subTabData[tab.id]?.psfIncludesFixedComponent || false}
-                        onChange={(e) =>
-                          setSubTabData((prev) => ({
-                            ...prev,
-                            [tab.id]: {
-                              ...prev[tab.id],
-                              psfIncludesFixedComponent: e.target.checked,
-                            },
-                          }))
-                        }
+                        onChange={(e) => handleCheckboxChange('psfIncludesFixedComponent', e.target.checked, tab.id)}
                         className="rounded"
                       />
                       <span>Per Sq. Ft. Rate includes 'Fixed Component'</span>

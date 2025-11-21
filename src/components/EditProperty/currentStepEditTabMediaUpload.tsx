@@ -47,7 +47,27 @@ export function currentStepEditTabMediaUpload(
         unitPlan: null;
       }[];
     };
-  }
+  },
+  existingMedia: {
+    brochure: string | null;
+    elevationImages: string[];
+    amenitiesImages: string[];
+    floorPlanImages: string[];
+    projectWalkthrough: string[];
+    typologyImages: Record<string, string[]>;
+    typologyVideos: Record<string, string | null>;
+  },
+  setExistingMedia: React.Dispatch<
+    React.SetStateAction<{
+      brochure: string | null;
+      elevationImages: string[];
+      amenitiesImages: string[];
+      floorPlanImages: string[];
+      projectWalkthrough: string[];
+      typologyImages: Record<string, string[]>;
+      typologyVideos: Record<string, string | null>;
+    }>
+  >
 ): React.ReactNode {
   return (
     <div className="space-y-4">
@@ -507,12 +527,49 @@ export function currentStepEditTabMediaUpload(
                   className="block w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400"
                 >
                   <div className="h-full p-2">
-                    {mediaFiles.projectWalkthrough.length > 0 ? (
+                    {existingMedia.projectWalkthrough.length > 0 ||
+                    mediaFiles.projectWalkthrough.length > 0 ? (
                       <div className="flex gap-4 h-full items-center justify-center">
+                        {/* Existing videos */}
+                        {existingMedia.projectWalkthrough.map((videoUrl, index) => (
+                          <div key={`existing-${index}`} className="relative">
+                            <video
+                              src={videoUrl}
+                              className="max-w-32 max-h-24 object-contain rounded border"
+                              controls={false}
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center">
+                              <svg
+                                className="w-6 h-6 text-white"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                              </svg>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setExistingMedia((prev) => ({
+                                  ...prev,
+                                  projectWalkthrough: prev.projectWalkthrough.filter(
+                                    (_, i) => i !== index
+                                  ),
+                                }));
+                              }}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        {/* New uploaded videos */}
                         {mediaFiles.projectWalkthrough.map((file, index) => {
                           const videoUrl = URL.createObjectURL(file);
                           return (
-                            <div key={index} className="relative">
+                            <div key={`new-${index}`} className="relative">
                               <video
                                 src={videoUrl}
                                 className="max-w-32 max-h-24 object-contain rounded border"
