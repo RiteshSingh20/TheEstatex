@@ -1,0 +1,3330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Management System - Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            line-height: 1.3;
+        }
+
+        .admin-header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .admin-header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .breadcrumb {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e0e6ed;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+
+        .breadcrumb a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .main-container {
+            min-height: calc(100vh - 120px);
+        }
+
+        .content-area {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0.125rem;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 0.25rem;
+            color: white;
+        }
+
+        .page-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.125rem;
+        }
+
+        .page-header p {
+            opacity: 0.9;
+            font-size: 0.8rem;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .form-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e6ed;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .form-tabs button {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #7f8c8d;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .form-tabs button:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .form-tabs button.active {
+            background: white;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .form-tabs button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #3498db;
+        }
+
+        .form-content {
+            padding: 0.375rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #333333;
+            margin-bottom: 0.25rem;
+            padding-bottom: 0.125rem;
+            border-bottom: 3px solid #007acc;
+            position: relative;
+        }
+
+        .section-title::before {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: #e74c3c;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .form-group {
+            margin-bottom: 0.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #34495e;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group label.required::after {
+            content: ' *';
+            color: #e74c3c;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+            background: #ffffff;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .form-control.error {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        .data-table {
+            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e0e6ed;
+        }
+
+        .table-header {
+            font-weight: 700;
+            color: #333333;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .table-header::before {
+            content: '▶';
+            color: #007acc;
+            margin-right: 0.5rem;
+            font-size: 0.7rem;
+        }
+
+        .table-grid {
+            display: grid;
+            gap: 0.25rem;
+            background: white;
+            border-radius: 4px;
+            padding: 0.25rem;
+            border: 1px solid #e0e6ed;
+        }
+
+        .table-grid.cols-6 {
+            grid-template-columns: repeat(6, 1fr);
+        }
+
+        .table-grid.cols-8 {
+            grid-template-columns: repeat(8, 1fr);
+        }
+
+        .table-grid.cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        input[type="date"]:invalid {
+            color: #95a5a6;
+        }
+
+        input[type="date"]:valid {
+            color: #2c3e50;
+        }
+
+        .section-group {
+            border: 1px solid #e0e6ed;
+            border-radius: 6px;
+            padding: 0.25rem;
+            margin-bottom: 0.25rem;
+            background: #fafbfc;
+            display: none;
+        }
+
+        .section-group.active {
+            display: block;
+        }
+
+        .sub-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e6ed;
+            margin-bottom: 0.5rem;
+            border-radius: 6px 6px 0 0;
+            overflow-x: auto;
+        }
+
+        .sub-tab-btn {
+            background: transparent;
+            border: none;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #666666;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+        }
+
+        .sub-tab-btn:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .sub-tab-btn.active {
+            background: white;
+            color: #2c3e50;
+            font-weight: 600;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .table-grid.cols-9 {
+            grid-template-columns: repeat(9, 1fr);
+        }
+
+        .table-grid.cols-10 {
+            grid-template-columns: repeat(10, 1fr);
+        }
+
+        .table-grid.cols-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        .table-grid.cols-5 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .floor-rise-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .floor-rise-section.active {
+            display: block;
+        }
+
+        .dynamic-floor-band {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .floor-band-buttons {
+            text-align: right;
+            margin-top: 0.5rem;
+        }
+
+        .table-header-cell {
+            background: #ecf0f1;
+            padding: 0.5rem 0.25rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #2c3e50;
+            text-align: center;
+            border-radius: 3px;
+        }
+
+        .table-data-cell {
+            padding: 0.25rem;
+        }
+
+        .table-data-cell select {
+            cursor: pointer;
+        }
+
+        .table-data-cell select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .table-data-cell input,
+        .table-data-cell select {
+            width: 100%;
+            padding: 0.35rem;
+            border: 1px solid #bdc3c7;
+            border-radius: 3px;
+            font-size: 0.85rem;
+            background: #ffffff;
+        }
+
+        .table-data-cell input[type="date"]::-webkit-datetime-edit {
+            color: #95a5a6;
+        }
+
+        .table-data-cell input[type="date"]::-webkit-datetime-edit-text {
+            color: #95a5a6;
+        }
+
+        .table-data-cell input[type="date"]::-webkit-datetime-edit-month-field {
+            color: #95a5a6;
+        }
+
+        .table-data-cell input[type="date"]::-webkit-datetime-edit-day-field {
+            color: #95a5a6;
+        }
+
+        .table-data-cell input[type="date"]::-webkit-datetime-edit-year-field {
+            color: #95a5a6;
+        }
+
+        .table-data-cell input[type="date"]:focus::-webkit-datetime-edit {
+            color: #2c3e50;
+        }
+
+        .table-data-cell input[type="date"]:focus::-webkit-datetime-edit-text {
+            color: #2c3e50;
+        }
+
+        .table-data-cell input[type="date"]:focus::-webkit-datetime-edit-month-field {
+            color: #2c3e50;
+        }
+
+        .table-data-cell input[type="date"]:focus::-webkit-datetime-edit-day-field {
+            color: #2c3e50;
+        }
+
+        .table-data-cell input[type="date"]:focus::-webkit-datetime-edit-year-field {
+            color: #2c3e50;
+        }
+
+        .btn {
+            padding: 0.4rem 0.8rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+            text-transform: none;
+            letter-spacing: 0.3px;
+            min-height: 32px;
+        }
+
+        .data-table .btn:has(i.fa-plus):not(:has(span)):not(:has(text)),
+        .data-table .btn:has(i.fa-minus):not(:has(span)):not(:has(text)),
+        .floor-band-buttons .btn:has(i.fa-plus):not(:has(span)):not(:has(text)),
+        .floor-band-buttons .btn:has(i.fa-minus):not(:has(span)):not(:has(text)) {
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            min-height: 24px;
+            font-size: 0.65rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #5dade2);
+            color: white;
+            border: 1px solid #2980b9;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            border: 1px solid #229954;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #229954, #27ae60);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #ec7063);
+            color: white;
+            border: 1px solid #c0392b;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6, #bdc3c7);
+            color: white;
+            border: 1px solid #7f8c8d;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(149, 165, 166, 0.3);
+        }
+
+        .form-actions {
+            background: #f8f9fa;
+            padding: 0.75rem 1rem;
+            border-top: 1px solid #e0e6ed;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .conditional-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-active {
+            background: #27ae60;
+        }
+
+        .status-pending {
+            background: #f39c12;
+        }
+
+        .status-inactive {
+            background: #95a5a6;
+        }
+
+        #floorBandDynamicGrid {
+            display: grid !important;
+        }
+
+        .fixed-rate-fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .image-preview-container {
+            min-height: 100px;
+            border: 2px dashed #e0e6ed;
+            border-radius: 4px;
+            padding: 10px;
+            background: #fafbfc;
+        }
+
+        .image-preview-item {
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        .video-preview-container {
+            min-height: 100px;
+            border: 2px dashed #e0e6ed;
+            border-radius: 4px;
+            padding: 10px;
+            background: #fafbfc;
+        }
+
+        .video-preview-item {
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .content-area {
+                padding: 1rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .table-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            #floorBandDynamicGrid {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
+
+            .table-header-cell {
+                display: none;
+            }
+
+            .table-data-cell::before {
+                content: attr(data-label);
+                font-weight: 600;
+                display: block;
+                margin-bottom: 0.25rem;
+                color: #7f8c8d;
+                font-size: 0.8rem;
+            }
+
+            .admin-header {
+                padding: 0.75rem 1rem;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .form-tabs {
+                flex-wrap: wrap;
+            }
+
+            .form-tabs button {
+                flex: 1 0 50%;
+                font-size: 0.8rem;
+                padding: 0.75rem 0.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-tabs button {
+                flex: 1 0 100%;
+            }
+        }
+
+        .float-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: #3498db;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 16px;
+            cursor: move;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            user-select: none;
+        }
+
+        .float-btn:active {
+            cursor: grabbing;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-header">
+        <h1><i class="fas fa-cogs"></i> Project Management System</h1>
+        <div class="user-info">
+            <span><i class="fas fa-user-circle"></i> Admin User</span>
+            <span>|</span>
+            <a href="#" style="color: #ecf0f1;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+
+    <div class="breadcrumb">
+        <a href="#">Dashboard</a> / <a href="#">Projects</a> / <strong>Add New Project</strong>
+    </div>
+
+    <div class="main-container">
+        <div class="content-area">
+            <div class="page-header">
+                <h2>Add New Project</h2>
+                <p>Enter comprehensive project details and configuration settings</p>
+            </div>
+
+            <div class="form-container">
+                <div class="form-tabs">
+                    <button class="tab-btn active" data-tab="basic" aria-selected="true" aria-controls="basic-tab">
+                        <i class="fas fa-info-circle"></i> Basic Information
+                    </button>
+                    <button class="tab-btn" data-tab="pricing" aria-selected="false" aria-controls="pricing-tab">
+                        <i class="fas fa-dollar-sign"></i> Pricing & Buildings
+                    </button>
+                    <button class="tab-btn" data-tab="charges" aria-selected="false" aria-controls="charges-tab">
+                        <i class="fas fa-calculator"></i> Charges & Payment
+                    </button>
+                    <button class="tab-btn" data-tab="amenities" aria-selected="false" aria-controls="amenities-tab">
+                        <i class="fas fa-star"></i> Amenities
+                    </button>
+                    <button class="tab-btn" data-tab="ledger" aria-selected="false" aria-controls="ledger-tab">
+                        <i class="fas fa-book"></i> Ladder & Scheme
+                    </button>
+                    <button class="tab-btn" data-tab="contacts" aria-selected="false" aria-controls="contacts-tab">
+                        <i class="fas fa-address-book"></i> Contacts & Collaterals
+                    </button>
+                </div>
+
+                <form id="projectForm">
+                    <!-- CSRF Token for production -->
+                    <input type="hidden" name="csrf_token" value="YOUR_CSRF_TOKEN_HERE">
+
+                    <div class="form-content">
+                        <!-- Basic Information Tab -->
+                        <div class="tab-content active" id="basic-tab" role="tabpanel" aria-labelledby="basic-tab">
+                            <div class="section-title">Project Basic Information</div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="projectName" class="required">Project Name</label>
+                                    <input type="text" id="projectName" class="form-control" name="projectName" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="developerName" class="required">Developer Name</label>
+                                    <input type="text" id="developerName" class="form-control" name="developerName"
+                                        required aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="location" class="required">Location</label>
+                                    <input type="text" id="location" class="form-control" name="location" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="subLocation" class="required">Sub-Location</label>
+                                    <input type="text" id="subLocation" class="form-control" name="subLocation" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="road" class="required">Road</label>
+                                    <input type="text" id="road" class="form-control" name="road" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="landmark" class="required">Landmark</label>
+                                    <input type="text" id="landmark" class="form-control" name="landmark" required
+                                        aria-required="true">
+                                </div>
+                            </div>
+
+                            <div class="section-title">Address Details</div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="state" class="required">State</label>
+                                    <input type="text" id="state" class="form-control" name="state" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="district" class="required">District</label>
+                                    <input type="text" id="district" class="form-control" name="district" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pincode" class="required">PIN Code</label>
+                                    <input type="text" id="pincode" class="form-control" name="pincode" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="landParcel" class="required">Land Parcel</label>
+                                    <input type="text" id="landParcel" class="form-control" name="landParcel" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="numTowers" class="required">No. of Towers</label>
+                                    <input type="number" id="numTowers" class="form-control" name="numTowers" min="0"
+                                        required aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="storey" class="required">Storey</label>
+                                    <input type="text" id="storey" class="form-control" name="storey" required
+                                        aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="plotsPerFloor" class="required">Flats per Floor</label>
+                                    <input type="number" id="plotsPerFloor" class="form-control" name="plotsPerFloor"
+                                        min="0" required aria-required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cosmaProject" class="required">Cosmo Project</label>
+                                    <select id="cosmaProject" class="form-control" name="cosmaProject" required
+                                        aria-required="true">
+                                        <option value="">Select</option>
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pricing Details Tab -->
+                        <div class="tab-content" id="pricing-tab" role="tabpanel" aria-labelledby="pricing-tab">
+                            <div class="sub-tabs">
+                                <button class="sub-tab-btn active" data-section="0" onclick="showSection(0)"
+                                    aria-selected="true">
+                                    RERA-001
+                                </button>
+                            </div>
+
+                            <div id="sectionsContainer">
+                                <div class="section-group active" data-section="0">
+                                    <div class="data-table">
+                                        <div class="table-header">Wing / Building Details</div>
+                                        <div class="table-grid cols-6">
+                                            <div class="table-header-cell">Wing/Building No.</div>
+                                            <div class="table-header-cell">Project Type</div>
+                                            <div class="table-header-cell">Developer Possession</div>
+                                            <div class="table-header-cell">RERA Possession</div>
+                                            <div class="table-header-cell">RERA Number</div>
+                                            <div class="table-header-cell">RERA URL</div>
+
+                                            <div class="table-data-cell" data-label="Wing/Building No.">
+                                                <input type="text" name="wingBuildingNum[]">
+                                            </div>
+                                            <div class="table-data-cell" data-label="Project Type">
+                                                <select name="projectType[]" required>
+                                                    <option value="">Select</option>
+                                                    <option value="New">New</option>
+                                                    <option value="Pre-Launch">Pre-Launch</option>
+                                                    <option value="Redevelopment">Redevelopment</option>
+                                                    <option value="SRA">SRA</option>
+                                                </select>
+                                            </div>
+                                            <div class="table-data-cell" data-label="Developer Possession">
+                                                <input type="date" name="devPossession[]">
+                                            </div>
+                                            <div class="table-data-cell" data-label="RERA Possession">
+                                                <input type="date" name="reraPossession[]">
+                                            </div>
+                                            <div class="table-data-cell" data-label="RERA Number">
+                                                <input type="text" name="reraNumber[]"
+                                                    onchange="updateTabLabel(this, 0); validateReraFields(this)">
+                                            </div>
+                                            <div class="table-data-cell" data-label="RERA URL">
+                                                <input type="text" name="reraUrl[]">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="data-table">
+                                        <div class="table-header">Pricing Configuration</div>
+                                        <div class="table-grid pricing-table"
+                                            style="grid-template-columns: 1.3fr 1fr 1fr 1.2fr 1.3fr 1.2fr 1.3fr 1.5fr 1.2fr 1.3fr 0.6fr;">
+                                            <div class="table-header-cell">Typology</div>
+                                            <div class="table-header-cell">Saleable Area</div>
+                                            <div class="table-header-cell">RERA Carpet</div>
+                                            <div class="table-header-cell">Per Sq. ft. Rate</div>
+                                            <div class="table-header-cell">Agreement Value Rate</div>
+                                            <div class="table-header-cell">Fixed Component</div>
+                                            <div class="table-header-cell">Possession Charges</div>
+                                            <div class="table-header-cell">Total Package</div>
+                                            <div class="table-header-cell">Negotiation Scope</div>
+                                            <div class="table-header-cell">Availability</div>
+                                            <div class="table-header-cell">Unit<br>Plan</div>
+
+                                            <div class="table-data-cell" data-label="Typology">
+                                                <select name="typology[]"
+                                                    onchange="updateFloorBandTable(); updateTypologySelects(); generateTypologyImageSections(); generateTypologyVideoSections();"
+                                                    required>
+                                                    <option value="">Select</option>
+                                                    <option value="1 RK">1 RK</option>
+                                                    <option value="1 BHK">1 BHK</option>
+                                                    <option value="1.5 BHK">1.5 BHK</option>
+                                                    <option value="2 BHK">2 BHK</option>
+                                                    <option value="2.5 BHK">2.5 BHK</option>
+                                                    <option value="3 BHK">3 BHK</option>
+                                                    <option value="3.5 BHK">3.5 BHK</option>
+                                                    <option value="4 BHK">4 BHK</option>
+                                                    <option value="4.5 BHK">4.5 BHK</option>
+                                                    <option value="5 BHK">5 BHK</option>
+                                                    <option value="Penthouse">Penthouse</option>
+                                                    <option value="Row House">Row House</option>
+                                                    <option value="Bungalow">Bungalow</option>
+                                                    <option value="Villa">Villa</option>
+                                                </select>
+                                            </div>
+                                            <div class="table-data-cell" data-label="Selable Area">
+                                                <input type="text" name="SelableArea[]" required>
+                                            </div>
+                                            <div class="table-data-cell" data-label="RERA Carpet">
+                                                <input type="text" name="reraCarpet[]" required>
+                                            </div>
+                                            <div class="table-data-cell" data-label="Per Sq. ft. Rate">
+                                                <input type="text" name="psfBase[]"
+                                                    oninput="formatCurrency(this); calculateTotal(this)" required>
+                                            </div>
+                                            <div class="table-data-cell" data-label="Agreement Value Rate">
+                                                <input type="text" name="avRate[]"
+                                                    oninput="formatCurrency(this); calculateTotal(this)" required>
+                                            </div>
+                                            <div class="table-data-cell" data-label="Fixed Component">
+                                                <input type="text" name="fixedComponents[]"
+                                                    oninput="formatCurrency(this); calculateTotal(this)">
+                                            </div>
+                                            <div class="table-data-cell" data-label="Possession Charges">
+                                                <input type="text" name="possessionCharges[]"
+                                                    oninput="formatCurrency(this); calculateTotal(this)" required>
+                                            </div>
+                                            <div class="table-data-cell" data-label="Total Package">
+                                                <input type="text" name="totalPackage[]" readonly
+                                                    style="background-color: #f8f9fa;">
+                                            </div>
+                                            <div class="table-data-cell" data-label="Negotiation Scope">
+                                                <input type="text" name="negotiationScope[]"
+                                                    oninput="formatCurrency(this)" required>
+                                            </div>
+                                            <div class="table-data-cell" data-label="Availability">
+                                                <select name="availability[]" required>
+                                                    <option value="">Select</option>
+                                                    <option value="Available">Available</option>
+                                                    <option value="Sold Out">Sold Out</option>
+                                                </select>
+                                            </div>
+                                            <div class="table-data-cell" data-label="Unit Plan"
+                                                style="text-align: center;">
+                                                <input type="file" id="unitPlan_0" name="unitPlan[]"
+                                                    accept=".jpg,.jpeg,.png,.pdf" style="display: none;"
+                                                    onchange="handleUnitPlanUpload(this)">
+                                                <div id="unitPlanContainer_0"
+                                                    style="position: relative; display: inline-block;">
+                                                    <i class="fas fa-paperclip"
+                                                        onclick="document.getElementById('unitPlan_0').click()"
+                                                        style="cursor: pointer; font-size: 1.2rem; color: #3498db;"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            style="display: flex; justify-content: flex-end; align-items: center; margin-top: 0.5rem;">
+                                            <div>
+                                                <button type="button" class="btn btn-success"
+                                                    onclick="addPricingRow(this)">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-danger"
+                                                    onclick="removePricingRow(this)">
+                                                    <i class="fas fa-minus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="section-actions" style="text-align: right; margin-top: 0.5rem;">
+                                        <button type="button" class="btn btn-danger" onclick="removeSection(0)"
+                                            style="display: none;">
+                                            <i class="fas fa-trash"></i> Remove Section
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="text-align: center; margin-top: 1rem;">
+                                <button type="button" class="btn btn-success" onclick="addSection()">
+                                    <i class="fas fa-plus"></i> Add New Section
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Charges & Payment Tab -->
+                        <div class="tab-content" id="charges-tab" role="tabpanel" aria-labelledby="charges-tab">
+                            <div class="section-title">Payment Configuration</div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="floorRiseFixedBand">Floor Rise / Floor Band</label>
+                                    <select id="floorRiseFixedBand" class="form-control" name="floorRiseFixedBand">
+                                        <option value="">Select Option</option>
+                                        <option value="floor-rise">Floor Rise</option>
+                                        <option value="fr-fixed-rate">FR-Fixed Rate</option>
+                                        <option value="floor-band">Floor Band</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="registrationFees">Registration Fees</label>
+                                    <input type="text" id="registrationFees" class="form-control"
+                                        name="registrationFees" oninput="formatCurrency(this)">
+                                </div>
+                                <div class="form-group">
+                                    <label for="parkingCharges">Parking Charges</label>
+                                    <input type="text" id="parkingCharges" class="form-control" name="parkingCharges"
+                                        oninput="formatCurrency(this)">
+                                </div>
+                            </div>
+
+                            <div id="floorRiseSection" class="floor-rise-section">
+                                <div class="section-title">Floor Rise Configuration</div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="floorRiseFrom">Floor Rise Starts From</label>
+                                        <input type="number" id="floorRiseFrom" class="form-control"
+                                            name="floorRiseFrom" min="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="floorRiseTo">Floor Rise Rate</label>
+                                        <input type="text" id="floorRiseTo" class="form-control" name="floorRiseTo"
+                                            oninput="formatCurrency(this)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="frFixedRateSection" class="floor-rise-section">
+                                <div class="section-title">FR-Fixed Rate Configuration</div>
+                                <div class="form-group">
+                                    <label for="fixedRateFloorRise">Fixed Rate Floor Rise Starts from</label>
+                                    <input type="number" id="fixedRateFloorRise" class="form-control"
+                                        name="fixedRateFloorRise" min="1">
+                                </div>
+                                <div id="fixedRateFields" class="fixed-rate-fields">
+                                    <!-- Dynamic fixed rate fields will be generated here -->
+                                </div>
+                            </div>
+
+                            <div id="floorBandSection" class="conditional-section"
+                                style="display: none; padding: 0.5rem; margin: 0.5rem 0;">
+                                <div class="table-header">Floor Band Configuration</div>
+                                <div id="floorBandTable" class="table-grid">
+                                    <!-- Dynamic content will be generated here -->
+                                </div>
+                                <div class="floor-band-buttons">
+                                    <button type="button" class="btn btn-success" onclick="addFloorBandTableRow()">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger" onclick="removeFloorBandTableRow()">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="section-title" style="margin-top: 2rem;">Investment & Additional Information
+                            </div>
+
+                            <div class="data-table">
+                                <div class="table-header">Description</div>
+                                <div style="padding: 0.5rem;">
+                                    <textarea name="projectDescription" rows="6"
+                                        style="width: 100%; padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 0.9rem; resize: vertical;"
+                                        placeholder="Enter project description and additional information..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Amenities Tab -->
+                        <div class="tab-content" id="amenities-tab" role="tabpanel" aria-labelledby="amenities-tab">
+                            <div class="section-title">Project Amenities & Features</div>
+
+                            <div class="data-table" style="margin-bottom: 1.5rem; position: relative;">
+                                <div class="table-header">Apartment Amenities</div>
+                                <div id="apartmentAmenitiesContainer"
+                                    style="padding: 0.5rem 0.5rem 3rem 0.5rem; max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.25rem;">
+                                    <!-- Apartment amenities checkboxes will be generated here -->
+                                </div>
+                                <button type="button" class="btn btn-success" onclick="addCustomAmenity('apartment')"
+                                    style="position: absolute; bottom: 0.5rem; right: 0.5rem; padding: 0.05rem 0.25rem; font-size: 0.7rem; border-radius: 3px;">
+                                    + Add
+                                </button>
+                            </div>
+
+                            <div class="data-table" style="margin-bottom: 1.5rem; position: relative;">
+                                <div class="table-header">Project Amenities</div>
+                                <div id="projectAmenitiesContainer"
+                                    style="padding: 0.5rem 0.5rem 3rem 0.5rem; max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.25rem;">
+                                    <!-- Project amenities checkboxes will be generated here -->
+                                </div>
+                                <button type="button" class="btn btn-success" onclick="addCustomAmenity('project')"
+                                    style="position: absolute; bottom: 0.5rem; right: 0.5rem; padding: 0.05rem 0.25rem; font-size: 0.7rem; border-radius: 3px;">
+                                    + Add
+                                </button>
+                            </div>
+
+                            <div class="data-table" style="margin-bottom: 1.5rem; position: relative;">
+                                <div class="table-header">Location Highlights</div>
+                                <div id="locationHighlightsContainer"
+                                    style="padding: 0.5rem 0.5rem 3rem 0.5rem; max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem;">
+                                    <!-- Location highlights checkboxes will be generated here -->
+                                </div>
+                                <button type="button" class="btn btn-success" onclick="addCustomAmenity('location')"
+                                    style="position: absolute; bottom: 0.5rem; right: 0.5rem; padding: 0.05rem 0.25rem; font-size: 0.7rem; border-radius: 3px;">
+                                    + Add
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Contacts Tab -->
+                        <div class="tab-content" id="contacts-tab" role="tabpanel" aria-labelledby="contacts-tab">
+                            <div class="section-title">Contact Information</div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="data-table">
+                                    <div class="table-header">Site Head</div>
+                                    <div class="table-grid" id="siteHeadTable" style="grid-template-columns: 1fr 1fr;">
+                                        <div class="table-header-cell">Name</div>
+                                        <div class="table-header-cell">Phone</div>
+
+                                        <div class="table-data-cell" data-label="Name">
+                                            <input type="text" name="siteHeadName[]">
+                                        </div>
+                                        <div class="table-data-cell" data-label="Phone">
+                                            <input type="tel" name="siteHeadNumber[]">
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right; margin-top: 0.5rem;">
+                                        <button type="button" class="btn btn-success"
+                                            onclick="addTableRow('siteHeadTable', 2)">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-danger" onclick="removeTableRow(this, 2)">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="data-table">
+                                    <div class="table-header">Sourcing Managers</div>
+                                    <div class="table-grid" id="sourcingManagersTable"
+                                        style="grid-template-columns: 1fr 1fr;">
+                                        <div class="table-header-cell">Name</div>
+                                        <div class="table-header-cell">Phone</div>
+
+                                        <div class="table-data-cell" data-label="Name">
+                                            <input type="text" name="sourcingManagerName[]">
+                                        </div>
+                                        <div class="table-data-cell" data-label="Phone">
+                                            <input type="tel" name="sourcingManagerNumber[]">
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right; margin-top: 0.5rem;">
+                                        <button type="button" class="btn btn-success"
+                                            onclick="addTableRow('sourcingManagersTable', 2)">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-danger" onclick="removeTableRow(this, 2)">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section-title" style="margin-top: 2rem;">Collaterals & Media</div>
+
+                            <div class="data-table">
+                                <div class="table-header">Upload Brochure</div>
+                                <div style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: 3px;"
+                                    onclick="document.getElementById('brochureUpload').click()"
+                                    onmouseover="this.style.background='#f1f3f4'"
+                                    onmouseout="this.style.background='transparent'">
+                                    <input type="file" id="brochureUpload" accept=".pdf,.doc,.docx"
+                                        style="display: none;" onchange="handleBrochureUpload(this)">
+                                    <i class="fas fa-paperclip" style="font-size: 0.9rem; color: #1976d2;"></i>
+                                    <span style="color: #1976d2; font-weight: 600; font-size: 0.8rem;">Brochure</span>
+                                </div>
+                                <div id="brochurePreview" class="image-preview-container"></div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="data-table">
+                                    <div class="table-header">Elevation Images (Max 10)</div>
+                                    <div style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: 3px;"
+                                        onclick="document.getElementById('elevationImagesInput').click()"
+                                        onmouseover="this.style.background='#f1f3f4'"
+                                        onmouseout="this.style.background='transparent'">
+                                        <input type="file" id="elevationImagesInput" multiple
+                                            accept=".jpg,.jpeg,.png,.gif" style="display: none;"
+                                            onchange="handleImageUpload(this, 'elevationImages')">
+                                        <i class="fas fa-paperclip" style="font-size: 0.9rem; color: #1976d2;"></i>
+                                        <span
+                                            style="color: #1976d2; font-weight: 600; font-size: 0.8rem;">Elevation</span>
+                                    </div>
+                                    <div id="elevationImagesPreview" class="image-preview-container"></div>
+                                </div>
+
+                                <div class="data-table">
+                                    <div class="table-header">Amenities Images (Max 10)</div>
+                                    <div style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: 3px;"
+                                        onclick="document.getElementById('amenitiesImagesInput').click()"
+                                        onmouseover="this.style.background='#f1f3f4'"
+                                        onmouseout="this.style.background='transparent'">
+                                        <input type="file" id="amenitiesImagesInput" multiple
+                                            accept=".jpg,.jpeg,.png,.gif" style="display: none;"
+                                            onchange="handleImageUpload(this, 'amenitiesImages')">
+                                        <i class="fas fa-paperclip" style="font-size: 0.9rem; color: #1976d2;"></i>
+                                        <span
+                                            style="color: #1976d2; font-weight: 600; font-size: 0.8rem;">Amenities</span>
+                                    </div>
+                                    <div id="amenitiesImagesPreview" class="image-preview-container"></div>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="data-table">
+                                    <div class="table-header">Floor Plan Images (Max 10)</div>
+                                    <div style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: 3px;"
+                                        onclick="document.getElementById('floorPlanImagesInput').click()"
+                                        onmouseover="this.style.background='#f1f3f4'"
+                                        onmouseout="this.style.background='transparent'">
+                                        <input type="file" id="floorPlanImagesInput" multiple
+                                            accept=".jpg,.jpeg,.png,.gif" style="display: none;"
+                                            onchange="handleImageUpload(this, 'floorPlanImages')">
+                                        <i class="fas fa-paperclip" style="font-size: 0.9rem; color: #1976d2;"></i>
+                                        <span style="color: #1976d2; font-weight: 600; font-size: 0.8rem;">Floor
+                                            Plans</span>
+                                    </div>
+                                    <div id="floorPlanImagesPreview" class="image-preview-container"></div>
+                                </div>
+
+                                <div class="data-table">
+                                    <div class="table-header">Project Walkthrough (Max 2)</div>
+                                    <div style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: 3px;"
+                                        onclick="document.getElementById('projectWalkthroughInput').click()"
+                                        onmouseover="this.style.background='#f1f3f4'"
+                                        onmouseout="this.style.background='transparent'">
+                                        <input type="file" id="projectWalkthroughInput" multiple
+                                            accept=".mp4,.avi,.mov,.wmv" style="display: none;"
+                                            onchange="handleVideoUpload(this, 'projectWalkthrough')">
+                                        <i class="fas fa-paperclip" style="font-size: 0.9rem; color: #1976d2;"></i>
+                                        <span style="color: #1976d2; font-weight: 600; font-size: 0.8rem;">Videos</span>
+                                    </div>
+                                    <div id="projectWalkthroughPreview" class="video-preview-container"></div>
+                                </div>
+
+                                <div class="data-table">
+                                    <div class="table-header">Typology Images (Max 10 per typology)</div>
+                                    <div id="typologyImagesContainer">
+                                        <!-- Dynamic typology sections will be generated here -->
+                                    </div>
+                                </div>
+
+                                <div class="data-table">
+                                    <div class="table-header">Typology Videos (Max 1 per typology)</div>
+                                    <div id="typologyVideosContainer">
+                                        <!-- Dynamic typology video sections will be generated here -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section-title" style="margin-top: 2rem;">Message</div>
+
+                            <div class="data-table">
+                                <div class="table-header">Project Message</div>
+                                <div style="padding: 0.5rem;">
+                                    <div style="margin-bottom: 0.5rem; text-align: right;">
+                                        <button type="button" class="btn btn-primary"
+                                            onclick="generateMarketingMessage()">
+                                            <i class="fas fa-magic"></i> Generate Marketing Message
+                                        </button>
+                                    </div>
+                                    <textarea id="projectMessage" name="projectMessage" rows="15"
+                                        style="width: 100%; padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 0.9rem; resize: vertical;"
+                                        placeholder="Enter project message or click 'Generate Marketing Message' to auto-create..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ladder & Scheme Tab -->
+                        <div class="tab-content" id="ledger-tab" role="tabpanel" aria-labelledby="ledger-tab">
+                            <div class="section-title">Payment Schemes</div>
+
+                            <div class="data-table">
+                                <div class="table-header">Payment Scheme Details</div>
+                                <div class="table-grid" id="paymentSchemeTable"
+                                    style="grid-template-columns: 1fr 1fr 1fr;">
+                                    <div class="table-header-cell">Scheme Name</div>
+                                    <div class="table-header-cell">Description</div>
+                                    <div class="table-header-cell">Timeline</div>
+
+                                    <div class="table-data-cell" data-label="Scheme Name">
+                                        <input type="text" name="schemeName[]" placeholder="CLP / Subvention">
+                                    </div>
+                                    <div class="table-data-cell" data-label="Description">
+                                        <input type="text" name="schemeDescription[]"
+                                            placeholder="Construction Link Plan / Developer Subvention">
+                                    </div>
+                                    <div class="table-data-cell" data-label="Timeline">
+                                        <input type="text" name="schemeTimeline[]" placeholder="20-10-2025 to till now">
+                                    </div>
+                                </div>
+                                <div style="text-align: right; margin-top: 0.5rem;">
+                                    <button type="button" class="btn btn-success" onclick="addPaymentSchemeRow()">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger" onclick="removePaymentSchemeRow()">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="section-title" style="margin-top: 2rem;">Ladder Configuration</div>
+
+                            <div id="ladderSectionsContainer">
+                                <div class="data-table ladder-section" data-ladder-section="0">
+                                    <div class="table-header">Ladder Details</div>
+                                    <div class="table-grid" id="ledgerDetailsTable"
+                                        style="grid-template-columns: 1fr 1fr 1fr 1fr 1fr;">
+                                        <div class="table-header-cell">Start Date</div>
+                                        <div class="table-header-cell">End Date</div>
+                                        <div class="table-header-cell">Units</div>
+                                        <div class="table-header-cell">Ladder</div>
+                                        <div class="table-header-cell">Additional Incentive</div>
+
+                                        <div class="table-data-cell" data-label="Start Date">
+                                            <input type="date" name="ledgerStartDate[]">
+                                        </div>
+                                        <div class="table-data-cell" data-label="End Date">
+                                            <input type="date" name="ledgerEndDate[]">
+                                        </div>
+                                        <div class="table-data-cell" data-label="Units">
+                                            <input type="text" name="ledgerUnits[]" style="text-align: center;">
+                                        </div>
+                                        <div class="table-data-cell" data-label="Ladder">
+                                            <input type="text" name="ledgerValue[]" style="text-align: center;">
+                                        </div>
+                                        <div class="table-data-cell" data-label="Additional Incentive">
+                                            <input type="text" name="additionalIncentive[]">
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right; margin-top: 0.5rem;">
+                                        <button type="button" class="btn btn-success" onclick="addLadderRow(this)">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-danger" onclick="removeLadderRow(this)">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-danger" onclick="removeLadderSection(0)"
+                                            style="display: none; margin-left: 0.5rem;">
+                                            <i class="fas fa-trash"></i> Remove Section
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="text-align: center; margin-top: 1rem;">
+                                <button type="button" class="btn btn-success" onclick="addLadderSection()">
+                                    <i class="fas fa-plus"></i> Add New Ladder Section
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="prevBtn" class="btn btn-secondary" style="display: none;">
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                        <div>
+                            <button type="button" id="nextBtn" class="btn btn-primary">
+                                Next <i class="fas fa-arrow-right"></i>
+                            </button>
+                            <button type="submit" id="submitBtn" class="btn btn-success" style="display: none;">
+                                <i class="fas fa-save"></i> Save Project
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Button -->
+    <button class="float-btn" id="floatBtn" title="View Marketing Message">
+        <i class="fas fa-envelope"></i>
+    </button>
+
+    <!-- Marketing Message Modal -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMessageModal()">&times;</span>
+            <h2 style="margin-top: 0;">Marketing Message</h2>
+            <div id="modalMessageContent"
+                style="white-space: pre-wrap; font-family: monospace; background: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #e0e6ed;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding custom amenity -->
+    <div id="amenityModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 1.5rem; border-radius: 8px; width: 400px; max-width: 90%;">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Add Custom Amenity</h3>
+            <input type="text" id="customAmenityInput" placeholder="Enter amenity name"
+                style="width: 100%; padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px; margin-bottom: 1rem;">
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="button" onclick="closeAmenityModal()"
+                    style="padding: 0.5rem 1rem; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                <button type="button" onclick="saveCustomAmenity()"
+                    style="padding: 0.5rem 1rem; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Base64 utility functions to replace @smithy/util-base64
+        // These handle the type checking that Visual Studio is complaining about
+
+        class Base64Utils {
+            /**
+             * Encodes input to Base64 string
+             * @param {string|Uint8Array} input - String or Uint8Array to encode
+             * @returns {string} Base64 encoded string
+             */
+            static toBase64(input) {
+                if (typeof input === 'string') {
+                    return btoa(input);
+                } else if (input instanceof Uint8Array) {
+                    return btoa(String.fromCharCode(...input));
+                } else {
+                    throw new Error('toBase64 encoder function only accepts string | Uint8Array');
+                }
+            }
+
+            /**
+             * Decodes Base64 string to Uint8Array
+             * @param {string} input - Base64 encoded string
+             * @returns {Uint8Array} Decoded bytes
+             */
+            static fromBase64(input) {
+                if (typeof input !== 'string') {
+                    throw new Error('fromBase64 decoder function only accepts string');
+                }
+
+                const binaryString = atob(input);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                return bytes;
+            }
+
+            /**
+             * Safe Base64 encoding that handles any input type
+             * @param {any} data - Data to encode
+             * @returns {string} Base64 encoded string
+             */
+            static safeToBase64(data) {
+                if (typeof data === 'string') {
+                    return this.toBase64(data);
+                } else if (data instanceof Uint8Array) {
+                    return this.toBase64(data);
+                } else if (typeof data === 'number' || typeof data === 'boolean') {
+                    return this.toBase64(String(data));
+                } else if (data === null || data === undefined) {
+                    return this.toBase64('');
+                } else if (typeof data === 'object') {
+                    return this.toBase64(JSON.stringify(data));
+                } else {
+                    return this.toBase64(String(data));
+                }
+            }
+        }
+
+        // Example usage in form submission
+        function encodeFormData(formData) {
+            const data = {
+                project: {
+                    name: formData.get('projectName'),
+                    developer: formData.get('developerName'),
+                    location: formData.get('location'),
+                    // Add other form fields as needed
+                }
+            };
+
+            // This will handle any data type safely
+            return Base64Utils.safeToBase64(JSON.stringify(data));
+        }
+
+        function handleUnitPlanUpload(input) {
+            const file = input.files[0];
+            const containerId = input.id.replace('unitPlan_', 'unitPlanContainer_');
+            const container = document.getElementById(containerId);
+
+            if (file && container) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    if (file.type === 'application/pdf') {
+                        container.innerHTML = `
+                            <div style="position: relative; display: inline-block;">
+                                <div style="width: 40px; height: 40px; background: #dc3545; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px;">
+                                    PDF
+                                </div>
+                                <button type="button" onclick="clearUnitPlan('${input.id}')" style="position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; cursor: pointer;">×</button>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <div style="position: relative; display: inline-block;">
+                                <img src="${e.target.result}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                <button type="button" onclick="clearUnitPlan('${input.id}')" style="position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; cursor: pointer;">×</button>
+                            </div>
+                        `;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearUnitPlan(inputId) {
+            const input = document.getElementById(inputId);
+            const containerId = inputId.replace('unitPlan_', 'unitPlanContainer_');
+            const container = document.getElementById(containerId);
+
+            if (input && container) {
+                input.value = '';
+                container.innerHTML = '<i class="fas fa-paperclip" onclick="document.getElementById(\'' + inputId + '\').click()" style="cursor: pointer; font-size: 1.2rem; color: #3498db;"></i>';
+            }
+        }
+
+        let currentTab = 0;
+        const tabs = ['basic', 'pricing', 'charges', 'amenities', 'ledger', 'contacts'];
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const nextBtn = document.getElementById('nextBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const submitBtn = document.getElementById('submitBtn');
+
+            tabButtons.forEach((button, index) => {
+                button.addEventListener('click', () => {
+                    showTab(index);
+                });
+            });
+
+            nextBtn.addEventListener('click', () => {
+                if (validateCurrentTab()) {
+                    if (currentTab < tabs.length - 1) {
+                        currentTab++;
+                        showTab(currentTab);
+                    }
+                }
+            });
+
+            prevBtn.addEventListener('click', () => {
+                if (currentTab > 0) {
+                    currentTab--;
+                    showTab(currentTab);
+                }
+            });
+
+            function showTab(tabIndex) {
+                currentTab = tabIndex;
+
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-selected', 'false');
+                });
+                tabContents.forEach(content => content.classList.remove('active'));
+
+                tabButtons[tabIndex].classList.add('active');
+                tabButtons[tabIndex].setAttribute('aria-selected', 'true');
+                document.getElementById(tabs[tabIndex] + '-tab').classList.add('active');
+
+                prevBtn.style.display = tabIndex === 0 ? 'none' : 'inline-flex';
+                nextBtn.style.display = tabIndex === tabs.length - 1 ? 'none' : 'inline-flex';
+                submitBtn.style.display = tabIndex === tabs.length - 1 ? 'inline-flex' : 'none';
+            }
+
+            const floorRiseSelect = document.getElementById('floorRiseFixedBand');
+            const floorBandSection = document.getElementById('floorBandSection');
+
+            floorRiseSelect.addEventListener('change', function () {
+                const floorRiseSection = document.getElementById('floorRiseSection');
+                const frFixedRateSection = document.getElementById('frFixedRateSection');
+
+                floorBandSection.style.display = this.value === 'floor-band' ? 'block' : 'none';
+                floorRiseSection.style.display = this.value === 'floor-rise' ? 'block' : 'none';
+                frFixedRateSection.style.display = this.value === 'fr-fixed-rate' ? 'block' : 'none';
+
+                if (this.value === 'floor-band') {
+                    generateFloorBandTable();
+                } else if (this.value === 'fr-fixed-rate') {
+                    generateFixedRateSection();
+                }
+            });
+
+            // Initialize MutationObserver for real-time updates
+            const observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach(function (node) {
+                            if (node.nodeType === 1 && node.querySelector) {
+                                const typologySelects = node.querySelectorAll('select[name="typology[]"]');
+                                typologySelects.forEach(select => {
+                                    select.addEventListener('change', function () {
+                                        updateFloorBandTable();
+                                        generateFloorBandTable();
+                                        generateFixedRateSection();
+                                        updateTypologySelects();
+                                        generateTypologyImageSections();
+                                        generateTypologyVideoSections();
+                                    });
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+            const subTabsObserver = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    if (mutation.type === 'childList') {
+                        setTimeout(() => {
+                            updateFloorBandTable();
+                            generateFloorBandTable();
+                            generateFixedRateSection();
+                            generateTypologyImageSections();
+                            generateTypologyVideoSections();
+                        }, 100);
+                    }
+                });
+            });
+
+            observer.observe(document.getElementById('sectionsContainer'), {
+                childList: true,
+                subtree: true
+            });
+
+            subTabsObserver.observe(document.querySelector('.sub-tabs'), {
+                childList: true
+            });
+
+            // Add event listeners to existing typology dropdowns
+            document.querySelectorAll('select[name="typology[]"]').forEach(select => {
+                select.addEventListener('change', function () {
+                    updateFloorBandTable();
+                    generateFloorBandTable();
+                    generateFixedRateSection();
+                    updateTypologySelects();
+                    generateTypologyImageSections();
+                    generateTypologyVideoSections();
+                });
+            });
+
+            // Initial updates
+            updateFloorBandTable();
+            generateFloorBandTable();
+            generateFixedRateSection();
+            updateTypologySelects();
+            generateTypologyImageSections();
+            generateTypologyVideoSections();
+            generateAmenitiesCheckboxes();
+        });
+
+        function generateAmenitiesCheckboxes() {
+            const locationHighlights = [
+                'Bandra Worli Sea Link', 'Banks & ATM', 'Chhatrapati Shivaji Maharaj International Airport', 'Club, Hotels & Restaurants',
+                'College & School', 'D\'Mart', 'Domestic Airport', 'Eastern Express Highway',
+                'Hospitals and Medicals', 'International Airport', 'LINK ROAD', 'Market',
+                'Metro Station', 'Mumbai - Ahmadabad Express Highway', 'Municipal Ground', 'Multiplex Theatres',
+                'National Highway', 'Railway Station', 'Sanjay Gandhi National Park', 'Shopping Mall',
+                'Smart Bazar , Star Bazar', 'Sports Complex', 'Western Express Highway'
+            ];
+
+            const locationContainer = document.getElementById('locationHighlightsContainer');
+
+            locationContainer.innerHTML = locationHighlights.map(highlight =>
+                `<div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" data-highlight="${highlight}" onchange="toggleLocationInput(this)" style="margin: 0;">
+                        <span>${highlight}</span>
+                    </label>
+                    <input type="text" id="input_${highlight.replace(/[^a-zA-Z0-9]/g, '_')}" name="locationHighlights[${highlight}]" placeholder="e.g., 3 Min." style="padding: 0.25rem; border: 1px solid #bdc3c7; border-radius: 3px; font-size: 0.8rem; width: 72px; display: none; margin-left: 0.5rem;">
+                </div>`
+            ).join('');
+            const apartmentAmenities = [
+                'Air Conditioner', 'Aqua Guard', 'Branded Electrical Switches & Fittings', 'Chimney',
+                'Designer Door', 'Door Bell', 'Electrical fittings', 'False Cealing',
+                'Floor Ceiling Heights', 'Geyser', 'Intercom facility', 'Kitchen Platform with Sink',
+                'Marble & Granite Window Frame', 'Modular Kitchen', 'Quality Cp & Sanitary Fittings',
+                'Tiles Flooring All room', 'Video door phone', 'Water Tank'
+            ];
+
+            const projectAmenities = [
+                'Aerobic/Dance studio', 'Basketball Court', 'Bedminton Court', 'Benquate Hall',
+                'Bio Metric Entrance Lobby', 'CCTV Camera', 'Cabansa Seating', 'Cafetearea',
+                'Club House', 'Cricket Turf', 'Double Highted Designer Lobby', 'EV Charging Points',
+                'Fire Safety', 'Fitness area', 'Football Turf', 'Gazebo', 'Guest Rooms',
+                'Gymnasium', 'High Speed Elevators', 'Indoor games', 'Jogging and Walking Track',
+                'Kids Play Area', 'Kids Pool', 'Land Scaped Garden', 'Library',
+                'Meditation Area', 'Mini Theatre', 'Multipurpose Court', 'Multipurpose lawn',
+                'Pool Side Deck', 'Power Backup', 'Reflexology Path', 'Seating Area',
+                'Senior Citizen Area', 'Sketting Ring', 'Solar Water System', 'Spa',
+                'Steam Room', 'Swimming Pool', 'Theme Garden', 'Toddlers Play Area', 'Yoga Area'
+            ];
+
+            const apartmentContainer = document.getElementById('apartmentAmenitiesContainer');
+            const projectContainer = document.getElementById('projectAmenitiesContainer');
+
+            apartmentContainer.innerHTML = apartmentAmenities.map(amenity =>
+                `<label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                    <input type="checkbox" name="apartmentAmenities[]" value="${amenity}" style="margin: 0;">
+                    <span>${amenity}</span>
+                </label>`
+            ).join('');
+
+            projectContainer.innerHTML = projectAmenities.map(amenity =>
+                `<label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                    <input type="checkbox" name="projectAmenities[]" value="${amenity}" style="margin: 0;">
+                    <span>${amenity}</span>
+                </label>`
+            ).join('');
+        }
+
+        let currentAmenityType = '';
+
+        function addCustomAmenity(type) {
+            currentAmenityType = type;
+            const modalTitle = document.querySelector('#amenityModal h3');
+            if (type === 'location') {
+                modalTitle.textContent = 'Add Custom Highlight';
+            } else {
+                modalTitle.textContent = 'Add Custom Amenity';
+            }
+            document.getElementById('amenityModal').style.display = 'flex';
+            document.getElementById('customAmenityInput').focus();
+        }
+
+        function closeAmenityModal() {
+            document.getElementById('amenityModal').style.display = 'none';
+            document.getElementById('customAmenityInput').value = '';
+        }
+
+        function saveCustomAmenity() {
+            const amenityName = document.getElementById('customAmenityInput').value.trim();
+            if (amenityName) {
+                let container, fieldName;
+
+                if (currentAmenityType === 'apartment') {
+                    container = document.getElementById('apartmentAmenitiesContainer');
+                    fieldName = 'apartmentAmenities[]';
+                } else if (currentAmenityType === 'project') {
+                    container = document.getElementById('projectAmenitiesContainer');
+                    fieldName = 'projectAmenities[]';
+                } else if (currentAmenityType === 'location') {
+                    container = document.getElementById('locationHighlightsContainer');
+                    fieldName = 'locationHighlights';
+                }
+
+                const newAmenity = document.createElement('label');
+                newAmenity.style.cssText = currentAmenityType === 'location' ?
+                    'display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.25rem;' :
+                    'display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;';
+                if (currentAmenityType === 'location') {
+                    const safeId = amenityName.replace(/[^a-zA-Z0-9]/g, '_');
+                    newAmenity.innerHTML = `
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" data-highlight="${amenityName}" onchange="toggleLocationInput(this)" style="margin: 0;">
+                            <span>${amenityName}</span>
+                        </label>
+                        <input type="text" id="input_${safeId}" name="locationHighlights[${amenityName}]" placeholder="e.g., 3 Min." style="padding: 0.25rem; border: 1px solid #bdc3c7; border-radius: 3px; font-size: 0.8rem; width: 72px; display: none; margin-left: 0.5rem;">
+                        <button type="button" onclick="this.parentElement.remove()" style="margin-left: 0.5rem; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+                    `;
+                } else {
+                    newAmenity.innerHTML = `
+                        <input type="checkbox" name="${fieldName}" value="${amenityName}" style="margin: 0;" checked>
+                        <span>${amenityName}</span>
+                        <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+                    `;
+                }
+
+                container.appendChild(newAmenity);
+                closeAmenityModal();
+            }
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeAmenityModal();
+        });
+
+        // Close modal on Enter key in input
+        document.getElementById('customAmenityInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') saveCustomAmenity();
+        });
+
+        function toggleLocationInput(checkbox) {
+            const highlightName = checkbox.getAttribute('data-highlight');
+            const safeId = highlightName.replace(/[^a-zA-Z0-9]/g, '_');
+            const inputField = document.getElementById('input_' + safeId);
+            if (checkbox.checked) {
+                inputField.style.display = 'inline-block';
+                inputField.focus();
+            } else {
+                inputField.style.display = 'none';
+                inputField.value = '';
+            }
+        }
+
+        function updateTypologySelects() {
+            const typologies = getUniqueTypologies();
+            const typologySelects = document.querySelectorAll('.typology-select');
+
+            typologySelects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select</option>';
+                typologies.forEach(typology => {
+                    select.innerHTML += `<option value="${typology}">${typology}</option>`;
+                });
+                if (currentValue && typologies.includes(currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+
+            generateTypologyImageSections();
+            generateTypologyVideoSections();
+        }
+
+        function generateTypologyImageSections() {
+            const typologies = getUniqueTypologies();
+            console.log('Found typologies:', typologies); // Debug line
+            const container = document.getElementById('typologyImagesContainer');
+
+            if (typologies.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #7f8c8d;">Please select typologies in Pricing & Buildings tab to upload typology images</div>';
+                return;
+            }
+
+            // Preserve existing images for typologies that still exist
+            const existingTypologies = new Set();
+            const existingSections = container.querySelectorAll('.data-table');
+            existingSections.forEach(section => {
+                const header = section.querySelector('.table-header');
+                if (header) {
+                    const typologyName = header.textContent.replace(' Images (Max 10)', '');
+                    existingTypologies.add(typologyName);
+                }
+            });
+
+            let html = '';
+            typologies.forEach(typology => {
+                const safeTypology = typology.replace(/[^a-zA-Z0-9]/g, '_');
+
+                // Check if this typology section already exists
+                const existingSection = container.querySelector(`#typ_${safeTypology}ImagesPreview`);
+                let existingContent = '';
+                if (existingSection) {
+                    existingContent = existingSection.innerHTML;
+                }
+
+                html += `
+                    <div class="data-table" style="margin-bottom: 1rem;">
+                        <div class="table-header">${typology} Images (Max 10)</div>
+                        <div style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: 3px;" onclick="document.getElementById('typ_${safeTypology}ImagesInput').click()" onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background='transparent'">
+                            <input type="file" id="typ_${safeTypology}ImagesInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleImageUpload(this, 'typ_${safeTypology}Images')">
+                            <i class="fas fa-paperclip" style="font-size: 0.9rem; color: #1976d2;"></i>
+                            <span style="color: #1976d2; font-weight: 600; font-size: 0.8rem;">${typology}</span>
+                        </div>
+                        <div id="typ_${safeTypology}ImagesPreview" class="image-preview-container">${existingContent}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+            // Clean up imageCollections for removed typologies
+            Object.keys(imageCollections).forEach(key => {
+                if (key.endsWith('Images')) {
+                    const typologyName = key.replace('Images', '').replace(/_/g, ' ');
+                    if (!typologies.includes(typologyName)) {
+                        delete imageCollections[key];
+                    }
+                }
+            });
+        }
+
+        function generateTypologyVideoSections() {
+            const typologies = getUniqueTypologies();
+            console.log('Found typologies for videos:', typologies); // Debug line
+            const container = document.getElementById('typologyVideosContainer');
+
+            if (typologies.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #7f8c8d;">Please select typologies in Pricing & Buildings tab to upload typology videos</div>';
+                return;
+            }
+
+            // Preserve existing videos for typologies that still exist
+            let html = '';
+            typologies.forEach(typology => {
+                const safeTypology = typology.replace(/[^a-zA-Z0-9]/g, '_');
+
+                // Check if this typology section already exists
+                const existingSection = container.querySelector(`#typ_${safeTypology}VideosPreview`);
+                let existingContent = '';
+                if (existingSection) {
+                    existingContent = existingSection.innerHTML;
+                }
+
+                html += `
+                    <div class="data-table" style="margin-bottom: 1rem;">
+                        <div class="table-header">${typology} Videos</div>
+                        <div style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: 3px;" onclick="document.getElementById('typ_${safeTypology}VideosInput').click()" onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background='transparent'">
+                            <input type="file" id="typ_${safeTypology}VideosInput" accept=".mp4,.avi,.mov,.wmv" style="display: none;" onchange="handleTypologyVideoUpload(this, 'typ_${safeTypology}Videos')">
+                            <i class="fas fa-paperclip" style="font-size: 0.9rem; color: #1976d2;"></i>
+                            <span style="color: #1976d2; font-weight: 600; font-size: 0.8rem;">${typology}</span>
+                        </div>
+                        <div id="typ_${safeTypology}VideosPreview" class="video-preview-container">${existingContent}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+            // Clean up imageCollections for removed typologies
+            Object.keys(imageCollections).forEach(key => {
+                if (key.endsWith('Videos')) {
+                    const typologyName = key.replace('Videos', '').replace(/_/g, ' ');
+                    if (!typologies.includes(typologyName)) {
+                        delete imageCollections[key];
+                    }
+                }
+            });
+        }
+
+        let imageCollections = {};
+
+        function handleImageUpload(input, category) {
+            const files = Array.from(input.files);
+            const previewContainer = document.getElementById(category + 'Preview');
+
+            if (!imageCollections[category]) {
+                imageCollections[category] = [];
+            }
+
+            const currentCount = imageCollections[category].length;
+            const availableSlots = 10 - currentCount;
+
+            if (files.length > availableSlots) {
+                alert(`You can only upload ${availableSlots} more images. Maximum 10 images allowed.`);
+                files.splice(availableSlots);
+            }
+
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const imageId = Date.now() + '_' + index;
+                    imageCollections[category].push({ id: imageId, file: file, src: e.target.result });
+
+                    const imageDiv = document.createElement('div');
+                    imageDiv.className = 'image-preview-item';
+                    imageDiv.style.cssText = 'position: relative; display: inline-block; margin: 5px;';
+                    imageDiv.innerHTML = `
+                        <img src="${e.target.result}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                        <button type="button" onclick="removeImage('${category}', '${imageId}')" style="position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                            ×
+                        </button>
+                        <input type="file" name="${category}[]" style="display: none;" data-file-id="${imageId}">
+                    `;
+
+                    previewContainer.appendChild(imageDiv);
+
+                    // Set the file to the hidden input
+                    const hiddenInput = imageDiv.querySelector('input[type="file"]');
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    hiddenInput.files = dt.files;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            input.value = '';
+        }
+
+        function removeImage(category, imageId) {
+            const previewContainer = document.getElementById(category + 'Preview');
+            const imageDiv = previewContainer.querySelector(`input[data-file-id="${imageId}"]`).closest('.image-preview-item');
+
+            imageCollections[category] = imageCollections[category].filter(img => img.id !== imageId);
+            imageDiv.remove();
+        }
+
+        function handleVideoUpload(input, category) {
+            const files = Array.from(input.files);
+            const previewContainer = document.getElementById(category + 'Preview');
+
+            if (!imageCollections[category]) {
+                imageCollections[category] = [];
+            }
+
+            const currentCount = imageCollections[category].length;
+            const availableSlots = 2 - currentCount;
+
+            if (files.length > availableSlots) {
+                alert(`You can only upload ${availableSlots} more videos. Maximum 2 videos allowed.`);
+                files.splice(availableSlots);
+            }
+
+            files.forEach((file, index) => {
+                const videoId = Date.now() + '_' + index;
+                imageCollections[category].push({ id: videoId, file: file });
+
+                const videoDiv = document.createElement('div');
+                videoDiv.className = 'video-preview-item';
+                videoDiv.style.cssText = 'position: relative; display: inline-block; margin: 5px;';
+
+                videoDiv.innerHTML = `
+                    <canvas width="360" height="360" style="width: 120px; height: 120px; border-radius: 4px; border: 1px solid #ddd;"></canvas>
+                    <button type="button" onclick="removeVideo('${category}', '${videoId}')" style="position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        ×
+                    </button>
+                    <input type="file" name="${category}[]" style="display: none;" data-file-id="${videoId}">
+                `;
+
+                const canvasElement = videoDiv.querySelector('canvas');
+                const canvasCtx = canvasElement.getContext('2d');
+
+                const videoUrl = URL.createObjectURL(file);
+                const tempVideo = document.createElement('video');
+                tempVideo.src = videoUrl;
+                tempVideo.currentTime = 1;
+                tempVideo.addEventListener('loadeddata', () => {
+                    canvasCtx.fillStyle = 'black';
+                    canvasCtx.fillRect(0, 0, 360, 360);
+
+                    const videoAspect = tempVideo.videoWidth / tempVideo.videoHeight;
+                    let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+                    if (videoAspect > 1) {
+                        drawWidth = 360;
+                        drawHeight = 360 / videoAspect;
+                        offsetY = (360 - drawHeight) / 2;
+                    } else {
+                        drawHeight = 360;
+                        drawWidth = 360 * videoAspect;
+                        offsetX = (360 - drawWidth) / 2;
+                    }
+
+                    canvasCtx.drawImage(tempVideo, offsetX, offsetY, drawWidth, drawHeight);
+                });
+
+                previewContainer.appendChild(videoDiv);
+
+                const hiddenInput = videoDiv.querySelector('input[type="file"]');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                hiddenInput.files = dt.files;
+            });
+
+            input.value = '';
+        }
+
+        function removeVideo(category, videoId) {
+            const previewContainer = document.getElementById(category + 'Preview');
+            const videoDiv = previewContainer.querySelector(`input[data-file-id="${videoId}"]`).closest('.video-preview-item');
+
+            imageCollections[category] = imageCollections[category].filter(vid => vid.id !== videoId);
+            videoDiv.remove();
+        }
+
+        function handleTypologyVideoUpload(input, category) {
+            const files = Array.from(input.files);
+            const previewContainer = document.getElementById(category + 'Preview');
+
+            if (!imageCollections[category]) {
+                imageCollections[category] = [];
+            }
+
+            // Clear existing video (max 1 allowed)
+            imageCollections[category] = [];
+            previewContainer.innerHTML = '';
+
+            if (files.length > 1) {
+                alert('You can only upload 1 video per typology.');
+                return;
+            }
+
+            const file = files[0];
+            const videoId = Date.now();
+            imageCollections[category].push({ id: videoId, file: file });
+
+            const videoDiv = document.createElement('div');
+            videoDiv.className = 'video-preview-item';
+            videoDiv.style.cssText = 'position: relative; display: inline-block; margin: 5px;';
+
+            videoDiv.innerHTML = `
+                <canvas width="240" height="240" style="width: 80px; height: 80px; border-radius: 4px; border: 1px solid #ddd;"></canvas>
+                <button type="button" onclick="removeVideo('${category}', '${videoId}')" style="position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    ×
+                </button>
+                <input type="file" name="${category}[]" style="display: none;" data-file-id="${videoId}">
+            `;
+
+            const canvasElement = videoDiv.querySelector('canvas');
+            const canvasCtx = canvasElement.getContext('2d');
+
+            const videoUrl = URL.createObjectURL(file);
+            const tempVideo = document.createElement('video');
+            tempVideo.src = videoUrl;
+            tempVideo.currentTime = 1;
+            tempVideo.addEventListener('loadeddata', () => {
+                canvasCtx.fillStyle = 'black';
+                canvasCtx.fillRect(0, 0, 240, 240);
+
+                const videoAspect = tempVideo.videoWidth / tempVideo.videoHeight;
+                let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+                if (videoAspect > 1) {
+                    drawWidth = 240;
+                    drawHeight = 240 / videoAspect;
+                    offsetY = (240 - drawHeight) / 2;
+                } else {
+                    drawHeight = 240;
+                    drawWidth = 240 * videoAspect;
+                    offsetX = (240 - drawWidth) / 2;
+                }
+
+                canvasCtx.drawImage(tempVideo, offsetX, offsetY, drawWidth, drawHeight);
+            });
+
+            previewContainer.appendChild(videoDiv);
+
+            const hiddenInput = videoDiv.querySelector('input[type="file"]');
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            hiddenInput.files = dt.files;
+
+            input.value = '';
+        }
+
+        function handleBrochureUpload(input) {
+            const files = Array.from(input.files);
+            const previewContainer = document.getElementById('brochurePreview');
+
+            if (!imageCollections['brochure']) {
+                imageCollections['brochure'] = [];
+            }
+
+            // Clear existing brochure (max 1 allowed)
+            imageCollections['brochure'] = [];
+            previewContainer.innerHTML = '';
+
+            if (files.length > 1) {
+                alert('You can only upload 1 brochure.');
+                return;
+            }
+
+            const file = files[0];
+            const brochureId = Date.now();
+            imageCollections['brochure'].push({ id: brochureId, file: file });
+
+            const brochureDiv = document.createElement('div');
+            brochureDiv.className = 'image-preview-item';
+            brochureDiv.style.cssText = 'position: relative; display: inline-block; margin: 5px;';
+
+            if (file.type === 'application/pdf') {
+                const canvas = document.createElement('canvas');
+                canvas.width = 120;
+                canvas.height = 120;
+                const ctx = canvas.getContext('2d');
+
+                brochureDiv.innerHTML = `
+                    <canvas width="120" height="120" style="border-radius: 4px; border: 1px solid #ddd;"></canvas>
+                    <button type="button" onclick="removeBrochure('${brochureId}')" style="position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        ×
+                    </button>
+                    <input type="file" name="brochureUpload" style="display: none;" data-file-id="${brochureId}">
+                `;
+
+                const canvasElement = brochureDiv.querySelector('canvas');
+                const canvasCtx = canvasElement.getContext('2d');
+
+                const fileReader = new FileReader();
+                fileReader.onload = function () {
+                    const typedarray = new Uint8Array(this.result);
+
+                    pdfjsLib.getDocument(typedarray).promise.then(function (pdf) {
+                        pdf.getPage(1).then(function (page) {
+                            const viewport = page.getViewport({ scale: 1 });
+                            const scale = Math.min(360 / viewport.width, 360 / viewport.height);
+                            const scaledViewport = page.getViewport({ scale: scale });
+
+                            canvasElement.width = 360;
+                            canvasElement.height = 360;
+                            canvasElement.style.width = '120px';
+                            canvasElement.style.height = '120px';
+
+                            canvasCtx.fillStyle = 'white';
+                            canvasCtx.fillRect(0, 0, 360, 360);
+
+                            const renderContext = {
+                                canvasContext: canvasCtx,
+                                viewport: scaledViewport
+                            };
+
+                            page.render(renderContext);
+                        });
+                    }).catch(function (error) {
+                        canvasCtx.fillStyle = '#f8f9fa';
+                        canvasCtx.fillRect(0, 0, 120, 120);
+                        canvasCtx.fillStyle = '#dc3545';
+                        canvasCtx.font = '12px Arial';
+                        canvasCtx.textAlign = 'center';
+                        canvasCtx.fillText('PDF', 60, 50);
+                        canvasCtx.font = '8px Arial';
+                        canvasCtx.fillText(file.name.substring(0, 15), 60, 70);
+                    });
+                };
+                fileReader.readAsArrayBuffer(file);
+            } else {
+                brochureDiv.innerHTML = `
+                    <div style="width: 80px; height: 80px; background: #dc3545; border-radius: 4px; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; text-align: center;">
+                        <div>
+                            <i class="fas fa-file-alt" style="font-size: 16px; margin-bottom: 3px;"></i><br>
+                            ${file.name.length > 10 ? file.name.substring(0, 10) + '...' : file.name}
+                        </div>
+                    </div>
+                    <button type="button" onclick="removeBrochure('${brochureId}')" style="position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        ×
+                    </button>
+                    <input type="file" name="brochureUpload" style="display: none;" data-file-id="${brochureId}">
+                `;
+            }
+
+            previewContainer.appendChild(brochureDiv);
+
+            // Set the file to the hidden input
+            const hiddenInput = brochureDiv.querySelector('input[type="file"]');
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            hiddenInput.files = dt.files;
+
+            input.value = '';
+        }
+
+        function removeBrochure(brochureId) {
+            const previewContainer = document.getElementById('brochurePreview');
+            const brochureDiv = previewContainer.querySelector(`input[data-file-id="${brochureId}"]`).closest('.image-preview-item');
+
+            imageCollections['brochure'] = imageCollections['brochure'].filter(doc => doc.id !== brochureId);
+            brochureDiv.remove();
+        }
+
+        function addTableRow(tableId, colCount) {
+            const table = document.getElementById(tableId);
+            const rows = table.querySelectorAll('.table-data-cell');
+            const rowCount = rows.length / colCount;
+
+            // Create new row cells
+            for (let i = 0; i < colCount; i++) {
+                const originalCell = rows[i];
+                const newCell = originalCell.cloneNode(true);
+                const input = newCell.querySelector('input, select');
+                if (input) {
+                    input.value = '';
+                    // Clear any selected state for selects
+                    if (input.tagName === 'SELECT') {
+                        input.selectedIndex = 0;
+                    }
+                }
+                table.appendChild(newCell);
+            }
+        }
+
+        function removeTableRow(button, colCount) {
+            const table = button.closest('.data-table').querySelector('.table-grid');
+            const rows = table.querySelectorAll('.table-data-cell');
+
+            if (rows.length <= colCount) {
+                alert('You must have at least one row.');
+                return;
+            }
+
+            // Remove last row
+            for (let i = 0; i < colCount; i++) {
+                rows[rows.length - 1 - i].remove();
+            }
+        }
+
+        function addLadderRow(button) {
+            const table = button ? button.closest('.data-table').querySelector('.table-grid') : document.getElementById('ledgerDetailsTable');
+
+            const emptyCell1 = document.createElement('div');
+            emptyCell1.className = 'table-data-cell';
+
+            const emptyCell2 = document.createElement('div');
+            emptyCell2.className = 'table-data-cell';
+
+            const unitsCell = document.createElement('div');
+            unitsCell.className = 'table-data-cell';
+            unitsCell.setAttribute('data-label', 'Units');
+            unitsCell.innerHTML = '<input type="text" name="ledgerUnits[]" style="text-align: center;">';
+
+            const ladderCell = document.createElement('div');
+            ladderCell.className = 'table-data-cell';
+            ladderCell.setAttribute('data-label', 'Ladder');
+            ladderCell.innerHTML = '<input type="text" name="ledgerValue[]" style="text-align: center;">';
+
+            const incentiveCell = document.createElement('div');
+            incentiveCell.className = 'table-data-cell';
+            incentiveCell.setAttribute('data-label', 'Additional Incentive');
+            incentiveCell.innerHTML = '<input type="text" name="additionalIncentive[]">';
+
+            table.appendChild(emptyCell1);
+            table.appendChild(emptyCell2);
+            table.appendChild(unitsCell);
+            table.appendChild(ladderCell);
+            table.appendChild(incentiveCell);
+        }
+
+        function removeLadderRow(button) {
+            const table = button.closest('.data-table').querySelector('.table-grid');
+            const allCells = table.querySelectorAll('.table-data-cell');
+            const colCount = 5;
+
+            if (allCells.length > colCount) {
+                for (let i = 0; i < colCount; i++) {
+                    allCells[allCells.length - 1 - i].remove();
+                }
+            } else {
+                alert('You must have at least one row.');
+            }
+        }
+
+        function addLadderSection() {
+            const container = document.getElementById('ladderSectionsContainer');
+            const firstSection = container.querySelector('.ladder-section');
+            const newSection = firstSection.cloneNode(true);
+
+            const sectionIndex = container.children.length;
+
+            newSection.setAttribute('data-ladder-section', sectionIndex);
+            newSection.querySelector('.table-grid').id = `ledgerDetailsTable${sectionIndex}`;
+
+            newSection.querySelectorAll('input').forEach(input => input.value = '');
+
+            const removeBtn = newSection.querySelector('button[onclick*="removeLadderSection"]');
+            removeBtn.style.display = 'inline-flex';
+            removeBtn.setAttribute('onclick', `removeLadderSection(${sectionIndex})`);
+
+            container.appendChild(newSection);
+        }
+
+        function removeLadderSection(sectionIndex) {
+            const container = document.getElementById('ladderSectionsContainer');
+
+            if (container.children.length > 1) {
+                const section = container.querySelector(`[data-ladder-section="${sectionIndex}"]`);
+                if (section) section.remove();
+            } else {
+                alert('You must have at least one ladder section.');
+            }
+        }
+
+        function addPaymentSchemeRow() {
+            const table = document.getElementById('paymentSchemeTable');
+            const colCount = 3;
+
+            for (let i = 0; i < colCount; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'table-data-cell';
+
+                if (i === 0) {
+                    cell.setAttribute('data-label', 'Scheme Name');
+                    cell.innerHTML = '<input type="text" name="schemeName[]" placeholder="CLP / Subvention">';
+                } else if (i === 1) {
+                    cell.setAttribute('data-label', 'Description');
+                    cell.innerHTML = '<input type="text" name="schemeDescription[]" placeholder="Construction Link Plan / Developer Subvention">';
+                } else {
+                    cell.setAttribute('data-label', 'Timeline');
+                    cell.innerHTML = '<input type="text" name="schemeTimeline[]" placeholder="20-10-2025 to till now">';
+                }
+
+                table.appendChild(cell);
+            }
+        }
+
+        function removePaymentSchemeRow() {
+            const table = document.getElementById('paymentSchemeTable');
+            const allCells = table.querySelectorAll('.table-data-cell');
+            const colCount = 3;
+
+            if (allCells.length > colCount) {
+                for (let i = 0; i < colCount; i++) {
+                    allCells[allCells.length - 1 - i].remove();
+                }
+            } else {
+                alert('You must have at least one row.');
+            }
+        }
+
+        function validateReraFields(reraInput) {
+            const row = reraInput.closest('.table-grid');
+            const devPossessionInput = row.querySelector('input[name="devPossession[]"]');
+            const reraPossessionInput = row.querySelector('input[name="reraPossession[]"]');
+            const reraUrlInput = row.querySelector('input[name="reraUrl[]"]');
+
+            if (reraInput.value.trim()) {
+                // RERA Number is present, make other fields mandatory
+                devPossessionInput.setAttribute('required', 'true');
+                reraPossessionInput.setAttribute('required', 'true');
+                reraUrlInput.setAttribute('required', 'true');
+
+                // Add visual indicators
+                const devLabel = devPossessionInput.closest('.table-data-cell').getAttribute('data-label');
+                const reraLabel = reraPossessionInput.closest('.table-data-cell').getAttribute('data-label');
+                const urlLabel = reraUrlInput.closest('.table-data-cell').getAttribute('data-label');
+
+                if (!devLabel.includes('*')) {
+                    devPossessionInput.closest('.table-data-cell').setAttribute('data-label', devLabel + ' *');
+                }
+                if (!reraLabel.includes('*')) {
+                    reraPossessionInput.closest('.table-data-cell').setAttribute('data-label', reraLabel + ' *');
+                }
+                if (!urlLabel.includes('*')) {
+                    reraUrlInput.closest('.table-data-cell').setAttribute('data-label', urlLabel + ' *');
+                }
+            } else {
+                // RERA Number is empty, remove mandatory requirement
+                devPossessionInput.removeAttribute('required');
+                reraPossessionInput.removeAttribute('required');
+                reraUrlInput.removeAttribute('required');
+
+                // Remove visual indicators
+                devPossessionInput.closest('.table-data-cell').setAttribute('data-label', 'Developer Possession');
+                reraPossessionInput.closest('.table-data-cell').setAttribute('data-label', 'RERA Possession');
+                reraUrlInput.closest('.table-data-cell').setAttribute('data-label', 'RERA URL');
+            }
+        }
+
+        function formatCurrency(input) {
+            let value = input.value.replace(/[^\d.]/g, '');
+            if (value) {
+                const number = parseFloat(value);
+                if (!isNaN(number)) {
+                    input.value = '₹' + number.toLocaleString('en-IN');
+                }
+            }
+        }
+
+        function calculateTotal(input) {
+            const row = input.closest('.table-grid');
+            const cells = row.querySelectorAll('.table-data-cell');
+            const colCount = 11;
+            const rowIndex = Math.floor(Array.from(cells).indexOf(input.closest('.table-data-cell')) / colCount);
+            const startIndex = rowIndex * colCount;
+
+            const selableArea = parseFloat(cells[startIndex + 1].querySelector('input').value.replace(/[^\d.]/g, '')) || 0;
+            const psfRate = parseFloat(cells[startIndex + 3].querySelector('input').value.replace(/[^\d.]/g, '')) || 0;
+            const avRate = parseFloat(cells[startIndex + 4].querySelector('input').value.replace(/[^\d.]/g, '')) || 0;
+            const fixedComponent = parseFloat(cells[startIndex + 5].querySelector('input').value.replace(/[^\d.]/g, '')) || 0;
+            const possessionCharges = parseFloat(cells[startIndex + 6].querySelector('input').value.replace(/[^\d.]/g, '')) || 0;
+
+            const baseAmount = (selableArea * avRate) - fixedComponent;
+            const stampDuty = baseAmount * 0.07;
+            const gstRate = baseAmount > 4500000 ? 0.05 : 0.01;
+            const gst = baseAmount * gstRate;
+            const registrationFee = 30000;
+            const perSqFtDifference = selableArea * (psfRate - avRate);
+
+            const total = baseAmount + gst + stampDuty + registrationFee + possessionCharges + fixedComponent + perSqFtDifference;
+
+            const totalInput = cells[startIndex + 7].querySelector('input');
+            if (totalInput) {
+                totalInput.value = '₹' + total.toLocaleString('en-IN');
+            }
+        }
+
+        function getUniqueTypologies() {
+            const typologySelects = document.querySelectorAll('select[name="typology[]"]');
+            const uniqueTypologies = new Set();
+
+            typologySelects.forEach(select => {
+                if (select.value && select.value !== '') {
+                    uniqueTypologies.add(select.value);
+                }
+            });
+
+            return Array.from(uniqueTypologies).sort((a, b) => {
+                const order = ['1 RK', '1 BHK', '1.5 BHK', '2 BHK', '2.5 BHK', '3 BHK', '3.5 BHK', '4 BHK', '4.5 BHK', '5 BHK', 'Penthouse', 'Row House', 'Bungalow', 'Villa'];
+                return order.indexOf(a) - order.indexOf(b);
+            });
+        }
+
+        function updateFloorBandTable() {
+            const sortedTypologies = getUniqueTypologies();
+            const grid = document.getElementById('floorBandDynamicGrid');
+            if (!grid) return;
+
+            const colCount = Math.max(4, 3 + sortedTypologies.length);
+            grid.style.gridTemplateColumns = `1fr 30px 1fr ${sortedTypologies.map(() => '1fr').join(' ')}`;
+
+            let html = '<div class="table-header-cell" style="text-align: center;">From Floor</div><div></div><div class="table-header-cell" style="text-align: center;">To Floor</div>';
+            sortedTypologies.forEach(typology => {
+                html += `<div class="table-header-cell" style="text-align: center;">Rate for (${typology})</div>`;
+            });
+
+            html += '<div class="table-data-cell" data-label="From Floor"><input type="text" name="floorFrom[]" placeholder="e.g., 1" style="text-align: center;" oninput="validateFromFloor(this)"></div>';
+            html += '<div class="table-data-cell" style="text-align: center; display: flex; align-items: center; justify-content: center;">to</div>';
+            html += '<div class="table-data-cell" data-label="To Floor"><input type="text" name="floorTo[]" placeholder="e.g., 5" style="text-align: center;"></div>';
+            sortedTypologies.forEach(typology => {
+                html += `<div class="table-data-cell" data-label="Rate for (${typology})"><input type="text" name="rate_${typology.replace(/\s+/g, '_')}[]" style="text-align: center;" placeholder="Total Amount from base Band" oninput="formatCurrency(this)"></div>`;
+            });
+
+            grid.innerHTML = html;
+        }
+
+        function generateFloorBandTable() {
+            const sortedTypologies = getUniqueTypologies();
+            const table = document.getElementById('floorBandTable');
+            if (!table) return;
+
+            if (sortedTypologies.length === 0) {
+                table.className = 'table-grid cols-1';
+                table.innerHTML = '<div class="table-data-cell" style="text-align: center; padding: 2rem; color: #7f8c8d;">Please select typologies in Pricing & Buildings tab to configure Floor Band rates</div>';
+                return;
+            }
+
+            const colCount = Math.max(4, 3 + sortedTypologies.length);
+            table.className = 'table-grid';
+            table.style.gridTemplateColumns = `1fr 30px 1fr ${sortedTypologies.map(() => '1fr').join(' ')}`;
+
+            let html = '<div class="table-header-cell" style="text-align: center;">From Floor</div><div></div><div class="table-header-cell" style="text-align: center;">To Floor</div>';
+            sortedTypologies.forEach(typology => {
+                html += `<div class="table-header-cell" style="text-align: center;">Rate for (${typology})</div>`;
+            });
+
+            html += '<div class="table-data-cell" data-label="From Floor"><input type="text" name="floorFrom[]" placeholder="e.g., 1" style="text-align: center;" oninput="validateFromFloor(this)"></div>';
+            html += '<div class="table-data-cell" style="text-align: center; display: flex; align-items: center; justify-content: center;">to</div>';
+            html += '<div class="table-data-cell" data-label="To Floor"><input type="text" name="floorTo[]" placeholder="e.g., 5" style="text-align: center;" oninput="validateToFloor(this)"></div>';
+            sortedTypologies.forEach(typology => {
+                html += `<div class="table-data-cell" data-label="Rate for (${typology})"><input type="text" name="rate_${typology.replace(/\s+/g, '_')}[]" style="text-align: center;" placeholder="Total Amount from base Band" oninput="formatCurrency(this)"></div>`;
+            });
+
+            table.innerHTML = html;
+        }
+
+        function generateFixedRateSection() {
+            const sortedTypologies = getUniqueTypologies();
+            const container = document.getElementById('fixedRateFields');
+            if (!container) return;
+
+            if (sortedTypologies.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #7f8c8d;">Please select typologies in Pricing & Buildings tab to configure Fixed Rate</div>';
+                return;
+            }
+
+            let html = '<div class="table-grid cols-2">';
+            html += '<div class="table-header-cell">Typology</div>';
+            html += '<div class="table-header-cell">Fixed Floor Rise Rate</div>';
+
+            sortedTypologies.forEach(typology => {
+                html += `<div class="table-data-cell" data-label="Typology">${typology}</div>`;
+                html += `<div class="table-data-cell" data-label="Fixed Floor Rise Rate"><input type="text" id="fixedRate_${typology.replace(/\s+/g, '_')}" class="form-control" name="fixedRate_${typology.replace(/\s+/g, '_')}" placeholder="Rate per floor" oninput="formatCurrency(this)"></div>`;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function addFloorBandRow() {
+            const sortedTypologies = getUniqueTypologies();
+            if (sortedTypologies.length === 0) {
+                alert('Please select typologies in Pricing & Buildings tab first');
+                return;
+            }
+
+            const grid = document.getElementById('floorBandDynamicGrid');
+            const existingCells = grid.querySelectorAll('.table-data-cell');
+            const headerCells = grid.querySelectorAll('.table-header-cell');
+            const colCount = headerCells.length;
+
+            if (existingCells.length > 0 && colCount > 0) {
+                for (let i = 0; i < colCount; i++) {
+                    const originalCell = existingCells[i];
+                    const newCell = originalCell.cloneNode(true);
+                    const input = newCell.querySelector('input');
+                    if (input) input.value = '';
+                    grid.appendChild(newCell);
+                }
+            }
+        }
+
+        function removeFloorBandRow() {
+            const grid = document.getElementById('floorBandDynamicGrid');
+            const allCells = grid.querySelectorAll('.table-data-cell');
+            const headerCells = grid.querySelectorAll('.table-header-cell');
+            const colCount = headerCells.length;
+
+            if (allCells.length > colCount && colCount > 0) {
+                for (let i = 0; i < colCount; i++) {
+                    allCells[allCells.length - 1 - i].remove();
+                }
+            }
+        }
+
+        function addFloorBandTableRow() {
+            const sortedTypologies = getUniqueTypologies();
+            if (sortedTypologies.length === 0) {
+                alert('Please select typologies in Pricing & Buildings tab first');
+                return;
+            }
+
+            const table = document.getElementById('floorBandTable');
+
+            // Add From Floor cell
+            const fromFloorCell = document.createElement('div');
+            fromFloorCell.className = 'table-data-cell';
+            fromFloorCell.setAttribute('data-label', 'From Floor');
+            fromFloorCell.innerHTML = '<input type="text" name="floorFrom[]" placeholder="e.g., 1" style="text-align: center;" oninput="validateFromFloor(this)">';
+            table.appendChild(fromFloorCell);
+
+            // Add "to" cell
+            const toCell = document.createElement('div');
+            toCell.className = 'table-data-cell';
+            toCell.style.cssText = 'text-align: center; display: flex; align-items: center; justify-content: center;';
+            toCell.textContent = 'to';
+            table.appendChild(toCell);
+
+            // Add To Floor cell
+            const toFloorCell = document.createElement('div');
+            toFloorCell.className = 'table-data-cell';
+            toFloorCell.setAttribute('data-label', 'To Floor');
+            toFloorCell.innerHTML = '<input type="text" name="floorTo[]" placeholder="e.g., 5" style="text-align: center;" oninput="validateToFloor(this)">';
+            table.appendChild(toFloorCell);
+
+            // Add rate cells for each typology
+            sortedTypologies.forEach(typology => {
+                const rateCell = document.createElement('div');
+                rateCell.className = 'table-data-cell';
+                rateCell.setAttribute('data-label', `Rate for (${typology})`);
+                rateCell.innerHTML = `<input type="text" name="rate_${typology.replace(/\s+/g, '_')}[]" style="text-align: center;" placeholder="Total Amount from base Band" oninput="formatCurrency(this)">`;
+                table.appendChild(rateCell);
+            });
+        }
+
+        function removeFloorBandTableRow() {
+            const sortedTypologies = getUniqueTypologies();
+            if (sortedTypologies.length === 0) {
+                return;
+            }
+
+            const table = document.getElementById('floorBandTable');
+            const allCells = table.querySelectorAll('.table-data-cell');
+            const colCount = 3 + sortedTypologies.length; // From Floor + "to" + To Floor + rate columns
+
+            if (allCells.length > colCount) {
+                // Remove the last complete row
+                for (let i = 0; i < colCount; i++) {
+                    allCells[allCells.length - 1 - i].remove();
+                }
+            }
+        }
+
+        function addPricingRow(button) {
+            const table = button.closest('.data-table').querySelector('.table-grid');
+            const rows = table.querySelectorAll('.table-data-cell');
+            const colCount = 11; // Updated column count for pricing table
+
+            const currentRows = Math.floor(rows.length / colCount);
+
+            // Create new row cells
+            for (let i = 0; i < colCount; i++) {
+                const originalCell = rows[i];
+                const newCell = originalCell.cloneNode(true);
+                const input = newCell.querySelector('input, select');
+                if (input) {
+                    input.value = '';
+                    if (input.tagName === 'SELECT') {
+                        input.selectedIndex = 0;
+                        if (input.name === 'typology[]') {
+                            input.addEventListener('change', function () {
+                                updateFloorBandTable();
+                                generateFloorBandTable();
+                                generateFixedRateSection();
+                                updateTypologySelects();
+                                generateTypologyImageSections();
+                                generateTypologyVideoSections();
+                            });
+                        }
+                    }
+                    // Add RERA validation for new rows
+                    if (input.name === 'reraNumber[]') {
+                        input.setAttribute('onchange', `updateTabLabel(this, 0); validateReraFields(this)`);
+                    }
+                    // Add calculation events for pricing fields
+                    if (input.name === 'psfBase[]' || input.name === 'avRate[]' || input.name === 'fixedComponents[]' || input.name === 'possessionCharges[]') {
+                        input.setAttribute('oninput', 'formatCurrency(this); calculateTotal(this)');
+                    }
+                    // Update file input ID and clip icon onclick for unit plan
+                    if (input.type === 'file' && input.name === 'unitPlan[]') {
+                        const newId = `unitPlan_${currentRows}`;
+                        input.id = newId;
+                        input.value = ''; // Clear file input
+                        input.setAttribute('onchange', 'handleUnitPlanUpload(this)');
+                        const container = newCell.querySelector('[id^="unitPlanContainer_"]');
+                        if (container) {
+                            container.id = `unitPlanContainer_${currentRows}`;
+                            // Reset container to show paperclip icon
+                            container.innerHTML = `<i class="fas fa-paperclip" onclick="document.getElementById('${newId}').click()" style="cursor: pointer; font-size: 1.2rem; color: #3498db;"></i>`;
+                        }
+                    }
+                }
+                table.appendChild(newCell);
+            }
+        }
+
+        function removePricingRow(button) {
+            const table = button.closest('.data-table').querySelector('.table-grid');
+            const allCells = table.querySelectorAll('.table-data-cell');
+            const colCount = 11;
+
+            if (allCells.length > colCount) {
+                for (let i = 0; i < colCount; i++) {
+                    allCells[allCells.length - 1 - i].remove();
+                }
+                updateFloorBandTable();
+                generateFloorBandTable();
+                generateFixedRateSection();
+                updateTypologySelects();
+            } else {
+                alert('You must have at least one row.');
+            }
+        }
+
+        function addSection() {
+            const container = document.getElementById('sectionsContainer');
+            const subTabsContainer = document.querySelector('.sub-tabs');
+            const firstSection = container.querySelector('.section-group');
+            const newSection = firstSection.cloneNode(true);
+
+            const sectionIndex = container.children.length;
+
+            // Clear all inputs in the new section and keep only one pricing row
+            const pricingTable = newSection.querySelector('.pricing-table');
+            const pricingCells = pricingTable.querySelectorAll('.table-data-cell');
+            const colCount = 11;
+
+            // Remove extra rows, keep only first row
+            for (let i = pricingCells.length - 1; i >= colCount; i--) {
+                pricingCells[i].remove();
+            }
+
+            // Reset unit plan container in first row
+            const unitPlanContainer = newSection.querySelector('[id^="unitPlanContainer_"]');
+            if (unitPlanContainer) {
+                const inputId = unitPlanContainer.id.replace('unitPlanContainer_', 'unitPlan_');
+                unitPlanContainer.innerHTML = `<i class="fas fa-paperclip" onclick="document.getElementById('${inputId}').click()" style="cursor: pointer; font-size: 1.2rem; color: #3498db;"></i>`;
+            }
+
+            // Clear remaining inputs and update typology selects
+            newSection.querySelectorAll('input').forEach(input => input.value = '');
+            newSection.querySelectorAll('select').forEach(select => {
+                select.selectedIndex = 0;
+                if (select.name === 'typology[]') {
+                    select.setAttribute('onchange', 'updateFloorBandTable(); updateTypologySelects(); generateTypologyImageSections(); generateTypologyVideoSections();');
+                }
+            });
+
+            // Reset unit plan containers in new section
+            newSection.querySelectorAll('[id^="unitPlanContainer_"]').forEach(container => {
+                const inputId = container.id.replace('unitPlanContainer_', 'unitPlan_');
+                container.innerHTML = `<i class="fas fa-paperclip" onclick="document.getElementById('${inputId}').click()" style="cursor: pointer; font-size: 1.2rem; color: #3498db;"></i>`;
+            });
+
+            // Show remove button for new sections
+            const removeBtn = newSection.querySelector('.section-actions button');
+            removeBtn.style.display = 'inline-flex';
+            removeBtn.setAttribute('onclick', `removeSection(${sectionIndex})`);
+
+            // Set section data attribute and make it inactive
+            newSection.setAttribute('data-section', sectionIndex);
+            newSection.classList.remove('active');
+
+            // Update RERA number input onchange event
+            const reraInput = newSection.querySelector('input[name="reraNumber[]"]');
+            reraInput.setAttribute('onchange', `updateTabLabel(this, ${sectionIndex}); validateReraFields(this)`);
+
+            // Update unit plan IDs and reset containers for all rows in new section
+            newSection.querySelectorAll('input[name="unitPlan[]"]').forEach((input, index) => {
+                const newInputId = `unitPlan_${sectionIndex}_${index}`;
+                input.id = newInputId;
+                input.value = '';
+                input.setAttribute('onchange', 'handleUnitPlanUpload(this)');
+
+                const container = input.nextElementSibling;
+                if (container && container.id.startsWith('unitPlanContainer_')) {
+                    container.id = `unitPlanContainer_${sectionIndex}_${index}`;
+                    container.innerHTML = `<i class="fas fa-paperclip" onclick="document.getElementById('${newInputId}').click()" style="cursor: pointer; font-size: 1.2rem; color: #3498db;"></i>`;
+                }
+            });
+
+            // Create new sub-tab
+            const newTab = document.createElement('button');
+            newTab.className = 'sub-tab-btn';
+            newTab.setAttribute('data-section', sectionIndex);
+            newTab.setAttribute('onclick', `showSection(${sectionIndex})`);
+            newTab.setAttribute('aria-selected', 'false');
+            newTab.textContent = `RERA-${String(sectionIndex + 1).padStart(3, '0')}`;
+
+            subTabsContainer.appendChild(newTab);
+            container.appendChild(newSection);
+
+            // Switch to the new section
+            showSection(sectionIndex);
+        }
+
+        function showSection(sectionIndex) {
+            // Hide all sections
+            document.querySelectorAll('.section-group').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Remove active class from all sub-tabs
+            document.querySelectorAll('.sub-tab-btn').forEach(tab => {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            });
+
+            // Show selected section
+            const targetSection = document.querySelector(`.section-group[data-section="${sectionIndex}"]`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            // Activate selected sub-tab
+            const targetTab = document.querySelector(`.sub-tab-btn[data-section="${sectionIndex}"]`);
+            if (targetTab) {
+                targetTab.classList.add('active');
+                targetTab.setAttribute('aria-selected', 'true');
+            }
+        }
+
+        function updateTabLabel(input, sectionIndex) {
+            const tabBtn = document.querySelector(`.sub-tab-btn[data-section="${sectionIndex}"]`);
+            if (tabBtn && input.value.trim()) {
+                tabBtn.textContent = input.value.trim();
+            } else if (tabBtn) {
+                tabBtn.textContent = `RERA-${String(sectionIndex + 1).padStart(3, '0')}`;
+            }
+        }
+
+        function removeSection(sectionIndex) {
+            const container = document.getElementById('sectionsContainer');
+            const subTabsContainer = document.querySelector('.sub-tabs');
+
+            if (container.children.length > 1) {
+                // Remove section
+                const section = document.querySelector(`.section-group[data-section="${sectionIndex}"]`);
+                const tab = document.querySelector(`.sub-tab-btn[data-section="${sectionIndex}"]`);
+
+                if (section) section.remove();
+                if (tab) tab.remove();
+
+                // Show first section if removed section was active
+                if (section && section.classList.contains('active')) {
+                    showSection(0);
+                }
+
+                // Update Floor Band tables after section removal
+                setTimeout(() => {
+                    updateFloorBandTable();
+                    generateFloorBandTable();
+                    generateFixedRateSection();
+                    generateTypologyImageSections();
+                    generateTypologyVideoSections();
+                }, 100);
+            } else {
+                alert('You must have at least one section.');
+            }
+        }
+
+        function validateCurrentTab() {
+            const currentTabContent = document.getElementById(tabs[currentTab] + '-tab');
+
+            // Validate RERA conditional fields if we're on pricing tab
+            if (tabs[currentTab] === 'pricing') {
+                currentTabContent.querySelectorAll('input[name="reraNumber[]"]').forEach(reraInput => {
+                    validateReraFields(reraInput);
+                });
+            }
+
+            const requiredFields = currentTabContent.querySelectorAll('[required]');
+            let isValid = true;
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('error');
+                    // Add error message
+                    if (!field.nextElementSibling?.classList.contains('error-message')) {
+                        const error = document.createElement('div');
+                        error.className = 'error-message';
+                        error.textContent = 'This field is required';
+                        field.parentNode.appendChild(error);
+                    }
+                } else {
+                    field.classList.remove('error');
+                    const error = field.parentNode.querySelector('.error-message');
+                    if (error) error.remove();
+                }
+            });
+
+            if (!isValid) {
+                alert('Please fill in all required fields before proceeding.');
+            }
+
+            return isValid;
+        }
+
+        function validateReraFields(reraInput) {
+            const row = reraInput.closest('.table-grid');
+            const devPossessionInput = row.querySelector('input[name="devPossession[]"]');
+            const reraPossessionInput = row.querySelector('input[name="reraPossession[]"]');
+            const reraUrlInput = row.querySelector('input[name="reraUrl[]"]');
+
+            if (reraInput.value.trim()) {
+                // RERA Number is present, make other fields mandatory
+                devPossessionInput.setAttribute('required', 'true');
+                reraPossessionInput.setAttribute('required', 'true');
+                reraUrlInput.setAttribute('required', 'true');
+
+                // Add visual indicators
+                const devLabel = devPossessionInput.closest('.table-data-cell').getAttribute('data-label');
+                const reraLabel = reraPossessionInput.closest('.table-data-cell').getAttribute('data-label');
+                const urlLabel = reraUrlInput.closest('.table-data-cell').getAttribute('data-label');
+
+                if (!devLabel.includes('*')) {
+                    devPossessionInput.closest('.table-data-cell').setAttribute('data-label', devLabel + ' *');
+                }
+                if (!reraLabel.includes('*')) {
+                    reraPossessionInput.closest('.table-data-cell').setAttribute('data-label', reraLabel + ' *');
+                }
+                if (!urlLabel.includes('*')) {
+                    reraUrlInput.closest('.table-data-cell').setAttribute('data-label', urlLabel + ' *');
+                }
+            } else {
+                // RERA Number is empty, remove mandatory requirement
+                devPossessionInput.removeAttribute('required');
+                reraPossessionInput.removeAttribute('required');
+                reraUrlInput.removeAttribute('required');
+
+                // Remove visual indicators
+                devPossessionInput.closest('.table-data-cell').setAttribute('data-label', 'Developer Possession');
+                reraPossessionInput.closest('.table-data-cell').setAttribute('data-label', 'RERA Possession');
+                reraUrlInput.closest('.table-data-cell').setAttribute('data-label', 'RERA URL');
+            }
+        }
+
+        function validateForm() {
+            const requiredFields = document.querySelectorAll('[required]');
+            let isValid = true;
+
+            // First validate RERA conditional fields
+            document.querySelectorAll('input[name="reraNumber[]"]').forEach(reraInput => {
+                validateReraFields(reraInput);
+            });
+
+            // Then validate all required fields
+            const updatedRequiredFields = document.querySelectorAll('[required]');
+            updatedRequiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('error');
+                    // Add error message
+                    if (!field.nextElementSibling?.classList.contains('error-message')) {
+                        const error = document.createElement('div');
+                        error.className = 'error-message';
+                        error.textContent = 'This field is required';
+                        field.parentNode.appendChild(error);
+                    }
+                } else {
+                    field.classList.remove('error');
+                    const error = field.parentNode.querySelector('.error-message');
+                    if (error) error.remove();
+                }
+            });
+
+            return isValid;
+        }
+
+        function generateMarketingMessage() {
+            // Collect form data
+            const projectName = document.getElementById('projectName').value || '[Project Name]';
+            const developerName = document.getElementById('developerName').value || '[Developer Name]';
+            const location = document.getElementById('location').value || '[Location]';
+            const subLocation = document.getElementById('subLocation').value || '[Sub Location]';
+            const landmark = document.getElementById('landmark').value || '{Landmark}';
+            const landParcel = document.getElementById('landParcel').value || '[Land Parcel]';
+            const numTowers = document.getElementById('numTowers').value || '[Number of Towers]';
+            const storey = document.getElementById('storey').value || '[Storey]';
+
+            // Collect typologies with availability
+            const typologyData = {};
+            document.querySelectorAll('select[name="typology[]"]').forEach((select, index) => {
+                if (select.value) {
+                    const areaInput = document.querySelectorAll('input[name="reraCarpet[]"]')[index];
+                    const availabilitySelect = document.querySelectorAll('select[name="availability[]"]')[index];
+
+                    if (areaInput && areaInput.value) {
+                        if (!typologyData[select.value]) {
+                            typologyData[select.value] = { areas: [], available: [] };
+                        }
+                        typologyData[select.value].areas.push(areaInput.value);
+                        typologyData[select.value].available.push(availabilitySelect ? availabilitySelect.value : 'Available');
+                    }
+                }
+            });
+
+            const uniqueTypologies = Object.keys(typologyData);
+
+            // Collect price range
+            const totalPackages = [];
+            document.querySelectorAll('input[name="totalPackage[]"]').forEach(input => {
+                if (input.value) {
+                    const price = input.value.replace(/[^\d.]/g, '');
+                    if (price) totalPackages.push(parseFloat(price));
+                }
+            });
+            const minPrice = totalPackages.length ? Math.min(...totalPackages) : 0;
+            const maxPrice = totalPackages.length ? Math.max(...totalPackages) : 0;
+
+            // Collect possession dates
+            const possessionDates = [];
+            document.querySelectorAll('input[name="devPossession[]"]').forEach(input => {
+                if (input.value) possessionDates.push(new Date(input.value).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }));
+            });
+
+            // Collect RERA numbers
+            const reraNumbers = [];
+            document.querySelectorAll('input[name="reraNumber[]"]').forEach(input => {
+                if (input.value) reraNumbers.push(input.value);
+            });
+
+            // Collect location highlights
+            const highlights = [];
+            document.querySelectorAll('input[data-highlight]').forEach(checkbox => {
+                if (checkbox.checked) {
+                    const highlight = checkbox.getAttribute('data-highlight');
+                    const timeInput = document.getElementById('input_' + highlight.replace(/[^a-zA-Z0-9]/g, '_'));
+                    const time = timeInput && timeInput.value ? timeInput.value : '0 Min.';
+                    highlights.push(`- ${highlight} - ${time}`);
+                }
+            });
+
+            // Collect project amenities
+            const projectAmenities = [];
+            document.querySelectorAll('input[name="projectAmenities[]"]:checked').forEach(checkbox => {
+                projectAmenities.push(`- ${checkbox.value}`);
+            });
+
+            // Collect apartment amenities
+            const apartmentAmenities = [];
+            document.querySelectorAll('input[name="apartmentAmenities[]"]:checked').forEach(checkbox => {
+                apartmentAmenities.push(`- ${checkbox.value}`);
+            });
+
+            // Collect payment schemes
+            const paymentSchemes = [];
+            document.querySelectorAll('input[name="schemeDescription[]"]').forEach(input => {
+                if (input.value.trim()) {
+                    paymentSchemes.push(`- ${input.value}`);
+                }
+            });
+
+            // Generate configuration areas text with availability check
+            let configText = '';
+            uniqueTypologies.forEach(typology => {
+                const data = typologyData[typology];
+                const availableAreas = [];
+
+                data.areas.forEach((area, index) => {
+                    if (data.available[index] === 'Available') {
+                        availableAreas.push(area);
+                    }
+                });
+
+                if (availableAreas.length > 0) {
+                    configText += `- *${typology}* - ${availableAreas.join(' | ')}\n`;
+                } else {
+                    configText += `- *${typology}* - *Sold Out*\n`;
+                }
+            });
+
+            // Generate marketing message
+            const towerText = parseInt(numTowers) === 1 ? 'Tower' : 'Towers';
+            let message = `The residential property *${projectName}* is RERA Registered project, developing by *${developerName}*, Located at ${subLocation} in ${location}, ${landmark}. The total land parcel of the project is *${landParcel} Acres*.
+
+"The project contains ${numTowers} ${towerText} of ${storey} Storey building, having *${uniqueTypologies.join(' | ')}* Apartments,
+
+*🏠 Configuration Type: [Rera Carpet Areas]:*
+${configText}
+Price range : *₹${(minPrice / 100000).toFixed(2)} L* to *₹${(maxPrice / 10000000).toFixed(2)} Cr* All Inclusive.`;
+
+            // Add Payment Schemes if available
+            if (paymentSchemes.length > 0) {
+                const schemeHeader = paymentSchemes.length === 1 ? '*🏠 Payment Scheme:*' : '*🏠 Payment Schemes:*';
+                message += `\n\n${schemeHeader}\n${paymentSchemes.join('\n')}`;
+            }
+
+            // Add Highlights if available
+            if (highlights.length > 0) {
+                message += `\n\n*✨ Highlights:*\n${highlights.join('\n')}`;
+            }
+
+            // Add Project Amenities if available
+            if (projectAmenities.length > 0) {
+                message += `\n\n*🎉 Project Amenities:*\n${projectAmenities.join('\n')}`;
+            }
+
+            // Add Apartment Amenities if available
+            if (apartmentAmenities.length > 0) {
+                message += `\n\n*🏠 Apartment Amenities:*\n${apartmentAmenities.join('\n')}`;
+            }
+
+            message += `\n\n*Possession by: ${possessionDates.join(' | ')}*\n\nMaha RERA number: *${reraNumbers.join(' | ')}*"`;
+
+            // Set the generated message
+            document.getElementById('projectMessage').value = message;
+        }
+
+        function validateFromFloor(input) {
+            if (!input.value) return;
+
+            const table = input.closest('.table-grid');
+            const allCells = table.querySelectorAll('.table-data-cell');
+            const sortedTypologies = getUniqueTypologies();
+            const colCount = 3 + sortedTypologies.length;
+
+            // Find current row index
+            const currentCellIndex = Array.from(allCells).indexOf(input.closest('.table-data-cell'));
+            const currentRowIndex = Math.floor(currentCellIndex / colCount);
+
+            if (currentRowIndex > 0) {
+                // Get previous row's "To Floor" value (index 2 in each row)
+                const previousToFloorIndex = (currentRowIndex - 1) * colCount + 2;
+                const previousToFloorInput = allCells[previousToFloorIndex]?.querySelector('input[name="floorTo[]"]');
+
+                if (previousToFloorInput && previousToFloorInput.value) {
+                    const previousToFloorValue = parseInt(previousToFloorInput.value) || 0;
+                    const currentFromFloorValue = parseInt(input.value) || 0;
+
+                    if (currentFromFloorValue <= previousToFloorValue) {
+                        input.style.border = '3px solid #c0392b';
+                        input.title = `Value must be greater than ${previousToFloorValue}`;
+                    } else {
+                        input.style.border = '1px solid #bdc3c7';
+                        input.title = '';
+                    }
+                }
+            }
+        }
+
+        function validateToFloor(input) {
+            if (!input.value) return;
+
+            const table = input.closest('.table-grid');
+            const allCells = table.querySelectorAll('.table-data-cell');
+            const sortedTypologies = getUniqueTypologies();
+            const colCount = 3 + sortedTypologies.length;
+
+            // Find current row index
+            const currentCellIndex = Array.from(allCells).indexOf(input.closest('.table-data-cell'));
+            const currentRowIndex = Math.floor(currentCellIndex / colCount);
+            const currentToFloorValue = parseInt(input.value) || 0;
+
+            if (currentRowIndex > 0) {
+                // Get current row's "From Floor" value (index 0 in each row)
+                const currentFromFloorIndex = currentRowIndex * colCount + 0;
+                const currentFromFloorInput = allCells[currentFromFloorIndex]?.querySelector('input[name="floorFrom[]"]');
+
+                // Get previous row's "To Floor" value (index 2 in each row)
+                const previousToFloorIndex = (currentRowIndex - 1) * colCount + 2;
+                const previousToFloorInput = allCells[previousToFloorIndex]?.querySelector('input[name="floorTo[]"]');
+
+                let isValid = true;
+                let errorMessage = '';
+
+                // Check if To Floor > From Floor in same row
+                if (currentFromFloorInput && currentFromFloorInput.value) {
+                    const currentFromFloorValue = parseInt(currentFromFloorInput.value) || 0;
+                    if (currentToFloorValue <= currentFromFloorValue) {
+                        isValid = false;
+                        errorMessage = `Value must be greater than ${currentFromFloorValue}`;
+                    }
+                }
+
+                // Check if To Floor is at least 2 greater than previous row's To Floor
+                if (isValid && previousToFloorInput && previousToFloorInput.value) {
+                    const previousToFloorValue = parseInt(previousToFloorInput.value) || 0;
+                    if (currentToFloorValue < previousToFloorValue + 2) {
+                        isValid = false;
+                        errorMessage = `Value must be at least ${previousToFloorValue + 2}`;
+                    }
+                }
+
+                if (!isValid) {
+                    input.style.border = '3px solid #c0392b';
+                    input.title = errorMessage;
+                } else {
+                    input.style.border = '1px solid #bdc3c7';
+                    input.title = '';
+                }
+            }
+        }
+
+        function openMessageModal() {
+            generateMarketingMessage();
+            const message = document.getElementById('projectMessage').value;
+            document.getElementById('modalMessageContent').textContent = message;
+            document.getElementById('messageModal').style.display = 'block';
+        }
+
+        function closeMessageModal() {
+            document.getElementById('messageModal').style.display = 'none';
+        }
+
+        // Make floating button draggable
+        let isDragging = false;
+        let hasDragged = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        document.getElementById('floatBtn').addEventListener('mousedown', function (e) {
+            isDragging = true;
+            hasDragged = false;
+            dragOffset.x = e.clientX - this.offsetLeft;
+            dragOffset.y = e.clientY - this.offsetTop;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function (e) {
+            if (isDragging) {
+                hasDragged = true;
+                const btn = document.getElementById('floatBtn');
+                btn.style.left = (e.clientX - dragOffset.x) + 'px';
+                btn.style.top = (e.clientY - dragOffset.y) + 'px';
+                btn.style.right = 'auto';
+            }
+        });
+
+        document.addEventListener('mouseup', function () {
+            isDragging = false;
+            setTimeout(() => {
+                hasDragged = false;
+            }, 10);
+        });
+
+        document.getElementById('floatBtn').addEventListener('click', function (e) {
+            if (hasDragged) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            openMessageModal();
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            const modal = document.getElementById('messageModal');
+            if (event.target === modal) {
+                closeMessageModal();
+            }
+        }
+
+        document.getElementById('projectForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            if (!validateForm()) {
+                alert('Please fill in all required fields before submitting.');
+                return;
+            }
+
+            // Example of using Base64 encoding with form data
+            const formData = new FormData(this);
+            const encodedData = encodeFormData(formData);
+
+            console.log('Base64 Encoded Form Data:', encodedData);
+
+            alert('Project saved successfully! Data would be processed by the backend system.');
+        });
+    </script>
+</body>
+
+</html>
+
+</html>
