@@ -446,11 +446,12 @@ export function currentStepTab1(
                         type="text"
                         value={subTabData[tab.id]?.mahaReraNumber || ""}
                         onChange={(e) => {
+                          const sanitizedValue = e.target.value.replace(/[<>"'&]/g, '').replace(/javascript:/gi, '').replace(/on\w+=/gi, '');
                           setSubTabData((prev) => ({
                             ...prev,
                             [tab.id]: {
                               ...prev[tab.id],
-                              mahaReraNumber: e.target.value,
+                              mahaReraNumber: sanitizedValue,
                             },
                           }));
                         }}
@@ -544,15 +545,16 @@ export function currentStepTab1(
                       <input
                         type="url"
                         value={subTabData[tab.id]?.mahaReraLink || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const sanitizedValue = e.target.value.replace(/[<>"'&]/g, '').replace(/javascript:/gi, '').replace(/on\w+=/gi, '');
                           setSubTabData((prev) => ({
                             ...prev,
                             [tab.id]: {
                               ...prev[tab.id],
-                              mahaReraLink: e.target.value,
+                              mahaReraLink: sanitizedValue,
                             },
-                          }))
-                        }
+                          }));
+                        }}
                         disabled={subTabData[tab.id]?.type === "Pre-launch"}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
@@ -775,9 +777,26 @@ export function currentStepTab1(
                               <div className="relative group">
                                 {config.unitPlan.type?.startsWith("image/") ? (
                                   <img
-                                    src={URL.createObjectURL(config.unitPlan)}
+                                    src={(() => {
+                                      try {
+                                        return URL.createObjectURL(config.unitPlan);
+                                      } catch (error) {
+                                        console.error('Failed to create object URL:', error);
+                                        return '';
+                                      }
+                                    })()}
                                     alt="Unit plan"
                                     className="w-12 h-12 object-cover rounded border"
+                                    onLoad={(e) => {
+                                      // Clean up object URL after image loads
+                                      setTimeout(() => {
+                                        try {
+                                          URL.revokeObjectURL(e.currentTarget.src);
+                                        } catch (error) {
+                                          console.warn('Failed to revoke object URL:', error);
+                                        }
+                                      }, 1000);
+                                    }}
                                   />
                                 ) : (
                                   <div className="w-12 h-12 bg-red-100 rounded border flex items-center justify-center">

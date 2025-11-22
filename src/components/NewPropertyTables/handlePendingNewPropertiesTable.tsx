@@ -1,20 +1,11 @@
 import { format } from "date-fns";
 import { Timestamp } from "firebase/firestore";
-import { Eye, Edit, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { Eye, Edit } from "lucide-react";
 import { CostSheet } from "../CompareModal";
 import FilterBar from "../FilterBar";
 import Button from "../ui/Button";
 
 export function handlePendingNewPropertiesTable(searchTerm: string, setSearchTerm: React.Dispatch<React.SetStateAction<string>>, bhkFilter: string, setBhkFilter: React.Dispatch<React.SetStateAction<string>>, reraRange: { min: string; max: string; }, setReraRange: React.Dispatch<React.SetStateAction<{ min: string; max: string; }>>, availableBhkTypes: any[], pendingSheets: any[], setSortBy: React.Dispatch<React.SetStateAction<{ approved: "date" | "project"; pending: "date" | "project"; rejected: "date" | "project"; }>>, setSortOrder: React.Dispatch<React.SetStateAction<{ approved: { date: "desc" | "asc"; project: "asc" | "desc"; }; pending: { date: "desc" | "asc"; project: "asc" | "desc"; }; rejected: { date: "desc" | "asc"; project: "asc" | "desc"; }; }>>, sortBy: { approved: "date" | "project"; pending: "date" | "project"; rejected: "date" | "project"; }, sortOrder: { approved: { date: "desc" | "asc"; project: "asc" | "desc"; }; pending: { date: "desc" | "asc"; project: "asc" | "desc"; }; rejected: { date: "desc" | "asc"; project: "asc" | "desc"; }; }, setSelectedSheet: React.Dispatch<React.SetStateAction<CostSheet | null>>, setEditingProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>, setShowForm: React.Dispatch<React.SetStateAction<boolean>>) {
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
-    
-    const totalItems = pendingSheets.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const currentItems = pendingSheets.slice(startIndex, endIndex);
 
     return <div>
         <FilterBar
@@ -113,7 +104,7 @@ export function handlePendingNewPropertiesTable(searchTerm: string, setSearchTer
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200">
-                        {currentItems.map((item, idx) => (
+                        {pendingSheets.map((item, idx) => (
                             <tr
                                 key={idx}
                                 className="hover:bg-neutral-50 transition-all duration-150"
@@ -192,35 +183,6 @@ export function handlePendingNewPropertiesTable(searchTerm: string, setSearchTer
                         ))}
                     </tbody>
                 </table>
-            </div>
-        )}
-        
-        {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-neutral-200">
-                <div className="flex items-center text-sm text-neutral-700">
-                    Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-neutral-700">
-                        Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === 1}
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
             </div>
         )}
     </div>;

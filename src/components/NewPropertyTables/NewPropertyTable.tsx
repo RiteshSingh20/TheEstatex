@@ -8,6 +8,7 @@ import { State, City } from "../../types";
 import {
   updateCostSheet,
 } from "../../utils/firestoreListings";
+import { sanitizeInput } from "../../utils/formSubmissionUtils";
 import { CostSheet } from "../CompareModal";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
@@ -379,7 +380,7 @@ export function handleNewPropertyTable(
             <div className="sticky top-0 bg-white rounded-t-lg border-b border-gray-200 p-6 pr-10 z-10">
               <div className="mb-3">
                 <h3 className="text-xl font-semibold pr-8">
-                  {selectedSheet.projectName} by {selectedSheet.developerName}
+                  {sanitizeInput(selectedSheet.projectName || '')} by {sanitizeInput(selectedSheet.developerName || '')}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   Status:{" "}

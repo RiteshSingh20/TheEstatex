@@ -1,12 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Button from "../components/ui/Button";
 import toast from "react-hot-toast";
 
-// PDF.js for thumbnail generation
-export const pdfjsLib = (window as any).pdfjsLib;
+// PDF.js for thumbnail generation with proper error handling
+export const pdfjsLib = (() => {
+  try {
+    return (window as any)?.pdfjsLib || null;
+  } catch (error) {
+    console.warn('PDF.js library not available:', error);
+    return null;
+  }
+})();
+
 if (pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  } catch (error) {
+    console.error('Failed to configure PDF.js worker:', error);
+  }
 }
 import {
   getAllCostSheets,
@@ -28,11 +40,12 @@ import {
   getDoc,
   collection,
   onSnapshot,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { useAuth } from "../../src/utils/authContext";
 import { StampDutyRate } from "../../src/pages/Compare";
-import { fetchCities } from "../utils/api";
+import { fetchCities, fetchStates } from "../utils/api";
 import { State, City } from "../types";
 import AmenityModal from "../components/AmenityModal";
 import { costSheetFields } from "./costSheetFields";
@@ -46,16 +59,17 @@ import {
   requiredPerStep,
   toTitleCase,
 } from "./CostSheetFormProps";
-import {
-  applyGlowEffect,
-  initializeStampRatesAndStates,
-  initializeStateCode,
-  toggleStationDropdown,
-  updateStationOptions,
-} from "./applyGlowEffect";
 import { handleEditPropertyForm } from "../components/EditProperty/EditPropertyTabs";
 import { handleNewEntryForm } from "../components/NewPropertyForm/NewPropertyTabs";
 import { handleNewPropertyTable } from "../components/NewPropertyTables/NewPropertyTable";
+import { 
+  cleanFileName, 
+  uploadFile, 
+  uploadFiles, 
+  convertReraPossession, 
+  removeUndefined,
+  sanitizeInput 
+} from "../utils/formSubmissionUtils";
 
 const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   const [formData, setFormData] = useState<FormDataType>({
@@ -75,9 +89,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   const parseIndianCurrency = (value: string) => {
     return value.replace(/[^0-9.]/g, "");
   };
-
-  // Add minimalistic glow effect with blink
-  applyGlowEffect();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [costSheets, setCostSheets] = useState<unknown[]>([]);
@@ -269,11 +280,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
 
   const generatePdfThumbnail = generatePdfThumbnailFromFile();
 
-  const fetchStationOptions = fetchCostSheetStations(
-    costSheets,
-    setStationOptions
-  );
-
   // Helper function to render existing media URLs
   const renderExistingMedia = (
     mediaUrls: string[] | string | null,
@@ -309,18 +315,57 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     );
   };
 
+  // Add minimalistic glow effect with blink
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes seamless-blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0.4; }
+      }
+      .tab-glow {
+        color: #f97316;
+        text-shadow: 0 0 8px rgba(249, 115, 22, 0.6);
+        font-weight: 600;
+        animation: seamless-blink 2s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
   // Set initial state code from formData when available
-  initializeStateCode(
-    formData,
-    states,
-    selectedStateCode,
-    setSelectedStateCode
-  );
+  useEffect(() => {
+    if (formData.state && states.length > 0 && !selectedStateCode) {
+      const stateObj = states.find((state) => state.name === formData.state);
+      if (stateObj) {
+        setSelectedStateCode(stateObj.iso2);
+      } else {
+        setSelectedStateCode(formData.state as string);
+      }
+    }
+  }, [formData.state, states, selectedStateCode]);
 
   // Update station options when cost sheets data changes
-  updateStationOptions(costSheets, fetchStationOptions);
+  useEffect(() => {
+    if (costSheets.length > 0) {
+      const fetchOptions = fetchCostSheetStations(costSheets, setStationOptions);
+      fetchOptions();
+    }
+  }, [costSheets]);
 
-  toggleStationDropdown(setShowStationDropdown, setSelectedStationIndex);
+  // Toggle station dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".station-dropdown")) {
+        setShowStationDropdown(false);
+        setSelectedStationIndex(-1);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const [sourcingManagers, setSourcingManagers] = useState<
     { name: string; contact: string }[]
@@ -348,14 +393,44 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
 
   const availableBhkTypes = getApprovedFlatTypes(costSheets);
 
-  initializeStampRatesAndStates(
-    setStampRates,
-    setStates,
-    editProperty,
-    editingProperty,
-    setSelectedStateCode,
-    setCities
-  );
+  // Initialize stamp rates and states
+  useEffect(() => {
+    const fetchStampDutyRates = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "stampDutyRates"));
+        const rates: StampDutyRate[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as Omit<StampDutyRate, "id">),
+        }));
+        setStampRates(rates);
+      } catch (error) {
+        console.error('Failed to fetch stamp duty rates:', error);
+      }
+    };
+
+    const loadStates = async () => {
+      try {
+        const statesData = await fetchStates();
+        setStates(statesData);
+
+        const propertyToEdit = editProperty || editingProperty;
+        if (propertyToEdit?.state && statesData.length > 0) {
+          const stateObj = statesData.find(
+            (state) => state.name === propertyToEdit.state
+          );
+          if (stateObj) {
+            setSelectedStateCode(stateObj.iso2);
+            fetchCities(stateObj.iso2).then(setCities).catch(() => {});
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load states or cities:', error);
+      }
+    };
+
+    fetchStampDutyRates();
+    loadStates();
+  }, [editProperty, editingProperty]);
 
   useEffect(() => {
     // Listen to both collections for real-time updates
@@ -652,7 +727,8 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         const sheets = await getAllCostSheets();
         setCostSheets(sheets);
 
-        await fetchStationOptions();
+        const fetchOptions = fetchCostSheetStations(costSheets, setStationOptions);
+        await fetchOptions();
       } catch (error) {
         toast.error(
           "Error fetching cost sheets - " +
@@ -720,10 +796,11 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     const { id, value, type } = e.target;
     if (type === "checkbox") return;
 
+    const sanitizedValue = sanitizeInput(value);
     const processedValue =
       numberFields.includes(id) || type === "select-one" || type === "date"
-        ? value
-        : toTitleCase(value);
+        ? sanitizedValue
+        : toTitleCase(sanitizedValue);
 
     setFormData((prev) => ({
       ...prev,
@@ -777,35 +854,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
 
   const propertyScore = Math.floor((doneCount / totalSteps) * 100);
 
-  // Clean filename for Firebase Storage
-  const cleanFileName = (fileName: string): string => {
-    return fileName
-      .replace(/[^a-zA-Z0-9.-]/g, "_")
-      .replace(/_{2,}/g, "_")
-      .replace(/^_|_$/g, "");
-  };
-
-  // Upload file to Firebase Storage
-  const uploadFile = async (file: File, path: string): Promise<string> => {
-    const cleanPath = path.replace(/[^a-zA-Z0-9.\/\-_]/g, "_");
-    const storageRef = ref(storage, cleanPath);
-    const snapshot = await uploadBytes(storageRef, file);
-    return await getDownloadURL(snapshot.ref);
-  };
-
-  // Upload multiple files
-  const uploadFiles = async (
-    files: File[],
-    basePath: string
-  ): Promise<string[]> => {
-    const uploadPromises = files.map((file, index) =>
-      uploadFile(
-        file,
-        `${basePath}/${Date.now()}_${index}_${cleanFileName(file.name)}`
-      )
-    );
-    return await Promise.all(uploadPromises);
-  };
+  // Utility functions moved to separate file for better maintainability
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -857,51 +906,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       nextApprovalLevel = "manager";
     }
 
-    const convertReraPossession = (dateValue: string) => {
-      if (!dateValue) return "";
-
-      if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const [year, month] = dateValue.split("-");
-        const monthNames = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
-        return `${monthNames[parseInt(month) - 1]}-${year}`;
-      }
-
-      if (dateValue.includes("/") && dateValue.length === 10) {
-        const [day, month, year] = dateValue.split("/");
-        if (day && month && year) {
-          const monthNames = [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-          ];
-          return `${monthNames[parseInt(month) - 1]}-${year}`;
-        }
-      }
-
-      return dateValue;
-    };
+    // convertReraPossession function moved to utils
 
     // Setup file upload path
     const projectId = Date.now().toString();
@@ -1146,37 +1151,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       createdAt: formData.id ? formData.createdAt : new Date().toISOString(),
     };
 
-    // Enhanced cleanup function to remove undefined values recursively
-    const removeUndefined = (obj: any): any => {
-      if (obj === null || obj === undefined) return null;
-      if (obj instanceof File) return null;
-      if (obj instanceof Date) return obj.toISOString();
-      if (typeof obj === "function") return null;
-
-      if (Array.isArray(obj)) {
-        const cleaned = obj
-          .map(removeUndefined)
-          .filter((item) => item !== undefined && item !== null && item !== "");
-        return cleaned;
-      }
-
-      if (
-        typeof obj === "object" &&
-        obj !== null &&
-        obj.constructor === Object
-      ) {
-        const cleaned: any = {};
-        Object.entries(obj).forEach(([key, value]) => {
-          const cleanValue = removeUndefined(value);
-          if (cleanValue !== undefined && cleanValue !== null) {
-            cleaned[key] = cleanValue;
-          }
-        });
-        return cleaned;
-      }
-
-      return obj === undefined ? null : obj;
-    };
+    // removeUndefined function moved to utils
 
     let cleanForm = removeUndefined(fullForm);
 
@@ -1328,7 +1303,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     const fixedComponent = getNumberValue(formData.fixedComponent) || 0;
 
     const baseArea = saleableArea > reraCarpet ? saleableArea : reraCarpet;
-
     const agreementValue = avRate * baseArea;
 
     const matchingRate = stampRates.find(
@@ -1361,23 +1335,9 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     return isNaN(total) ? "" : Math.round(total).toString();
   };
 
-  const totalPackage = calculateTotalPackage();
 
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      totalPackage,
-    }));
-  }, [
-    formData.saleableArea,
-    formData.reraCarpet,
-    formData.psfRate,
-    formData.avRate,
-    formData.registration,
-    formData.possessionCharges,
-    formData.fixedComponent,
-    totalPackage,
-  ]);
+
+
 
   // Track toast display to avoid duplicates
   const toastShownRef = React.useRef<string | null>(null);
@@ -1417,13 +1377,15 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
             {showForm ? "← Back" : "+ New"}
           </Button>
         </div>
-        {editingProperty ? (
-          handleEditPropertyForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, setEditingProperty, showJurisdictionModal)
-        ) : showForm ? (
-          handleNewEntryForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, showJurisdictionModal)
-        ) : (
-          handleNewPropertyTable(costSheets, user, searchTerm, bhkFilter, reraRange, sortBy, sortOrder, setSearchTerm, setBhkFilter, setReraRange, availableBhkTypes, setSortBy, setSortOrder, states, setPreloadedStateData, setSelectedSheet, setEditingProperty, setShowForm, setDuplicateProperty, setCostSheets, selectedSheet, preloadedStateData, setSelectedStateCode, setCities, Section, Field)
-        )}
+        {(() => {
+          if (editingProperty) {
+            return handleEditPropertyForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, setEditingProperty, showJurisdictionModal);
+          } else if (showForm) {
+            return handleNewEntryForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, showJurisdictionModal);
+          } else {
+            return handleNewPropertyTable(costSheets, user, searchTerm, bhkFilter, reraRange, sortBy, sortOrder, setSearchTerm, setBhkFilter, setReraRange, availableBhkTypes, setSortBy, setSortOrder, states, setPreloadedStateData, setSelectedSheet, setEditingProperty, setShowForm, setCostSheets, selectedSheet, preloadedStateData, setSelectedStateCode, setCities, Section, Field);
+          }
+        })()}
 
         {/* Custom Amenity Modal */}
         {showCustomAmenityModal && (
@@ -1506,35 +1468,34 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
                           arrayUnion(newAmenity),
                       });
 
-                      setFormData((prev) => {
-                        const updated = {
+                      // Use setTimeout to defer state updates to next tick
+                      setTimeout(() => {
+                        setFormData((prev) => ({
                           ...prev,
                           [modalAmenityType]: [
                             ...((prev[modalAmenityType] as string[]) || []),
                             newAmenity,
                           ],
-                        };
+                        }));
 
-                        setExpandedAmenities((ePrev) => ({
-                          ...ePrev,
+                        setExpandedAmenities((prev) => ({
+                          ...prev,
                           [modalAmenityType]: true,
                         }));
 
-                        return updated;
-                      });
+                        setCustomAmenities((prev) => ({
+                          ...prev,
+                          [modalAmenityType]: [
+                            ...(prev[modalAmenityType] || []),
+                            newAmenity,
+                          ],
+                        }));
 
-                      setCustomAmenities((prev) => ({
-                        ...prev,
-                        [modalAmenityType]: [
-                          ...(prev[modalAmenityType] || []),
-                          newAmenity,
-                        ],
-                      }));
-
-                      setShowCustomAmenityModal(false);
-                      setModalAmenityInput("");
-                      setModalAmenityType("");
-                      toast.success("Custom amenity added!");
+                        setShowCustomAmenityModal(false);
+                        setModalAmenityInput("");
+                        setModalAmenityType("");
+                        toast.success("Custom amenity added!");
+                      }, 0);
                     } catch (error) {
                       toast.error(
                         `Failed to add amenity ${
@@ -1559,10 +1520,11 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       <AmenityModal
         isOpen={showAmenityModal}
         onClose={() => {
-
-          setShowAmenityModal(false);
-          setCustomAmenityInput(prev => ({ ...prev, [currentAmenityField]: "" }));
-          setCurrentAmenityField("");
+          setTimeout(() => {
+            setShowAmenityModal(false);
+            setCustomAmenityInput(prev => ({ ...prev, [currentAmenityField]: "" }));
+            setCurrentAmenityField("");
+          }, 0);
         }}
         fieldId={currentAmenityField}
         fieldLabel={

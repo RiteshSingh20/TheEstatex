@@ -20,7 +20,11 @@ const calculateTotalPackageEnhanced = (
     availability: string;
     unitPlan: null;
   },
-  tabData: any,
+  tabData: {
+    projectStatus?: string;
+    psfIncludesFixedComponent?: boolean;
+    type?: string;
+  },
   formData: FormDataType,
   parseIndianCurrency: (value: string) => string,
   formatIndianCurrency: (value: string | number) => string
@@ -167,6 +171,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
   formData
 }) => {
   const [isLoadingReraData, setIsLoadingReraData] = useState(false);
+  const [fixedComponentVisibility, setFixedComponentVisibility] = useState<Record<number, boolean>>({});
+  const objectUrlsRef = React.useRef<Record<string, string>>({});
+  const [objectUrls, setObjectUrls] = React.useState<Record<string, string>>({});
 
   // Enhanced total package calculation function - EXACT SAME LOGIC AS HTML
   const calculateTotalPackage = (
@@ -195,6 +202,24 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
       parseIndianCurrency,
       formatIndianCurrency
     );
+  };
+
+  // Extract tab name update logic to avoid duplication
+  const updateTabName = (tabId: number, value: string) => {
+    if (value.trim()) {
+      setSubTabs((prev) =>
+        prev.map((t) =>
+          t.id === tabId ? { ...t, name: value.trim() } : t
+        )
+      );
+    } else {
+      const tabIndex = subTabs.findIndex((t) => t.id === tabId);
+      setSubTabs((prev) =>
+        prev.map((t) =>
+          t.id === tabId ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+        )
+      );
+    }
   };
 
   // Function to handle changes that require recalculation
@@ -269,12 +294,17 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
 
   // Fetch and populate RERA tabs for old formatted properties
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchReraData = async () => {
       // Only fetch if this is an old format property (v1) and has a project name
       if (formData.dataVersion === 'v1' && formData.projectName && formData.id) {
+        if (!isMounted) return;
         setIsLoadingReraData(true);
+        
         try {
           const relatedProperties = await getCostSheetsByProjectName(formData.projectName);
+          if (!isMounted) return;
 
           // Group properties by unique RERA numbers
           const reraGroups = new Map();
@@ -329,8 +359,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
             }
           });
 
-          // Update sub tabs and sub tab data
-          if (reraGroups.size > 0) {
+          // Update sub tabs and sub tab data only if component is still mounted
+          if (reraGroups.size > 0 && isMounted) {
             const newSubTabs = Array.from(reraGroups.values()).map(group => ({
               id: group.id,
               name: group.name
@@ -341,26 +371,74 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
               newSubTabData[tabId] = group.data;
             });
 
-            // Override the existing subTabData completely
-            setSubTabs(newSubTabs);
-            setSubTabData(newSubTabData);
-            
-            // Set active tab to first one
-            if (newSubTabs.length > 0) {
-              setActiveSubTab(newSubTabs[0].id);
-            }
-
+            // Use setTimeout to defer state updates to next tick
+            setTimeout(() => {
+              if (isMounted) {
+                setSubTabs(newSubTabs);
+                setSubTabData(newSubTabData);
+                
+                // Set active tab to first one
+                if (newSubTabs.length > 0) {
+                  setActiveSubTab(newSubTabs[0].id);
+                }
+              }
+            }, 0);
           }
         } catch (error) {
-          
+          console.error('Failed to fetch RERA data:', error);
         } finally {
-          setIsLoadingReraData(false);
+          if (isMounted) {
+            setIsLoadingReraData(false);
+          }
         }
       }
     };
 
-    fetchReraData();
+    // Use setTimeout to defer the async operation
+    const timeoutId = setTimeout(() => {
+      fetchReraData();
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, [formData.dataVersion, formData.projectName, formData.id]);
+
+  // Cleanup object URLs on unmount and when configs change
+  useEffect(() => {
+    return () => {
+      Object.values(objectUrlsRef.current).forEach(url => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.warn('Failed to revoke object URL:', error);
+        }
+      });
+      objectUrlsRef.current = {};
+    };
+  }, []);
+
+  // Clean up unused object URLs when configs change
+  useEffect(() => {
+    const currentKeys = new Set<string>();
+    Object.entries(subTabData).forEach(([tabId, tabData]) => {
+      tabData?.pricingConfigs?.forEach((_, index) => {
+        currentKeys.add(`${tabId}-${index}`);
+      });
+    });
+
+    Object.keys(objectUrlsRef.current).forEach(key => {
+      if (!currentKeys.has(key)) {
+        try {
+          URL.revokeObjectURL(objectUrlsRef.current[key]);
+        } catch (error) {
+          console.warn('Failed to revoke unused object URL:', error);
+        }
+        delete objectUrlsRef.current[key];
+      }
+    });
+  }, [subTabData]);
   
   if (isLoadingReraData) {
     return (
@@ -571,72 +649,19 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         type="text"
                         value={subTabData[tab.id]?.mahaReraNumber || ""}
                         onChange={(e) => {
+                          const sanitizedValue = e.target.value.replace(/[<>"'&]/g, '').replace(/javascript:/gi, '').replace(/on\w+=/gi, '');
                           setSubTabData((prev) => ({
                             ...prev,
                             [tab.id]: {
                               ...prev[tab.id],
-                              mahaReraNumber: e.target.value,
+                              mahaReraNumber: sanitizedValue,
                             },
                           }));
                         }}
-                        onBlur={(e) => {
-                          const value = e.target.value;
-                          if (value.trim()) {
-                            setSubTabs((prev) =>
-                              prev.map((t) =>
-                                t.id === tab.id
-                                  ? {
-                                      ...t,
-                                      name: value.trim(),
-                                    }
-                                  : t
-                              )
-                            );
-                          } else {
-                            const tabIndex = subTabs.findIndex(
-                              (t) => t.id === tab.id
-                            );
-                            setSubTabs((prev) =>
-                              prev.map((t) =>
-                                t.id === tab.id
-                                  ? {
-                                      ...t,
-                                      name: `RERA-${tabIndex + 1}`,
-                                    }
-                                  : t
-                              )
-                            );
-                          }
-                        }}
+                        onBlur={(e) => updateTabName(tab.id, e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Tab") {
-                            const value = e.currentTarget.value;
-                            if (value.trim()) {
-                              setSubTabs((prev) =>
-                                prev.map((t) =>
-                                  t.id === tab.id
-                                    ? {
-                                        ...t,
-                                        name: value.trim(),
-                                      }
-                                    : t
-                                )
-                              );
-                            } else {
-                              const tabIndex = subTabs.findIndex(
-                                (t) => t.id === tab.id
-                              );
-                              setSubTabs((prev) =>
-                                prev.map((t) =>
-                                  t.id === tab.id
-                                    ? {
-                                        ...t,
-                                        name: `RERA-${tabIndex + 1}`,
-                                      }
-                                    : t
-                                )
-                              );
-                            }
+                            updateTabName(tab.id, e.currentTarget.value);
                           }
                         }}
                         disabled={subTabData[tab.id]?.type === "Pre-launch"}
@@ -669,15 +694,16 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                       <input
                         type="url"
                         value={subTabData[tab.id]?.mahaReraLink || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const sanitizedValue = e.target.value.replace(/[<>"'&]/g, '').replace(/javascript:/gi, '').replace(/on\w+=/gi, '');
                           setSubTabData((prev) => ({
                             ...prev,
                             [tab.id]: {
                               ...prev[tab.id],
-                              mahaReraLink: e.target.value,
+                              mahaReraLink: sanitizedValue,
                             },
-                          }))
-                        }
+                          }));
+                        }}
                         disabled={subTabData[tab.id]?.type === "Pre-launch"}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
@@ -829,16 +855,16 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 );
                                 handlePricingChange('fixedComponent', numericValue, tab.id, index);
                                 
-                                // Toggle Fixed Component checkbox visibility
+                                // Update checkbox visibility state with setTimeout to avoid render phase update
                                 setTimeout(() => {
-                                  const checkboxLabel = document.getElementById(`fixedComponentCheckboxLabel_${tab.id}`);
-                                  if (checkboxLabel) {
-                                    const hasValue = (subTabData[tab.id]?.pricingConfigs || []).some(config => {
+                                  const hasValue = parseFloat(numericValue) > 0;
+                                  setFixedComponentVisibility(prev => ({
+                                    ...prev,
+                                    [tab.id]: hasValue || (subTabData[tab.id]?.pricingConfigs || []).some(config => {
                                       const cleanValue = parseIndianCurrency(config.fixedComponent || '').replace(/[^\d.]/g, '').trim();
                                       return cleanValue && cleanValue !== '' && parseFloat(cleanValue) > 0;
-                                    });
-                                    checkboxLabel.style.display = hasValue ? 'flex' : 'none';
-                                  }
+                                    })
+                                  }));
                                 }, 0);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
@@ -862,13 +888,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           <div>
                             <input
                               type="text"
-                              value={calculateTotalPackageEnhanced(
-                                config,
-                                subTabData[tab.id],
-                                formData,
-                                parseIndianCurrency,
-                                formatIndianCurrency
-                              )}
+                              value={config.totalPackage || ""}
                               disabled
                               onWheel={(e) => e.currentTarget.blur()}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm bg-neutral-100 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
@@ -905,10 +925,23 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           <div className="flex justify-center items-center">
                             {(config.unitPlan || config.unitPlanUrl) ? (
                               <div className="relative group">
-                                {/* If it's a File object (new upload), show preview using createObjectURL */}
+                                {/* If it's a File object (new upload), show preview using managed object URL */}
                                 {config.unitPlan && ((config.unitPlan as File).type && (config.unitPlan as File).type.startsWith("image/")) ? (
                                   <img
-                                    src={URL.createObjectURL(config.unitPlan as File)}
+                                    src={(() => {
+                                      const key = `${tab.id}-${index}`;
+                                      if (objectUrlsRef.current[key]) {
+                                        return objectUrlsRef.current[key];
+                                      }
+                                      try {
+                                        const url = URL.createObjectURL(config.unitPlan as File);
+                                        objectUrlsRef.current[key] = url;
+                                        return url;
+                                      } catch (error) {
+                                        console.error('Failed to create object URL:', error);
+                                        return '';
+                                      }
+                                    })()}
                                     alt="Unit plan"
                                     className="w-12 h-12 object-cover rounded border"
                                   />
@@ -934,6 +967,17 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 <button
                                   type="button"
                                   onClick={() => {
+                                    // Clean up object URL safely
+                                    const urlKey = `${tab.id}-${index}`;
+                                    if (objectUrlsRef.current[urlKey]) {
+                                      try {
+                                        URL.revokeObjectURL(objectUrlsRef.current[urlKey]);
+                                      } catch (error) {
+                                        console.warn('Failed to revoke object URL:', error);
+                                      }
+                                      delete objectUrlsRef.current[urlKey];
+                                    }
+                                    
                                     setSubTabData((prev) => {
                                       const newConfigs = [
                                         ...(prev[tab.id]?.pricingConfigs || []),
@@ -1023,16 +1067,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                       />
                       <span>Per Sq. Ft. Rate includes <strong>'Parking'</strong></span>
                     </label>
-                    <label 
-                      id={`fixedComponentCheckboxLabel_${tab.id}`}
-                      className="flex items-center gap-2 text-sm"
-                      style={{ 
-                        display: (subTabData[tab.id]?.pricingConfigs || []).some(config => {
-                          const cleanValue = parseIndianCurrency(config.fixedComponent || '').replace(/[^\d.]/g, '').trim();
-                          return cleanValue && cleanValue !== '' && parseFloat(cleanValue) > 0;
-                        }) ? 'flex' : 'none'
-                      }}
-                    >
+                    {fixedComponentVisibility[tab.id] && (
+                    <label className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
                         checked={subTabData[tab.id]?.psfIncludesFixedComponent || false}
@@ -1041,6 +1077,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                       />
                       <span>Per Sq. Ft. Rate includes <strong>'Fixed Component'</strong></span>
                     </label>
+                    )}
                   </div>
                   
                   {/* Parking field - conditional based on checkbox */}

@@ -1,21 +1,12 @@
 import { format } from "date-fns";
 import { Timestamp } from "firebase/firestore";
-import { Search, Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Eye, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { useState } from "react";
 import { updateCostSheet, deleteCostSheet } from "../../utils/firestoreListings";
 import { CostSheet } from "../CompareModal";
 import Button from "../ui/Button";
 
 export function handleRejectedNewPropertiesTable(searchTerm: string, setSearchTerm: React.Dispatch<React.SetStateAction<string>>, bhkFilter: string, setBhkFilter: React.Dispatch<React.SetStateAction<string>>, availableBhkTypes: any[], reraRange: { min: string; max: string; }, setReraRange: React.Dispatch<React.SetStateAction<{ min: string; max: string; }>>, setSortBy: React.Dispatch<React.SetStateAction<{ approved: "date" | "project"; pending: "date" | "project"; rejected: "date" | "project"; }>>, setSortOrder: React.Dispatch<React.SetStateAction<{ approved: { date: "desc" | "asc"; project: "asc" | "desc"; }; pending: { date: "desc" | "asc"; project: "asc" | "desc"; }; rejected: { date: "desc" | "asc"; project: "asc" | "desc"; }; }>>, sortBy: { approved: "date" | "project"; pending: "date" | "project"; rejected: "date" | "project"; }, sortOrder: { approved: { date: "desc" | "asc"; project: "asc" | "desc"; }; pending: { date: "desc" | "asc"; project: "asc" | "desc"; }; rejected: { date: "desc" | "asc"; project: "asc" | "desc"; }; }, rejectedSheets: any[], setSelectedSheet: React.Dispatch<React.SetStateAction<CostSheet | null>>, setEditingProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>, setShowForm: React.Dispatch<React.SetStateAction<boolean>>, setCostSheets: React.Dispatch<React.SetStateAction<unknown[]>>) {
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
-    
-    const totalItems = rejectedSheets.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const currentItems = rejectedSheets.slice(startIndex, endIndex);
 
     return <div>
         <div className="mb-4 flex gap-3 items-center flex-wrap">
@@ -142,7 +133,7 @@ export function handleRejectedNewPropertiesTable(searchTerm: string, setSearchTe
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
-                    {currentItems.map((item, idx) => (
+                    {rejectedSheets.map((item, idx) => (
                         <tr
                             key={idx}
                             className="hover:bg-neutral-50 transition-all duration-150"
@@ -278,34 +269,5 @@ export function handleRejectedNewPropertiesTable(searchTerm: string, setSearchTe
                 </tbody>
             </table>
         </div>
-        
-        {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-neutral-200">
-                <div className="flex items-center text-sm text-neutral-700">
-                    Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-neutral-700">
-                        Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
-        )}
     </div>;
 }
