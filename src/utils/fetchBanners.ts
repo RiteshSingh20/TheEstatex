@@ -10,7 +10,7 @@ export const fetchBanners = async (locations: string[]): Promise<Banner[]> => {
 
     const responseData = response.data;
     // Debug log to inspect data structure
-    // console.log('fetchBanners response data:', responseData);
+    // 
 
     if (responseData && Array.isArray(responseData.data)) {
       return responseData.data.map((imageUrl: string, index: number): Banner => ({
@@ -20,11 +20,9 @@ export const fetchBanners = async (locations: string[]): Promise<Banner[]> => {
         location: '',
       }));
     } else {
-      console.warn('fetchBanners: response data.data is not an array', responseData);
       return [];
     }
   } catch (error) {
-    console.error('Error fetching banners:', error);
     return [];
   }
 };

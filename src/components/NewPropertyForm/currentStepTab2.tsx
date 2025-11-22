@@ -64,7 +64,7 @@ export function currentStepTab2(
   }[]
 ): React.ReactNode {
   
-  // Enhanced floor band validation functions
+  // Enhanced floor band validation functions - EXACT SAME LOGIC AS HTML
   const validateFromFloor = (value: string, index: number): boolean => {
     if (!value || index === 0) return true;
     
@@ -113,6 +113,18 @@ export function currentStepTab2(
     }
     
     return "";
+  };
+
+  // Enhanced validation for floor rise inputs - EXACT SAME LOGIC AS HTML
+  const validateFloorRiseFrom = (value: string): boolean => {
+    const num = parseInt(value);
+    return !value || (num >= 1);
+  };
+
+  const validateFloorRiseRate = (value: string): boolean => {
+    const cleanValue = parseIndianCurrency(value);
+    const num = parseFloat(cleanValue);
+    return !cleanValue || (num > 0);
   };
 
   return (
@@ -198,15 +210,23 @@ export function currentStepTab2(
                 <input
                   type="number"
                   value={floorRiseConfig.startsFrom}
-                  onChange={(e) =>
-                    setFloorRiseConfig((prev) => ({
-                      ...prev,
-                      startsFrom: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (validateFloorRiseFrom(value)) {
+                      setFloorRiseConfig((prev) => ({
+                        ...prev,
+                        startsFrom: value,
+                      }));
+                    }
+                  }}
                   onWheel={(e) => e.currentTarget.blur()}
                   placeholder="Floor number"
-                  className="w-full border border-neutral-300 rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  min="1"
+                  className={`w-full border rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield] ${
+                    !validateFloorRiseFrom(floorRiseConfig.startsFrom) && floorRiseConfig.startsFrom
+                      ? "border-red-500 bg-red-50"
+                      : "border-neutral-300"
+                  }`}
                 />
               </div>
               <div>

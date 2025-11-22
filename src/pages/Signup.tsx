@@ -112,7 +112,7 @@ const Signup = () => {
         const statesData = await fetchStates();
         setStates(statesData);
       } catch (error: unknown) {
-        console.error("Failed to load states:", error);
+        
         toast.error("Failed to load states. Please try again later.");
       }
     };
@@ -155,7 +155,7 @@ const Signup = () => {
       setOtpSending(false);
       toast.success("OTP sent successfully!");
     } catch (error: unknown) {
-      console.error("OTP send error:", error);
+      
       setShowOtpField(false);
       setOtpSending(false);
       toast.error(
@@ -177,7 +177,7 @@ const Signup = () => {
       toast.success("Phone number verified!");
       setStep(2); // Move to personal info step after verification
     } catch (error: unknown) {
-      console.error("OTP verification error:", error);
+      
       toast.error("Invalid OTP. Please try again.");
     }
   };
@@ -190,7 +190,7 @@ const Signup = () => {
         const citiesData = await fetchCities(stateCode);
         setCities(citiesData);
       } catch (error: unknown) {
-        console.error("Failed to load cities:", error);
+        
         toast.error("Failed to load cities. Please try again later.");
         setCities([]);
       }

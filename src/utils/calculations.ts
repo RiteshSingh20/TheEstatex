@@ -6,13 +6,8 @@ export const formatIndianCurrency = (value: string | number): string => {
   
   if (numValue === 0) return '';
   
-  // Format as Indian currency
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(numValue);
+  // Format as Indian currency with proper rupee symbol
+  return `₹${numValue.toLocaleString('en-IN')}`;
 };
 
 export const parseIndianCurrency = (value: string): string => {

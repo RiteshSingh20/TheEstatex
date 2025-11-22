@@ -331,7 +331,7 @@ const Inventory = () => {
   //     setRoadSuggestions(roads);
   //     setZoneSuggestions(zones);
   //   } catch (error) {
-  //     console.error("Error fetching suggestions:", error);
+  //     
   //   }
   // }, [user]);
 
@@ -376,7 +376,7 @@ const Inventory = () => {
             setCities(citiesData);
           })
           .catch((error) => {
-            console.error("Failed to load cities for edit:", error);
+            
           });
       }
     }
@@ -418,7 +418,7 @@ const Inventory = () => {
             setCities(citiesData);
           })
           .catch((error) => {
-            console.error("Failed to load cities for edit:", error);
+            
           });
       }
     }
@@ -475,7 +475,7 @@ const Inventory = () => {
       }
       toast.success("Property deleted successfully");
     } catch (error) {
-      console.error("Failed to delete property:", error);
+      
       toast.error("Failed to delete property. Please try again.");
     }
   };
@@ -573,7 +573,7 @@ const Inventory = () => {
       setShowPropertyList(true);
       fetchInventory();
     } catch (error) {
-      console.error(error);
+      
       toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -672,7 +672,7 @@ const Inventory = () => {
       setShowPropertyList(true);
       fetchInventory();
     } catch (error) {
-      console.error(error);
+      
       toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -700,7 +700,7 @@ const Inventory = () => {
         const citiesData = await fetchCities(stateCode);
         setCities(citiesData);
       } catch (error) {
-        console.error("Failed to load cities:", error);
+        
         setCities([]);
       }
     } else {
@@ -2600,7 +2600,7 @@ const Inventory = () => {
           }
         });
       } catch (error) {
-        console.error("Error fetching cost sheets for stations:", error);
+        
       }
 
       // Convert additional locations to options format
@@ -2616,7 +2616,7 @@ const Inventory = () => {
 
       setStationOptions(allLocationOptions);
     } catch (error) {
-      console.error("Error fetching station options:", error);
+      
     }
   }, [inventory]);
 
@@ -2831,7 +2831,7 @@ const Inventory = () => {
 
       setInventory({ resale: updatedResale, rental: updatedRental });
     } catch (error) {
-      console.error("Error fetching inventory:", error);
+      
     }
   }, [user]);
 
@@ -2846,7 +2846,7 @@ const Inventory = () => {
         const statesData = await fetchStates();
         setStates(statesData);
       } catch (error) {
-        console.error("Failed to load states:", error);
+        
       }
     };
     loadStates();

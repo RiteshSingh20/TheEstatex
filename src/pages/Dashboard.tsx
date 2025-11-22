@@ -541,7 +541,7 @@ const Dashboard = () => {
       setLocationOptions(allLocationOptions);
       setStationsLoaded(true);
     } catch (error) {
-      console.error("Error fetching available stations:", error);
+      
       setStationsLoaded(true);
     }
   };
@@ -584,8 +584,6 @@ const Dashboard = () => {
         const { rrLocations, ndLocations } = await getUserActiveSubscriptions(
           user.id
         );
-
-        console.log("Raw subscription data:", { rrLocations, ndLocations });
 
         // Handle station names directly (new format) or map IDs to names (old format)
         const rrNames = rrLocations
@@ -636,14 +634,12 @@ const Dashboard = () => {
           .flat()
           .filter((name) => name);
 
-        console.log("Mapped station names:", { rrNames, ndNames });
-
         if (isMounted) {
           setRRStationNames(rrNames);
           setNDStationNames(ndNames);
         }
       } catch (error) {
-        console.error("Error fetching subscriptions:", error);
+        
         if (isMounted) {
           setRRStationNames([]);
           setNDStationNames([]);
@@ -709,7 +705,7 @@ const Dashboard = () => {
           });
         }
       } catch (error) {
-        console.error("Error fetching inventory data:", error);
+        
       }
     };
 
@@ -739,7 +735,7 @@ const Dashboard = () => {
         const data = await fetchBanners(locations);
         if (isMounted) setBanners(data);
       } catch (error) {
-        console.error("Error fetching banners:", error);
+        
       }
     };
 
@@ -848,12 +844,7 @@ const Dashboard = () => {
             });
 
             if (hasMatch) {
-              console.log(
-                "Matched new property:",
-                stationToCheck,
-                "with subscriptions:",
-                subscriptionLocs
-              );
+
             }
             return hasMatch;
           })

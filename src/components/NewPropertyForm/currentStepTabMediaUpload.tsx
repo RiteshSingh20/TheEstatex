@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React from "react";
 
 export function currentStepTabMediaUpload(
   setMediaFiles: React.Dispatch<
@@ -49,18 +49,18 @@ export function currentStepTabMediaUpload(
   videoPreviews: Record<string, string>,
   setVideoPreviews: React.Dispatch<React.SetStateAction<Record<string, string>>>
 ): React.ReactNode {
-  const selectedTypologies = useMemo(() => {
-    try {
-      const vals = Object.values(subTabData || {}).flatMap((tab: any) =>
-        (tab?.pricingConfigs || [])
-          .map((c: any) => c?.typology)
-          .filter(Boolean)
-      );
-      return Array.from(new Set(vals));
-    } catch (e) {
-      return [] as string[];
-    }
-  }, [subTabData]);
+  // Extract typologies without useMemo to avoid hook order issues
+  let selectedTypologies: string[] = [];
+  try {
+    const vals = Object.values(subTabData || {}).flatMap((tab: any) =>
+      (tab?.pricingConfigs || [])
+        .map((c: any) => c?.typology)
+        .filter(Boolean)
+    );
+    selectedTypologies = Array.from(new Set(vals));
+  } catch (e) {
+    selectedTypologies = [];
+  }
 
   return (
     <div className="bg-white p-4">

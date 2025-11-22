@@ -107,7 +107,7 @@ export function currentStepTab3(
       toast.success('Marketing message generated successfully!');
       
     } catch (error) {
-      console.error('Error generating marketing message:', error);
+      
       toast.error('Error generating message. Please check your form data.');
     }
   };

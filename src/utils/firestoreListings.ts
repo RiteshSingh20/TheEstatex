@@ -20,8 +20,6 @@ import { UserRole } from "../../src/types";
 import { toast } from "react-toastify";
 import { ResaleFormData } from "../utils/api";
 
-
-
 // ==================== Property Listing Functions ====================
 export const addResaleProperty = async (
   userId: string,
@@ -489,7 +487,6 @@ export const getUserActiveSubscriptions = async (
       allSubscriptions: docs,
     };
   } catch (error) {
-    console.error("Error fetching active subscriptions:", error);
     toast.error("Failed to load active subscriptions");
     return {
       rrLocations: [],
@@ -512,7 +509,6 @@ export const createSubscription = async (
     });
     return docRef.id;
   } catch (error) {
-    console.error("Error creating subscription:", error);
     throw new Error("Failed to create subscription");
   }
 };
@@ -530,7 +526,6 @@ export const createPaymentRecord = async (
     });
     return docRef.id;
   } catch (error) {
-    console.error("Error creating payment record:", error);
     throw new Error("Failed to create payment record");
   }
 };

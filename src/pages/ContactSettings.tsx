@@ -36,7 +36,7 @@ const ContactSettings: React.FC = () => {
       await setDoc(doc(db, 'settings', 'contact'), contactInfo);
       toast.success('Contact information updated successfully!');
     } catch (error) {
-      console.error('Error updating contact info:', error);
+      
       toast.error('Failed to update contact information');
     } finally {
       setLoading(false);

@@ -12,9 +12,7 @@ export const deleteMatchedPropertiesFromOldDB = async (projectName: string) => {
     );
     
     await Promise.all(deletePromises);
-    console.log(`Deleted ${querySnapshot.docs.length} matched properties from costSheets`);
   } catch (error) {
-    console.error("Error deleting matched properties:", error);
     throw error;
   }
 };

@@ -1,8 +1,9 @@
 import { format } from "date-fns";
 import { User } from "firebase/auth";
 import { Timestamp } from "firebase/firestore";
-import { Eye, Edit, Copy, Trash2 } from "lucide-react";
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
+import { useState } from "react";
 import { State, City } from "../../types";
 import { fetchCities } from "../../utils/api";
 import { deleteCostSheet } from "../../utils/firestoreListings";
@@ -52,10 +53,18 @@ export function handleUpdatedPropertiesTable(
   setSelectedSheet: React.Dispatch<React.SetStateAction<CostSheet | null>>,
   setEditingProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>,
   setShowForm: React.Dispatch<React.SetStateAction<boolean>>,
-  setDuplicateProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>,
   user: User | null,
   setCostSheets: React.Dispatch<React.SetStateAction<unknown[]>>
 ): React.ReactNode {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const totalItems = approvedSheets.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = approvedSheets.slice(startIndex, endIndex);
+
   return (
     <div>
       <FilterBar
@@ -137,13 +146,7 @@ export function handleUpdatedPropertiesTable(
                   Station
                 </th>
                 <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
-                  Possession
-                </th>
-                <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
-                  BHK
-                </th>
-                <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
-                  Rera Carpet
+                  Sub Location
                 </th>
                 <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
                   Actions
@@ -151,7 +154,7 @@ export function handleUpdatedPropertiesTable(
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
-              {approvedSheets.map((item, idx) => (
+              {currentItems.map((item, idx) => (
                 <tr
                   key={`${item.id}-${idx}`}
                   onClick={async () => {
@@ -168,7 +171,7 @@ export function handleUpdatedPropertiesTable(
                             cities: citiesData,
                           });
                         } catch {
-                          console.error("Failed to preload cities");
+                          
                         }
                       }
                     }
@@ -177,16 +180,30 @@ export function handleUpdatedPropertiesTable(
                   className="hover:bg-neutral-50 transition-all duration-150 cursor-pointer"
                 >
                   <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                    {item.createdAt
-                      ? (() => {
-                          const date = item.createdAt instanceof Timestamp
-                            ? item.createdAt.toDate()
-                            : new Date(item.createdAt);
-                          return !isNaN(date.getTime())
-                            ? format(date, "dd/MM/yyyy")
-                            : "-";
-                        })()
-                      : "-"}
+                    {(() => {
+                      const dateValue = item.dateUpdateCostSheet || item.updatedAt || item.createdAt;
+                      if (!dateValue) return "-";
+                      
+                      try {
+                        let date;
+                        if (dateValue instanceof Timestamp) {
+                          date = dateValue.toDate();
+                        } else if (typeof dateValue === 'string') {
+                          // Handle YYYY-MM-DD format
+                          if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            const [year, month, day] = dateValue.split('-');
+                            return `${day}/${month}/${year}`;
+                          }
+                          date = new Date(dateValue);
+                        } else {
+                          date = new Date(dateValue);
+                        }
+                        
+                        return format(date, "dd/MM/yyyy");
+                      } catch (error) {
+                        return "-";
+                      }
+                    })()} 
                   </td>
                   <td className="px-5 py-3 font-medium text-neutral-900">
                     <div>
@@ -199,16 +216,10 @@ export function handleUpdatedPropertiesTable(
                     </div>
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                    {item.station || "-"}
+                    {item.location || item.station || "-"}
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                    {item.possession || "-"}
-                  </td>
-                  <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                    {item.flatType || "-"}
-                  </td>
-                  <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                    {item.reraCarpet || "-"}
+                    {item.subLocation || "-"}
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap">
                     <div className="flex gap-2">
@@ -232,16 +243,7 @@ export function handleUpdatedPropertiesTable(
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDuplicateProperty(item);
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+
                       {(user?.role === "admin" ||
                         item.submittedBy === user?.id) && (
                         <Button
@@ -278,6 +280,35 @@ export function handleUpdatedPropertiesTable(
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-neutral-200">
+          <div className="flex items-center text-sm text-neutral-700">
+            Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-neutral-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

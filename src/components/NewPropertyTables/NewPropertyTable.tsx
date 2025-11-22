@@ -60,7 +60,7 @@ export function handleNewPropertyTable(
   setSelectedSheet: React.Dispatch<React.SetStateAction<CostSheet | null>>,
   setEditingProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>,
   setShowForm: React.Dispatch<React.SetStateAction<boolean>>,
-  setDuplicateProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>,
+
   setCostSheets: React.Dispatch<React.SetStateAction<unknown[]>>,
   selectedSheet: CostSheet | null,
   preloadedStateData: { stateCode: string; cities: City[] } | null,
@@ -123,15 +123,16 @@ export function handleNewPropertyTable(
                     return matchesSearch && matchesBhk && matchesRera;
                   })
                   .sort((a: any, b: any) => {
-                    const aDate =
-                      a.createdAt instanceof Timestamp
-                        ? a.createdAt.toDate()
-                        : new Date(a.createdAt);
-                    const bDate =
-                      b.createdAt instanceof Timestamp
-                        ? b.createdAt.toDate()
-                        : new Date(b.createdAt);
                     if (sortBy.approved === "date") {
+                      const getDateValue = (item: any) => {
+                        const dateValue = item.dateUpdateCostSheet || item.updatedAt || item.createdAt;
+                        if (dateValue instanceof Timestamp) {
+                          return dateValue.toDate();
+                        }
+                        return new Date(dateValue);
+                      };
+                      const aDate = getDateValue(a);
+                      const bDate = getDateValue(b);
                       return sortOrder.approved.date === "desc"
                         ? bDate.getTime() - aDate.getTime()
                         : aDate.getTime() - bDate.getTime();
@@ -144,7 +145,7 @@ export function handleNewPropertyTable(
                     }
                   });
                 return (
-                  handleUpdatedPropertiesTable(searchTerm, setSearchTerm, bhkFilter, setBhkFilter, reraRange, setReraRange, availableBhkTypes, approvedSheets, setSortBy, setSortOrder, sortBy, sortOrder, states, setPreloadedStateData, setSelectedSheet, setEditingProperty, setShowForm, setDuplicateProperty, user, setCostSheets)
+                  handleUpdatedPropertiesTable(searchTerm, setSearchTerm, bhkFilter, setBhkFilter, reraRange, setReraRange, availableBhkTypes, approvedSheets, setSortBy, setSortOrder, sortBy, sortOrder, states, setPreloadedStateData, setSelectedSheet, setEditingProperty, setShowForm, user, setCostSheets)
                 );
               })(),
             },
@@ -210,7 +211,7 @@ export function handleNewPropertyTable(
                     }
                   });
                 return (
-                  handleUpdateRequiredTable(searchTerm, setSearchTerm, bhkFilter, setBhkFilter, reraRange, setReraRange, availableBhkTypes, approvedSheets, setSortBy, setSortOrder, sortBy, sortOrder, setSelectedSheet, setEditingProperty, setShowForm, setDuplicateProperty, user, setCostSheets)
+                  handleUpdateRequiredTable(searchTerm, setSearchTerm, bhkFilter, setBhkFilter, reraRange, setReraRange, availableBhkTypes, approvedSheets, setSortBy, setSortOrder, sortBy, sortOrder, setSelectedSheet, setEditingProperty, setShowForm, user, setCostSheets)
                 );
               })(),
             },

@@ -94,7 +94,7 @@ export const StampDutyTab = () => {
       setRates(updatedRates);
     } catch (err) {
       toast.error("Failed to save rate");
-      console.error(err);
+      
     }
   };
 
@@ -105,7 +105,7 @@ export const StampDutyTab = () => {
       const updatedRates = await getStampDutyRates();
       setRates(updatedRates);
     } catch (error) {
-      console.error("Failed to delete rate:", error);
+      
       toast.error("Failed to delete stamp duty rate");
     }
   };

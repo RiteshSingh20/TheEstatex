@@ -1,14 +1,24 @@
 import { format } from "date-fns";
 import { User } from "firebase/auth";
 import { Timestamp } from "firebase/firestore";
-import { Eye, Edit, Copy, Trash2 } from "lucide-react";
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
+import { useState } from "react";
 import { deleteCostSheet } from "../../utils/firestoreListings";
 import { CostSheet } from "../CompareModal";
 import FilterBar from "../FilterBar";
 import Button from "../ui/Button";
 
-export function handleUpdateRequiredTable(searchTerm: string, setSearchTerm: React.Dispatch<React.SetStateAction<string>>, bhkFilter: string, setBhkFilter: React.Dispatch<React.SetStateAction<string>>, reraRange: { min: string; max: string; }, setReraRange: React.Dispatch<React.SetStateAction<{ min: string; max: string; }>>, availableBhkTypes: any[], approvedSheets: any[], setSortBy: React.Dispatch<React.SetStateAction<{ approved: "date" | "project"; pending: "date" | "project"; rejected: "date" | "project"; }>>, setSortOrder: React.Dispatch<React.SetStateAction<{ approved: { date: "desc" | "asc"; project: "asc" | "desc"; }; pending: { date: "desc" | "asc"; project: "asc" | "desc"; }; rejected: { date: "desc" | "asc"; project: "asc" | "desc"; }; }>>, sortBy: { approved: "date" | "project"; pending: "date" | "project"; rejected: "date" | "project"; }, sortOrder: { approved: { date: "desc" | "asc"; project: "asc" | "desc"; }; pending: { date: "desc" | "asc"; project: "asc" | "desc"; }; rejected: { date: "desc" | "asc"; project: "asc" | "desc"; }; }, setSelectedSheet: React.Dispatch<React.SetStateAction<CostSheet | null>>, setEditingProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>, setShowForm: React.Dispatch<React.SetStateAction<boolean>>, setDuplicateProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>, user: User | null, setCostSheets: React.Dispatch<React.SetStateAction<unknown[]>>): React.ReactNode {
+export function handleUpdateRequiredTable(searchTerm: string, setSearchTerm: React.Dispatch<React.SetStateAction<string>>, bhkFilter: string, setBhkFilter: React.Dispatch<React.SetStateAction<string>>, reraRange: { min: string; max: string; }, setReraRange: React.Dispatch<React.SetStateAction<{ min: string; max: string; }>>, availableBhkTypes: any[], approvedSheets: any[], setSortBy: React.Dispatch<React.SetStateAction<{ approved: "date" | "project"; pending: "date" | "project"; rejected: "date" | "project"; }>>, setSortOrder: React.Dispatch<React.SetStateAction<{ approved: { date: "desc" | "asc"; project: "asc" | "desc"; }; pending: { date: "desc" | "asc"; project: "asc" | "desc"; }; rejected: { date: "desc" | "asc"; project: "asc" | "desc"; }; }>>, sortBy: { approved: "date" | "project"; pending: "date" | "project"; rejected: "date" | "project"; }, sortOrder: { approved: { date: "desc" | "asc"; project: "asc" | "desc"; }; pending: { date: "desc" | "asc"; project: "asc" | "desc"; }; rejected: { date: "desc" | "asc"; project: "asc" | "desc"; }; }, setSelectedSheet: React.Dispatch<React.SetStateAction<CostSheet | null>>, setEditingProperty: React.Dispatch<React.SetStateAction<CostSheet | null>>, setShowForm: React.Dispatch<React.SetStateAction<boolean>>, user: User | null, setCostSheets: React.Dispatch<React.SetStateAction<unknown[]>>): React.ReactNode {
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    
+    const totalItems = approvedSheets.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentItems = approvedSheets.slice(startIndex, endIndex);
+
     return <div>
         <FilterBar
             searchTerm={searchTerm}
@@ -94,13 +104,7 @@ export function handleUpdateRequiredTable(searchTerm: string, setSearchTerm: Rea
                                 Station
                             </th>
                             <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
-                                Possession
-                            </th>
-                            <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
-                                BHK
-                            </th>
-                            <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
-                                Rera Carpet
+                                Sub Location
                             </th>
                             <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
                                 Actions
@@ -108,7 +112,7 @@ export function handleUpdateRequiredTable(searchTerm: string, setSearchTerm: Rea
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200">
-                        {approvedSheets.map((item, idx) => (
+                        {currentItems.map((item, idx) => (
                             <tr
                                 key={`update-${item.id}-${idx}`}
                                 onClick={() => setSelectedSheet(item)}
@@ -142,13 +146,7 @@ export function handleUpdateRequiredTable(searchTerm: string, setSearchTerm: Rea
                                     {item.station || "-"}
                                 </td>
                                 <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                                    {item.possession || "-"}
-                                </td>
-                                <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                                    {item.flatType || "-"}
-                                </td>
-                                <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
-                                    {item.reraCarpet || "-"}
+                                    {item.subLocation || "-"}
                                 </td>
                                 <td className="px-5 py-3 whitespace-nowrap">
                                     <div className="flex gap-2">
@@ -172,16 +170,7 @@ export function handleUpdateRequiredTable(searchTerm: string, setSearchTerm: Rea
                                         >
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="secondary"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setDuplicateProperty(item);
-                                            } }
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
+
                                         {(user?.role === "admin" ||
                                             item.submittedBy === user?.id) && (
                                                 <Button
@@ -219,6 +208,35 @@ export function handleUpdateRequiredTable(searchTerm: string, setSearchTerm: Rea
                         ))}
                     </tbody>
                 </table>
+            </div>
+        )}
+        
+        {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-neutral-200">
+                <div className="flex items-center text-sm text-neutral-700">
+                    Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-neutral-700">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
         )}
     </div>;

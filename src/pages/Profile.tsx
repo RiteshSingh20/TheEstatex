@@ -94,7 +94,7 @@ const Profile = () => {
       updateUserData(updatedUser);
       toast.success("Profile updated successfully");
     } catch (error) {
-      console.error(error);
+      
       toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);

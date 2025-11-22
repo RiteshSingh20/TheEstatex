@@ -148,7 +148,6 @@ const MediaUploadSection: React.FC = () => {
                             className="w-full h-14 object-cover rounded"
                             onLoad={() => URL.revokeObjectURL(imageUrl)}
                             onError={(e) => {
-                              console.error('Image failed to load:', e);
                               e.currentTarget.style.display = 'none';
                             }}
                           />
@@ -232,7 +231,6 @@ const MediaUploadSection: React.FC = () => {
                             className="w-full h-14 object-cover rounded"
                             onLoad={() => URL.revokeObjectURL(imageUrl)}
                             onError={(e) => {
-                              console.error('Image failed to load:', e);
                               e.currentTarget.style.display = 'none';
                             }}
                           />
@@ -316,7 +314,6 @@ const MediaUploadSection: React.FC = () => {
                             className="w-full h-14 object-cover rounded"
                             onLoad={() => URL.revokeObjectURL(imageUrl)}
                             onError={(e) => {
-                              console.error('Image failed to load:', e);
                               e.currentTarget.style.display = 'none';
                             }}
                           />

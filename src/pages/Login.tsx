@@ -40,7 +40,7 @@ const Login = () => {
       }
       // Remove duplicate error handling - auth context handles all errors
     } catch (error) {
-      console.error(error);
+      
       // Remove duplicate error handling - auth context handles all errors
     } finally {
       setIsLoading(false);
@@ -60,7 +60,7 @@ const Login = () => {
       setShowResetModal(false);
       setResetEmail("");
     } catch (error) {
-      console.error(error);
+      
       toast.error("Failed to send password reset email. Please try again.");
     } finally {
       setResetLoading(false);

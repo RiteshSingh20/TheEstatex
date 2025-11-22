@@ -25,7 +25,7 @@ export const getNearbyAreas = async (
 
     return [...new Set(areas)] as string[];
   } catch (error) {
-    console.error("Error fetching nearby areas:", error);
+    
     return [];
   }
 };

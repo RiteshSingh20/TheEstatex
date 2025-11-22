@@ -3,6 +3,83 @@ import { FormDataType } from "../../pages/CostSheetFormProps";
 import { StampDutyRate } from "../CompareModal";
 import { getCostSheetsByProjectName } from "../../utils/firestoreListings";
 import { calculatePricingTotal } from "../../lib/propertyFormLogic";
+import { calculateBaseAmountWithFixedComponent } from "../../lib/fixedComponentLogic";
+
+// Enhanced calculation function with EXACT SAME LOGIC as HTML file
+const calculateTotalPackageEnhanced = (
+  config: {
+    typology: string;
+    saleableArea: string;
+    reraCarpet: string;
+    psfRate: string;
+    avRate: string;
+    fixedComponent: string;
+    possessionCharges: string;
+    totalPackage: string;
+    negotiationScope: string;
+    availability: string;
+    unitPlan: null;
+  },
+  tabData: any,
+  formData: FormDataType,
+  parseIndianCurrency: (value: string) => string,
+  formatIndianCurrency: (value: string | number) => string
+): string => {
+  const saleableArea = parseFloat(config.saleableArea) || 0;
+  const psfRate = parseFloat(parseIndianCurrency(config.psfRate || "")) || 0;
+  const avRate = parseFloat(parseIndianCurrency(config.avRate || "")) || 0;
+  const fixedComponent = parseFloat(parseIndianCurrency(config.fixedComponent || "")) || 0;
+  const possessionCharges = parseFloat(parseIndianCurrency(config.possessionCharges || "")) || 0;
+  const legalCharges = parseFloat(parseIndianCurrency(formData.registration || "")) || 0;
+
+  if (saleableArea && avRate) {
+    const includesFixedComponent = tabData?.psfIncludesFixedComponent || false;
+    const projectStatus = tabData?.projectStatus || "";
+    const typology = config.typology || "";
+    
+    // 1. Base Amount calculation - EXACT SAME AS HTML
+    let baseAmount;
+    if (includesFixedComponent) {
+      // When checkbox is checked: baseAmount = (area * rate) - fixedComponent
+      baseAmount = (saleableArea * avRate) - fixedComponent;
+    } else {
+      // When checkbox is unchecked: baseAmount = area * rate
+      baseAmount = saleableArea * avRate;
+    }
+    
+    // 2. Stamp Duty (7% of base amount) - EXACT SAME AS HTML
+    const stampDuty = baseAmount * 0.07;
+    
+    // 3. GST calculation based on project status - EXACT SAME AS HTML
+    let gst = 0;
+    if (projectStatus !== 'OC Received') {
+      const gstRate = baseAmount > 4500000 ? 0.05 : 0.01;
+      gst = baseAmount * gstRate;
+    }
+    
+    // 4. Registration Fee calculation - EXACT SAME AS HTML
+    const isJodi = typology.toLowerCase().includes('jodi');
+    let registrationFee = 0;
+    if (baseAmount > 0) {
+      if (baseAmount < 3000000) {
+        registrationFee = Math.max(100, baseAmount * 0.01);
+        if (isJodi) registrationFee *= 2;
+      } else {
+        registrationFee = isJodi ? 60000 : 30000;
+      }
+    }
+    
+    // 8. Per Sq Ft Difference - EXACT SAME AS HTML
+    const perSqFtDifference = saleableArea * (psfRate - avRate);
+    
+    // Final Total Calculation - EXACT SAME AS HTML
+    // Fixed Component is always added back to the total regardless of checkbox state
+    const total = baseAmount + gst + stampDuty + registrationFee + possessionCharges + fixedComponent + perSqFtDifference + legalCharges;
+    
+    return formatIndianCurrency(Math.round(total));
+  }
+  return "";
+};
 
 interface CurrentStepEditTab1Props {
   subTabs: { id: number; name: string }[];
@@ -109,36 +186,15 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
     tabId: number,
     includesFixedComponentOverride?: boolean
   ): string => {
-    const saleableArea = parseFloat(config.saleableArea) || 0;
-    const psfRate = parseFloat(parseIndianCurrency(config.psfRate || "")) || 0;
-    const avRate = parseFloat(parseIndianCurrency(config.avRate || "")) || 0;
-    const fixedComponent = parseFloat(parseIndianCurrency(config.fixedComponent || "")) || 0;
-    const possessionCharges = parseFloat(parseIndianCurrency(config.possessionCharges || "")) || 0;
-    const legalCharges = parseFloat(parseIndianCurrency(formData.registration || "")) || 0;
-
-    if (saleableArea && avRate) {
-      const includesFixedComponent = typeof includesFixedComponentOverride === 'boolean'
-        ? includesFixedComponentOverride
-        : (subTabData[tabId]?.psfIncludesFixedComponent || false);
-      const projectStatus = subTabData[tabId]?.projectStatus || "";
-      const typology = config.typology || "";
-      
-      // Use the shared calculation function with EXACT SAME LOGIC AS HTML
-      const total = calculatePricingTotal({
-        saleableArea,
-        psfRate,
-        avRate,
-        fixedComponent,
-        possessionCharges,
-        legalCharges,
-        includesFixedComponent,
-        projectStatus,
-        typology
-      });
-      
-      return formatIndianCurrency(Math.round(total));
-    }
-    return "";
+    return calculateTotalPackageEnhanced(
+      config,
+      typeof includesFixedComponentOverride === 'boolean'
+        ? { ...subTabData[tabId], psfIncludesFixedComponent: includesFixedComponentOverride }
+        : subTabData[tabId],
+      formData,
+      parseIndianCurrency,
+      formatIndianCurrency
+    );
   };
 
   // Function to handle changes that require recalculation
@@ -155,10 +211,16 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
         [field]: value,
       };
 
-      // Recalculate total package when relevant fields change (include typology)
+      // Recalculate total package when relevant fields change (include typology) - Enhanced with HTML logic
       if (['saleableArea', 'psfRate', 'avRate', 'fixedComponent', 'possessionCharges', 'typology'].includes(field)) {
         const updatedConfig = newConfigs[configIndex];
-        newConfigs[configIndex].totalPackage = calculateTotalPackage(updatedConfig, tabId);
+        newConfigs[configIndex].totalPackage = calculateTotalPackageEnhanced(
+          updatedConfig,
+          prev[tabId],
+          formData,
+          parseIndianCurrency,
+          formatIndianCurrency
+        );
       }
 
       return {
@@ -182,11 +244,17 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
         },
       };
 
-      // Recalculate all total packages when checkbox changes
+      // Recalculate all total packages when checkbox changes - Enhanced with HTML logic
       const newConfigs = updatedData[tabId]?.pricingConfigs.map(config => ({
         ...config,
         // pass the new checkbox value so calculation uses the updated state immediately
-        totalPackage: calculateTotalPackage(config, tabId, value)
+        totalPackage: calculateTotalPackageEnhanced(
+          config,
+          { ...updatedData[tabId], [field]: value },
+          formData,
+          parseIndianCurrency,
+          formatIndianCurrency
+        )
       })) || [];
 
       return {
@@ -207,16 +275,14 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
         setIsLoadingReraData(true);
         try {
           const relatedProperties = await getCostSheetsByProjectName(formData.projectName);
-          console.log('Related properties found:', relatedProperties.length, relatedProperties);
-          
+
           // Group properties by unique RERA numbers
           const reraGroups = new Map();
           let tabIdCounter = 0;
           
           relatedProperties.forEach((property, index) => {
             const reraNumber = property.mahaReraNumber || `RERA-${index + 1}`;
-            console.log('Processing property:', property.id, 'RERA:', reraNumber);
-            
+
             // Check if this RERA number already exists
             let existingGroup = null;
             for (const [key, group] of reraGroups) {
@@ -283,12 +349,10 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
             if (newSubTabs.length > 0) {
               setActiveSubTab(newSubTabs[0].id);
             }
-            
-            console.log('Created tabs:', newSubTabs);
-            console.log('Tab data:', newSubTabData);
+
           }
         } catch (error) {
-          console.error('Error fetching RERA data:', error);
+          
         } finally {
           setIsLoadingReraData(false);
         }
@@ -401,11 +465,17 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                             },
                           }));
 
-                          // Recalculate totals when project type changes
+                          // Recalculate totals when project type changes - Enhanced with HTML logic
                           if (subTabData[tab.id]?.pricingConfigs) {
                             const newConfigs = subTabData[tab.id].pricingConfigs.map(config => ({
                               ...config,
-                              totalPackage: calculateTotalPackage(config, tab.id)
+                              totalPackage: calculateTotalPackageEnhanced(
+                                config,
+                                { ...subTabData[tab.id], type: newValue },
+                                formData,
+                                parseIndianCurrency,
+                                formatIndianCurrency
+                              )
                             }));
                             setSubTabData(prev => ({
                               ...prev,
@@ -443,11 +513,17 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                             },
                           }));
 
-                          // Recalculate totals when project status changes (affects GST)
+                          // Recalculate totals when project status changes (affects GST) - Enhanced with HTML logic
                           if (subTabData[tab.id]?.pricingConfigs) {
                             const newConfigs = subTabData[tab.id].pricingConfigs.map(config => ({
                               ...config,
-                              totalPackage: calculateTotalPackage(config, tab.id)
+                              totalPackage: calculateTotalPackageEnhanced(
+                                config,
+                                { ...subTabData[tab.id], projectStatus: newValue },
+                                formData,
+                                parseIndianCurrency,
+                                formatIndianCurrency
+                              )
                             }));
                             setSubTabData(prev => ({
                               ...prev,
@@ -752,6 +828,18 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                   e.target.value
                                 );
                                 handlePricingChange('fixedComponent', numericValue, tab.id, index);
+                                
+                                // Toggle Fixed Component checkbox visibility
+                                setTimeout(() => {
+                                  const checkboxLabel = document.getElementById(`fixedComponentCheckboxLabel_${tab.id}`);
+                                  if (checkboxLabel) {
+                                    const hasValue = (subTabData[tab.id]?.pricingConfigs || []).some(config => {
+                                      const cleanValue = parseIndianCurrency(config.fixedComponent || '').replace(/[^\d.]/g, '').trim();
+                                      return cleanValue && cleanValue !== '' && parseFloat(cleanValue) > 0;
+                                    });
+                                    checkboxLabel.style.display = hasValue ? 'flex' : 'none';
+                                  }
+                                }, 0);
                               }}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
@@ -774,36 +862,13 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           <div>
                             <input
                               type="text"
-                              value={(() => {
-                                const saleableArea = parseFloat(config.saleableArea) || 0;
-                                const psfRate = parseFloat(parseIndianCurrency(config.psfRate || "")) || 0;
-                                const avRate = parseFloat(parseIndianCurrency(config.avRate || "")) || 0;
-                                const fixedComponent = parseFloat(parseIndianCurrency(config.fixedComponent || "")) || 0;
-                                const possessionCharges = parseFloat(parseIndianCurrency(config.possessionCharges || "")) || 0;
-                                const legalCharges = parseFloat(parseIndianCurrency(formData.registration || "")) || 0;
-
-                                if (saleableArea && avRate) {
-                                  const includesFixedComponent = subTabData[tab.id]?.psfIncludesFixedComponent || false;
-                                  const projectStatus = subTabData[tab.id]?.projectStatus || "";
-                                  const typology = config.typology || "";
-                                  
-                                  // Use the shared calculation function with EXACT SAME LOGIC AS HTML
-                                  const total = calculatePricingTotal({
-                                    saleableArea,
-                                    psfRate,
-                                    avRate,
-                                    fixedComponent,
-                                    possessionCharges,
-                                    legalCharges,
-                                    includesFixedComponent,
-                                    projectStatus,
-                                    typology
-                                  });
-                                  
-                                  return formatIndianCurrency(Math.round(total));
-                                }
-                                return "";
-                              })()}
+                              value={calculateTotalPackageEnhanced(
+                                config,
+                                subTabData[tab.id],
+                                formData,
+                                parseIndianCurrency,
+                                formatIndianCurrency
+                              )}
                               disabled
                               onWheel={(e) => e.currentTarget.blur()}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm bg-neutral-100 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
@@ -956,16 +1021,25 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         onChange={(e) => handleCheckboxChange('psfIncludesParking', e.target.checked, tab.id)}
                         className="rounded"
                       />
-                      <span>Per Sq. Ft. Rate includes 'Parking'</span>
+                      <span>Per Sq. Ft. Rate includes <strong>'Parking'</strong></span>
                     </label>
-                    <label className="flex items-center gap-2 text-sm">
+                    <label 
+                      id={`fixedComponentCheckboxLabel_${tab.id}`}
+                      className="flex items-center gap-2 text-sm"
+                      style={{ 
+                        display: (subTabData[tab.id]?.pricingConfigs || []).some(config => {
+                          const cleanValue = parseIndianCurrency(config.fixedComponent || '').replace(/[^\d.]/g, '').trim();
+                          return cleanValue && cleanValue !== '' && parseFloat(cleanValue) > 0;
+                        }) ? 'flex' : 'none'
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={subTabData[tab.id]?.psfIncludesFixedComponent || false}
                         onChange={(e) => handleCheckboxChange('psfIncludesFixedComponent', e.target.checked, tab.id)}
                         className="rounded"
                       />
-                      <span>Per Sq. Ft. Rate includes 'Fixed Component'</span>
+                      <span>Per Sq. Ft. Rate includes <strong>'Fixed Component'</strong></span>
                     </label>
                   </div>
                   

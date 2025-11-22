@@ -16,7 +16,7 @@ export const usePropertyActions = () => {
       toast.success("Property approved!");
       return true;
     } catch (error) {
-      console.error("Approval error:", error);
+      
       toast.error("Failed to approve property - " + (error as Error).message);
       return false;
     } finally {
@@ -53,7 +53,7 @@ export const usePropertyActions = () => {
       toast.success("Property rejected!");
       return true;
     } catch (error) {
-      console.error("Rejection error:", error);
+      
       toast.error("Failed to reject property - " + (error as Error).message);
       return false;
     } finally {
@@ -120,7 +120,7 @@ export const usePropertyActions = () => {
       toast.success("Property approved successfully");
       return true;
     } catch (error) {
-      console.error("Error approving property:", error);
+      
       toast.error("Failed to approve property");
       return false;
     } finally {

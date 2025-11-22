@@ -271,7 +271,6 @@ ${configText}`;
 
     return message;
   } catch (err) {
-    console.error('generateMarketingMessage error', err);
     return '';
   }
 }

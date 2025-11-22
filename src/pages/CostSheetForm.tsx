@@ -149,6 +149,15 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       typologyImages: {},
       typologyVideos: {},
     });
+    setExistingMedia({
+      brochure: null,
+      elevationImages: [],
+      amenitiesImages: [],
+      floorPlanImages: [],
+      projectWalkthrough: [],
+      typologyImages: {},
+      typologyVideos: {},
+    });
     setPdfThumbnail(null);
     setSelectedStateCode("");
     setCities([]);
@@ -357,11 +366,11 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           const allSheets = await getAllCostSheets();
           setCostSheets(allSheets);
         } catch (error) {
-          console.error("Error syncing old cost sheets:", error);
+          
         }
       },
       (error) => {
-        console.error("Error listening to old cost sheets:", error);
+        
         toast.error(
           "Error syncing old data - " +
             (error instanceof Error ? error.message : String(error))
@@ -376,16 +385,16 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           const allSheets = await getAllCostSheets();
           setCostSheets(allSheets);
         } catch (error) {
-          console.error("Error syncing new cost sheets:", error);
+          
         }
       },
       (error) => {
-        console.error("Error listening to new cost sheets:", error);
+        
         toast.error(
           "Error syncing new data - " +
             (error instanceof Error ? error.message : String(error))
         );
-      }
+      } 
     );
 
     const fetchUserData = async () => {
@@ -396,7 +405,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           const userData = userSnap.exists() ? userSnap.data() : {};
           setCustomAmenities(userData.customAmenities || {});
         } catch (error) {
-          console.error("Error fetching user data:", error);
+          
         }
       }
     };
@@ -551,7 +560,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
               setCities(citiesData);
             })
             .catch((error) => {
-              console.error("Failed to load cities for edit:", error);
+              
             });
         }
       }
@@ -620,13 +629,17 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
             typologyVideos: editData.mediaFiles.typologyVideos || {},
           }));
         } catch (err) {
-          console.warn("Failed to map existing media for edit:", err);
+          
         }
       }
 
+      // Update the date when editing a property
+      const today = new Date().toISOString().split("T")[0];
+      
       setFormData({
         ...editData,
         locationHighlightTimes,
+        dateUpdateCostSheet: today,
       });
       setCurrentStep(0);
       // Note: Toast message is handled in the render condition to avoid duplicates
@@ -691,7 +704,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         const citiesData = await fetchCities(stateCode);
         setCities(citiesData);
       } catch (error) {
-        console.error("Failed to load cities:", error);
+        
         setCities([]);
       }
     } else {
@@ -1127,6 +1140,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         editedBy: user?.id || "",
         editedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        dateUpdateCostSheet: new Date().toISOString().split("T")[0],
       }),
       nextApprovalLevel: nextApprovalLevel || null,
       createdAt: formData.id ? formData.createdAt : new Date().toISOString(),
@@ -1173,8 +1187,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       })
     );
 
-    console.log("Final clean form data:", JSON.stringify(finalClean, null, 2));
-
     try {
       // Show upload progress
       toast.success("Uploading files...");
@@ -1191,7 +1203,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         
         if (isOldFormat) {
           // Migration: Create new document in TestingCostSheets
-          console.log("Migrating old format to TestingCostSheets:", JSON.stringify(updatedData, null, 2));
+
           await addCostSheet(updatedData);
           // Delete old format data
           if (formData.projectName) {
@@ -1199,7 +1211,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           }
         } else {
           // Update existing v2 document
-          console.log("Updating existing v2 document:", JSON.stringify(updatedData, null, 2));
+
           await updateCostSheet(formData.id as string, updatedData, "v2");
         }
         
@@ -1220,10 +1232,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         }
         toast.success("Property updated!");
       } else {
-        console.log(
-          "Adding to Firestore with data:",
-          JSON.stringify(finalClean, null, 2)
-        );
+
         await addCostSheet(finalClean);
         setCostSheets((prev) => [
           ...prev,
@@ -1255,7 +1264,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         setShowForm(false);
       }
     } catch (err) {
-      console.error("Form submission error:", err);
+      
       if (err instanceof Error && err.message.includes("storage")) {
         toast.error(
           "Failed to upload files. Please check your internet connection and try again."
@@ -1546,11 +1555,11 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       </div>
 
       {/* Professional Custom Amenity Modal */}
-      {console.log('Modal state:', { showAmenityModal, currentAmenityField })}
+
       <AmenityModal
         isOpen={showAmenityModal}
         onClose={() => {
-          console.log('Modal closing');
+
           setShowAmenityModal(false);
           setCustomAmenityInput(prev => ({ ...prev, [currentAmenityField]: "" }));
           setCurrentAmenityField("");
@@ -1572,5 +1581,4 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
 };
 
 export default CostSheetForm;
-
 

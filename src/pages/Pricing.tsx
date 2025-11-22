@@ -41,7 +41,7 @@ const Pricing = () => {
           setContactEmail(contact.email || "info@theestatex.com");
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        
       } finally {
         setLoading(false);
       }

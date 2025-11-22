@@ -152,7 +152,7 @@ export function generatePdfThumbnailFromFile() {
       await page.render({ canvasContext: context, viewport }).promise;
       return canvas.toDataURL();
     } catch (error) {
-      console.error("PDF thumbnail generation failed:", error);
+      
       return null;
     }
   };
@@ -230,7 +230,7 @@ export function fetchCostSheetStations(
           } catch (error) {}
         }
       } catch (error) {
-        console.error("Error fetching resale/rental stations:", error);
+        
       }
 
       const additionalLocationOptions = Array.from(additionalLocations)
@@ -244,7 +244,7 @@ export function fetchCostSheetStations(
 
       setStationOptions(allLocationOptions);
     } catch (error) {
-      console.error("Error fetching station options:", error);
+      
     }
   };
 }

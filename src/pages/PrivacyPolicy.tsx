@@ -17,7 +17,7 @@ const PrivacyPolicy = () => {
           setContactAddress(contact.address || "123 Real Estate Avenue, Mumbai, Maharashtra 400001");
         }
       } catch (error) {
-        console.error("Error fetching contact info:", error);
+        
       }
     };
 

@@ -120,7 +120,7 @@ const Subscription = () => {
       await reloadUser();
       toast.success('Free trial activated successfully!');
     } catch (error) {
-      console.error('Error activating free trial:', error);
+      
       toast.error('Failed to activate free trial');
     } finally {
       setIsProcessing(false);
@@ -241,7 +241,7 @@ const Subscription = () => {
 
       setStationsLoaded(true);
     } catch (error) {
-      console.error("Error fetching available stations:", error);
+      
       setStationsLoaded(true);
     }
   };
@@ -560,7 +560,7 @@ const Subscription = () => {
               setShowCheckout(false);
               navigate("/dashboard");
             } catch (error) {
-              console.error("Payment completion failed:", error);
+              
               toast.error("Payment processing failed. Please contact support.");
             } finally {
               setIsProcessing(false);
@@ -584,7 +584,7 @@ const Subscription = () => {
       }
     } catch (error) {
       toast.error("Failed to process subscription");
-      console.error("Subscription error:", error);
+      
       setIsProcessing(false);
     }
   };
@@ -968,7 +968,7 @@ const Subscription = () => {
                             );
                             navigate("/dashboard");
                           } catch (error) {
-                            console.error("Payment completion failed:", error);
+                            
                             toast.error(
                               "Payment processing failed. Please contact support."
                             );
@@ -994,7 +994,7 @@ const Subscription = () => {
                       rzp.open();
                     } catch (error) {
                       toast.error("Failed to process subscription");
-                      console.error("Subscription error:", error);
+                      
                       setIsProcessing(false);
                     }
                   } else {

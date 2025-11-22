@@ -404,7 +404,7 @@ const Admin = () => {
               setCities(citiesData);
             })
             .catch((error) => {
-              console.error("Failed to load cities for edit:", error);
+              
             });
         });
       }
@@ -523,7 +523,7 @@ const Admin = () => {
       // Refresh data
       window.location.reload();
     } catch (error) {
-      console.error("Error updating rental property:", error);
+      
       toast.error("Failed to update property. Please try again.");
     } finally {
       setActionLoading(false);
@@ -566,7 +566,7 @@ const Admin = () => {
               setCities(citiesData);
             })
             .catch((error) => {
-              console.error("Failed to load cities for edit:", error);
+              
             });
         });
       }
@@ -655,7 +655,7 @@ const Admin = () => {
       // Refresh data
       window.location.reload();
     } catch (error) {
-      console.error("Error updating resale property:", error);
+      
       toast.error("Failed to update property. Please try again.");
     } finally {
       setActionLoading(false);
@@ -801,7 +801,7 @@ const Admin = () => {
                       const citiesData = await fetchCities(stateCode);
                       setCities(citiesData);
                     } catch (error) {
-                      console.error("Failed to load cities:", error);
+                      
                       setCities([]);
                     }
                   } else {
@@ -1243,7 +1243,7 @@ const Admin = () => {
 
       // Fetch from costSheets
       const costSheetsSnap = await getDocs(collection(db, "costSheets"));
-      //console.log(`Fetched ${costSheetsSnap.size} costSheets documents`);
+      //
 
       costSheetsSnap.forEach((doc) => {
         const data = doc.data();
@@ -1256,7 +1256,7 @@ const Admin = () => {
         if (data.availableStations?.length) {
           data.availableStations.forEach((station: string) => {
             const normalized = normalizeStationName(station).toLowerCase();
-            //console.log(`   -> ${station} -> Normalized: ${normalized}`);
+            //
             availableStations.add(normalized);
           });
         }
@@ -1312,7 +1312,7 @@ const Admin = () => {
 
       setCostSheetStationsLoaded(true);
     } catch (error) {
-      console.error("Error fetching cost sheet stations:", error);
+      
       setCostSheetStationsLoaded(true);
     }
   };
@@ -1407,7 +1407,7 @@ const Admin = () => {
             }));
           },
           (error) => {
-            console.error("Error listening to cost sheets:", error);
+            
           }
         );
 
@@ -1428,7 +1428,7 @@ const Admin = () => {
           newProperties: allNewProperties,
         });
       } catch (error) {
-        console.error("Error fetching admin data:", error);
+        
         toast.error("Failed to fetch admin data. Please try again later.");
       } finally {
         setLoading(false);
@@ -1456,7 +1456,7 @@ const Admin = () => {
         const statesData = await fetchStates();
         setStates(statesData);
       } catch (error) {
-        console.error("Failed to load states:", error);
+        
       }
     };
     loadStates();
@@ -2172,7 +2172,7 @@ const Admin = () => {
 
       toast.success("Property approved!");
     } catch (error) {
-      console.error("Approval error:", error);
+      
       toast.error("Failed to approve property - " + (error as Error).message);
     } finally {
       setActionLoading(false);
@@ -2267,7 +2267,7 @@ const Admin = () => {
         toast.success("Property rejected!");
       }
     } catch (error) {
-      console.error("Rejection error:", error);
+      
       toast.error("Failed to reject property - " + (error as Error).message);
     } finally {
       setActionLoading(false);
@@ -2364,24 +2364,13 @@ const Admin = () => {
         }
 
         if (!property) {
-          console.log(
-            "Property not found. PropertyId:",
-            propertyId,
-            "Category:",
-            category
-          );
-          console.log(
-            "Available properties:",
-            category === "resale"
-              ? rejectedProperties.resale
-              : rejectedProperties.rental
-          );
+
           toast.error("Property not found");
           return;
         }
 
         if (!property.userId) {
-          console.log("Property found but missing userId:", property);
+          
           toast.error("Property missing user information");
           return;
         }
@@ -2444,7 +2433,7 @@ const Admin = () => {
 
       toast.success("Property approved successfully");
     } catch (error) {
-      console.error("Error approving property:", error);
+      
       toast.error("Failed to approve property");
     } finally {
       setActionLoading(false);
@@ -2568,7 +2557,7 @@ const Admin = () => {
       setRates(updatedRates);
     } catch (err) {
       toast.error("Failed to save rate");
-      console.error(err);
+      
     }
   };
 
@@ -2583,7 +2572,7 @@ const Admin = () => {
       const updatedRates = await getStampDutyRates();
       setRates(updatedRates);
     } catch (error) {
-      console.error("Failed to delete rate:", error);
+      
       toast.error("Failed to delete stamp duty rate");
     }
   };
@@ -2695,7 +2684,7 @@ const Admin = () => {
 
       setUserSubscriptions(subscriptions as SubscriptionInfo[]);
     } catch (error) {
-      console.error("Error fetching subscriptions:", error);
+      
       toast.error("Failed to load subscriptions");
     } finally {
       setLoadingSubscriptions(false);
@@ -6028,10 +6017,7 @@ const Admin = () => {
                                     );
                                   } catch (error) {
                                     toast.error(`Failed to update discounts`);
-                                    console.error(
-                                      "Error updating discounts:",
-                                      error
-                                    );
+                                    
                                   }
                                 }}
                                 className="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white text-xs py-2"
@@ -6445,8 +6431,7 @@ const Admin = () => {
       return;
     setActionLoading(true);
     try {
-      console.log("Saving property:", editedProperty);
-      
+
       // Clean up the property data - remove UI-specific fields
       const { category, ...propertyData } = editedProperty;
       
@@ -6486,8 +6471,6 @@ const Admin = () => {
         };
       }
 
-      console.log("Processed data:", processedData);
-
       // Use the appropriate update function based on category
       if (category === "resale") {
         await updateResaleProperty(
@@ -6514,7 +6497,7 @@ const Admin = () => {
 
       cancelEditProperty();
     } catch (error) {
-      console.error("Error updating property:", error);
+      
       toast.error(
         `Failed to update property: ${
           error && typeof error === "object" && "message" in error
@@ -7478,10 +7461,7 @@ const Admin = () => {
                                   "Property unapproved successfully!"
                                 );
                               } catch (error) {
-                                console.error(
-                                  "Error unapproving property:",
-                                  error
-                                );
+                                
                                 toast.error("Failed to unapprove property");
                               } finally {
                                 setActionLoading(false);

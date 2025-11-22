@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { Check, X, Users, Briefcase, Eye, Edit, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -410,7 +410,7 @@ const Admin = () => {
               setCities(citiesData);
             })
             .catch((error) => {
-              console.error("Failed to load cities for edit:", error);
+              
             });
         });
       }
@@ -529,7 +529,7 @@ const Admin = () => {
       // Refresh data
       window.location.reload();
     } catch (error) {
-      console.error("Error updating rental property:", error);
+      
       toast.error("Failed to update property. Please try again.");
     } finally {
       setActionLoading(false);
@@ -572,7 +572,7 @@ const Admin = () => {
               setCities(citiesData);
             })
             .catch((error) => {
-              console.error("Failed to load cities for edit:", error);
+              
             });
         });
       }
@@ -661,7 +661,7 @@ const Admin = () => {
       // Refresh data
       window.location.reload();
     } catch (error) {
-      console.error("Error updating resale property:", error);
+      
       toast.error("Failed to update property. Please try again.");
     } finally {
       setActionLoading(false);
@@ -807,7 +807,7 @@ const Admin = () => {
                       const citiesData = await fetchCities(stateCode);
                       setCities(citiesData);
                     } catch (error) {
-                      console.error("Failed to load cities:", error);
+                      
                       setCities([]);
                     }
                   } else {
@@ -1249,7 +1249,6 @@ const Admin = () => {
 
       // Fetch from costSheets
       const costSheetsSnap = await getDocs(collection(db, "costSheets"));
-      //console.log(`Fetched ${costSheetsSnap.size} costSheets documents`);
 
       costSheetsSnap.forEach((doc) => {
         const data = doc.data();
@@ -1262,7 +1261,7 @@ const Admin = () => {
         if (data.availableStations?.length) {
           data.availableStations.forEach((station: string) => {
             const normalized = normalizeStationName(station).toLowerCase();
-            //console.log(`   -> ${station} -> Normalized: ${normalized}`);
+
             availableStations.add(normalized);
           });
         }
@@ -1318,7 +1317,7 @@ const Admin = () => {
 
       setCostSheetStationsLoaded(true);
     } catch (error) {
-      console.error("Error fetching cost sheet stations:", error);
+      
       setCostSheetStationsLoaded(true);
     }
   };
@@ -1413,7 +1412,7 @@ const Admin = () => {
             }));
           },
           (error) => {
-            console.error("Error listening to cost sheets:", error);
+            
           }
         );
 
@@ -1434,7 +1433,7 @@ const Admin = () => {
           newProperties: allNewProperties,
         });
       } catch (error) {
-        console.error("Error fetching admin data:", error);
+        
         toast.error("Failed to fetch admin data. Please try again later.");
       } finally {
         setLoading(false);
@@ -1462,7 +1461,7 @@ const Admin = () => {
         const statesData = await fetchStates();
         setStates(statesData);
       } catch (error) {
-        console.error("Failed to load states:", error);
+        
       }
     };
     loadStates();
@@ -2178,7 +2177,7 @@ const Admin = () => {
 
       toast.success("Property approved!");
     } catch (error) {
-      console.error("Approval error:", error);
+      
       toast.error("Failed to approve property - " + (error as Error).message);
     } finally {
       setActionLoading(false);
@@ -2273,7 +2272,7 @@ const Admin = () => {
         toast.success("Property rejected!");
       }
     } catch (error) {
-      console.error("Rejection error:", error);
+      
       toast.error("Failed to reject property - " + (error as Error).message);
     } finally {
       setActionLoading(false);
@@ -2370,24 +2369,13 @@ const Admin = () => {
         }
 
         if (!property) {
-          console.log(
-            "Property not found. PropertyId:",
-            propertyId,
-            "Category:",
-            category
-          );
-          console.log(
-            "Available properties:",
-            category === "resale"
-              ? rejectedProperties.resale
-              : rejectedProperties.rental
-          );
+
           toast.error("Property not found");
           return;
         }
 
         if (!property.userId) {
-          console.log("Property found but missing userId:", property);
+
           toast.error("Property missing user information");
           return;
         }
@@ -2450,7 +2438,7 @@ const Admin = () => {
 
       toast.success("Property approved successfully");
     } catch (error) {
-      console.error("Error approving property:", error);
+      
       toast.error("Failed to approve property");
     } finally {
       setActionLoading(false);
@@ -2553,14 +2541,14 @@ const Admin = () => {
           return;
         }
 
-        // âœï¸ Update only if rate differs
+        // ✏️ Update only if rate differs
         await updateDoc(doc(db, "stampDutyRates", existingDoc.id), {
           jurisdiction: formattedJurisdiction,
           rate: newRate.rate,
         });
         toast.success("Stamp Duty rate updated!");
       } else {
-        // âž• Add new
+        // ➕ Add new
         const ref = doc(collection(db, "stampDutyRates"));
         await setDoc(ref, {
           jurisdiction: formattedJurisdiction,
@@ -2574,7 +2562,7 @@ const Admin = () => {
       setRates(updatedRates);
     } catch (err) {
       toast.error("Failed to save rate");
-      console.error(err);
+      
     }
   };
 
@@ -2589,7 +2577,7 @@ const Admin = () => {
       const updatedRates = await getStampDutyRates();
       setRates(updatedRates);
     } catch (error) {
-      console.error("Failed to delete rate:", error);
+      
       toast.error("Failed to delete stamp duty rate");
     }
   };
@@ -2679,7 +2667,7 @@ const Admin = () => {
     try {
       setLoadingSubscriptions(true);
 
-      // ðŸ”¥ Correct subcollection path
+      // 🔥 Correct subcollection path
       const subscriptionsRef = collection(db, `users/${userId}/subscriptions`);
       const querySnapshot = await getDocs(subscriptionsRef);
 
@@ -2702,7 +2690,7 @@ const Admin = () => {
 
       setUserSubscriptions(subscriptions as SubscriptionInfo[]);
     } catch (error) {
-      console.error("Error fetching subscriptions:", error);
+      
       toast.error("Failed to load subscriptions");
     } finally {
       setLoadingSubscriptions(false);
@@ -3047,8 +3035,7 @@ const Admin = () => {
                                                   </td>
                                                   <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
                                                     <div className="text-sm font-semibold text-neutral-900">
-                                                      ₹
-                                                      {property.expectedPrice?.toLocaleString(
+                                                      ₹{property.expectedPrice?.toLocaleString(
                                                         "en-IN"
                                                       )}
                                                     </div>
@@ -3441,8 +3428,7 @@ const Admin = () => {
                                                   </td>
                                                   <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
                                                     <div className="text-sm font-semibold text-neutral-900">
-                                                      ₹
-                                                      {property.rent?.toLocaleString(
+                                                      ₹{property.rent?.toLocaleString(
                                                         "en-IN"
                                                       )}
                                                     </div>
@@ -4203,8 +4189,7 @@ const Admin = () => {
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
                                                   <div className="text-sm font-semibold text-green-600">
-                                                    ₹
-                                                    {property.expectedPrice?.toLocaleString(
+                                                    ₹{property.expectedPrice?.toLocaleString(
                                                       "en-IN"
                                                     )}
                                                   </div>
@@ -4495,7 +4480,7 @@ const Admin = () => {
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
                                                   <div className="text-sm font-semibold text-green-600">
-                                                    ₹
+                                                    ?
                                                     {property.rent?.toLocaleString(
                                                       "en-IN"
                                                     )}
@@ -5143,7 +5128,7 @@ const Admin = () => {
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
                                                   <div className="text-sm font-semibold text-neutral-900">
-                                                    ₹
+                                                    ?
                                                     {property.expectedPrice?.toLocaleString(
                                                       "en-IN"
                                                     )}
@@ -5468,7 +5453,7 @@ const Admin = () => {
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
                                                   <div className="text-sm font-semibold text-neutral-900">
-                                                    ₹
+                                                    ?
                                                     {property.rent?.toLocaleString(
                                                       "en-IN"
                                                     )}
@@ -6068,10 +6053,7 @@ const Admin = () => {
                                     await getUserResaleProperties(user.id);
                                   setModalProperties(properties);
                                 } catch (error) {
-                                  console.error(
-                                    "Error fetching resale properties:",
-                                    error
-                                  );
+                                  
                                   setModalProperties([]);
                                 } finally {
                                   setModalLoading(false);
@@ -6100,10 +6082,7 @@ const Admin = () => {
                                     await getUserRentalProperties(user.id);
                                   setModalProperties(properties);
                                 } catch (error) {
-                                  console.error(
-                                    "Error fetching rental properties:",
-                                    error
-                                  );
+                                  
                                   setModalProperties([]);
                                 } finally {
                                   setModalLoading(false);
@@ -6175,7 +6154,7 @@ const Admin = () => {
                       }}
                       className="text-gray-500 hover:text-gray-700"
                     >
-                      ✕
+                      ?
                     </button>
                   </div>
                   <div className="flex-1 overflow-auto p-4">
@@ -6249,7 +6228,7 @@ const Admin = () => {
                                         {isResale ? (
                                           <div>
                                             <div className="font-medium">
-                                              ₹
+                                              ?
                                               {(
                                                 property.expectedPrice / 100000
                                               ).toFixed(1)}
@@ -6367,7 +6346,7 @@ const Admin = () => {
                 tabs={[
                   {
                     id: "rental-resale",
-                    label: "📊 Rental & Resale",
+                    label: "₹₹ Rental & Resale",
                     content: (
                       <div>
                         <div className="border-l-4 border-green-500 pl-4 mb-6">
@@ -6389,13 +6368,13 @@ const Admin = () => {
                                     </div>
                                     <div className="flex items-center gap-3">
                                       <span className="text-lg font-bold text-neutral-700 line-through">
-                                        ₹
+                                        ?
                                         {currentPricing.actualPrice.RR.toLocaleString(
                                           "en-IN"
                                         )}
                                       </span>
                                       <span className="text-xl font-bold text-green-600">
-                                        ₹
+                                        ?
                                         {currentPricing.discountedPrice.RR.toLocaleString(
                                           "en-IN"
                                         )}
@@ -6572,14 +6551,14 @@ const Admin = () => {
                           }}
                           className="w-full md:w-auto"
                         >
-                          💾 Save Rental & Resale Pricing
+                          ₹₹ Save Rental & Resale Pricing
                         </Button>
                       </div>
                     ),
                   },
                   {
                     id: "new-property",
-                    label: "🏢 New Property",
+                    label: "₹₹ New Property",
                     content: (
                       <div className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -6698,7 +6677,7 @@ const Admin = () => {
                             <div className="bg-neutral-50 rounded-lg p-4 border">
                               <h5 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
                                 <span className="w-6 h-6 bg-neutral-600 rounded-full flex items-center justify-center text-white text-xs">
-                                  ✏️
+                                  ??
                                 </span>
                                 Quick Edit Pricing
                               </h5>
@@ -6964,10 +6943,7 @@ const Admin = () => {
                                     );
                                   } catch (error) {
                                     toast.error(`Failed to update discounts`);
-                                    console.error(
-                                      "Error updating discounts:",
-                                      error
-                                    );
+                                    
                                   }
                                 }}
                                 className="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white text-xs py-2"
@@ -6983,7 +6959,7 @@ const Admin = () => {
                               <div className="p-4 border-b border-neutral-200">
                                 <h5 className="font-semibold text-neutral-800 flex items-center gap-2">
                                   <span className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white text-xs">
-                                    📋
+                                    ??
                                   </span>
                                   All {getDynamicCostSheetStationCount()}{" "}
                                   Stations
@@ -7163,14 +7139,12 @@ const Admin = () => {
                                             </div>
                                           </td>
                                           <td className="px-3 py-2 text-sm text-neutral-600">
-                                            ₹
-                                            {stationPricing?.actual?.toLocaleString(
+                                            ₹{stationPricing?.actual?.toLocaleString(
                                               "en-IN"
                                             ) || 0}
                                           </td>
                                           <td className="px-3 py-2 text-sm font-semibold text-green-600">
-                                            ₹
-                                            {stationPricing?.offer?.toLocaleString(
+                                            ₹{stationPricing?.offer?.toLocaleString(
                                               "en-IN"
                                             ) || 0}
                                           </td>
@@ -7220,7 +7194,7 @@ const Admin = () => {
           <Card className="p-6 rounded-2xl shadow-md border border-neutral-200 bg-white">
             <div className="mb-6">
               <h3 className="text-2xl font-semibold text-neutral-800">
-                🧾 Manage Stamp Duty Rates
+                ₹₹ Manage Stamp Duty Rates
               </h3>
               <p className="text-sm text-neutral-500 mt-1">
                 Add or update stamp duty rates based on station-wise
@@ -7266,14 +7240,14 @@ const Admin = () => {
                 onClick={handleAddRate}
                 className="px-6 py-2 text-sm font-medium rounded-lg"
               >
-                ➕ Add / Update Rate
+                ₹ Add / Update Rate
               </Button>
             </div>
 
             {rates.length > 0 && (
               <div className="mt-8">
                 <h4 className="text-lg font-semibold text-neutral-700 mb-3">
-                  📋 Existing Rates
+                  ₹₹ Existing Rates
                 </h4>
                 <ul className="space-y-2">
                   {rates.map((rate) => (
@@ -7298,13 +7272,13 @@ const Admin = () => {
                           }
                           className="text-blue-500 hover:underline text-xs"
                         >
-                          ✏️ Edit
+                          ₹₹ Edit
                         </button>
                         <button
                           onClick={() => handleDeleteRate(rate.id)}
                           className="text-red-500 hover:underline text-xs"
                         >
-                          🗑️ Delete
+                          ₹₹₹ Delete
                         </button>
                       </div>
                     </li>
@@ -7636,7 +7610,7 @@ const Admin = () => {
               }}
               className="absolute top-6 right-6 text-gray-500 hover:text-red-500 text-xl z-20 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-md"
             >
-              ×
+              �
             </button>
 
             {showPropertyDetails &&
@@ -8423,10 +8397,7 @@ const Admin = () => {
                                   "Property unapproved successfully!"
                                 );
                               } catch (error) {
-                                console.error(
-                                  "Error unapproving property:",
-                                  error
-                                );
+                                
                                 toast.error("Failed to unapprove property");
                               } finally {
                                 setActionLoading(false);
@@ -8588,7 +8559,7 @@ const Admin = () => {
                           />
                           <Input
                             id="expectedRent"
-                            label="Expected Rent (₹)"
+                            label="Expected Rent (?)"
                             type="text"
                             {...registerRental("expectedRent", {
                               required: "Expected rent is required",
@@ -8596,7 +8567,7 @@ const Admin = () => {
                           />
                           <Input
                             id="securityDeposit"
-                            label="Security Deposit (₹)"
+                            label="Security Deposit (?)"
                             type="text"
                             {...registerRental("securityDeposit", {
                               required: "Security deposit is required",
@@ -8838,7 +8809,7 @@ const Admin = () => {
                           />
                           <Input
                             id="expectedPrice"
-                            label="Expected Price (₹)"
+                            label="Expected Price (?)"
                             type="text"
                             {...registerResale("expectedPrice", {
                               required: "Expected price is required",
@@ -8870,7 +8841,7 @@ const Admin = () => {
                           />
                           <Input
                             id="maintenance"
-                            label="Maintenance (₹)"
+                            label="Maintenance (?)"
                             type="text"
                             {...registerResale("maintenance")}
                           />

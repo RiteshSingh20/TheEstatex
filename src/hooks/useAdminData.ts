@@ -46,7 +46,7 @@ export const useAdminData = () => {
 
       setUserSubscriptions(subscriptions);
     } catch (error) {
-      console.error("Error fetching subscriptions:", error);
+      
       toast.error("Failed to load subscriptions");
     } finally {
       setLoadingSubscriptions(false);
@@ -122,7 +122,7 @@ export const useAdminData = () => {
             }));
           },
           (error) => {
-            console.error("Error listening to cost sheets:", error);
+            
           }
         );
 
@@ -142,7 +142,7 @@ export const useAdminData = () => {
           newProperties: allNewProperties,
         });
       } catch (error) {
-        console.error("Error fetching admin data:", error);
+        
         toast.error("Failed to fetch admin data. Please try again later.");
       } finally {
         setLoading(false);

@@ -346,7 +346,27 @@ export function handleEditPropertyForm(
                           siteHeads,
                           setSiteHeads,
                           sourcingManagers,
-                          setSourcingManagers
+                          setSourcingManagers,
+                          mediaFiles,
+                          setMediaFiles,
+                          // Get unique typologies from subTabData
+                          Array.from(new Set(
+                            Object.values(subTabData || {}).flatMap((tab: any) => 
+                              (tab?.pricingConfigs || []).map((config: any) => config.typology).filter(Boolean)
+                            )
+                          )),
+                          formData,
+                          subTabData,
+                          paymentSchemes,
+                          // Extract highlights from formData
+                          formData.locationHighlights ? 
+                            Object.entries(formData.locationHighlights || {}).map(([key, value]) => 
+                              `${key} - ${value}`
+                            ) : [],
+                          // Extract project amenities from formData
+                          formData.projectAmenities || [],
+                          // Extract apartment amenities from formData
+                          formData.apartmentAmenities || []
                         )}
                         {currentStepEditTabMediaUpload(
                           setMediaFiles,

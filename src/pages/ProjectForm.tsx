@@ -758,7 +758,6 @@ Price range : *₹${(minPrice/100000).toFixed(2)} L* to *₹${(maxPrice/10000000
 
   const handleSubmit = (e: any) => {
     e.preventDefault();
-    console.log('Form Data:', { formData, sections });
     alert('Project saved successfully!');
   };
 

@@ -29,10 +29,15 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <label
             htmlFor={id}
             className="block text-sm font-medium text-neutral-700 mb-1"
-            dangerouslySetInnerHTML={{
-              __html: label.replace(/\*/g, '<span class="text-red-500">*</span>')
-            }}
-          />
+          >
+            {typeof label === 'string' ? (
+              <span dangerouslySetInnerHTML={{
+                __html: label.replace(/\*/g, '<span class="text-red-500">*</span>')
+              }} />
+            ) : (
+              label
+            )}
+          </label>
         )}
         <div className="relative">
           <input

@@ -108,7 +108,7 @@ export function currentStepEditTab3(
       toast.success('Marketing message generated successfully!');
       
     } catch (error) {
-      console.error('Error generating marketing message:', error);
+      
       toast.error('Error generating message. Please check your form data.');
     }
   };
@@ -715,7 +715,7 @@ export function currentStepEditTab3(
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('Button clicked for field:', field.id);
+
                         setCurrentAmenityField(field.id);
                         setShowAmenityModal(true);
                       }}

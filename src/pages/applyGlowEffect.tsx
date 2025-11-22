@@ -87,7 +87,7 @@ export function initializeStampRatesAndStates(
         }));
         setStampRates(rates);
       } catch (error) {
-        console.error("Error fetching stamp duty rates:", error);
+        
       }
     };
 
@@ -103,11 +103,11 @@ export function initializeStampRatesAndStates(
           );
           if (stateObj) {
             setSelectedStateCode(stateObj.iso2);
-            fetchCities(stateObj.iso2).then(setCities).catch(console.error);
+            fetchCities(stateObj.iso2).then(setCities).catch(() => {});
           }
         }
       } catch (error) {
-        console.error("Failed to load states:", error);
+        
       }
     };
 

@@ -12,7 +12,7 @@ const BannerVertical: React.FC<BannerVerticalProps> = ({ banners }) => {
     if (banners.length > 1) {
       const interval = setInterval(() => {
         setCurrentIndex((prev) => {
-          console.log('BannerVertical interval - prev:', prev);
+
           return (prev + 1) % banners.length;
         });
       }, 5000);
@@ -20,8 +20,7 @@ const BannerVertical: React.FC<BannerVerticalProps> = ({ banners }) => {
     }
   }, [banners.length]);
 
-  console.log('BannerVertical render - banners:', banners);
-  console.log('BannerVertical render - currentIndex:', currentIndex);
+
 
   if (banners.length === 0) {
     return null;

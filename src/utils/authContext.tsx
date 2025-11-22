@@ -99,18 +99,15 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
             // Only sign out if this is a fresh login attempt, not during updates
             const isRecentSignup = localStorage.getItem('justSignedUp');
             if (!isRecentSignup) {
-              console.warn('User document not found after retries, signing out for safety');
               await signOut(auth);
               setUser(null);
               Cookies.remove("userId");
               Cookies.remove("isAdmin");
             } else {
-              // For recent signups, keep user logged in but show warning
-              console.warn('User document not found but recent signup detected, keeping user logged in');
+              // For recent signups, keep user logged in
             }
           }
         } catch (error: unknown) {
-          console.error("Firestore getDoc error:", error);
           // Don't automatically sign out on network errors during updates
           const isRecentSignup = localStorage.getItem('justSignedUp');
           if (!isRecentSignup) {
@@ -132,8 +129,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
-
-
   // Signup: create Firebase user, Firestore doc, and set context
   const signup = async (userData: User): Promise<boolean> => {
     try {
@@ -145,7 +140,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       await updateProfile(firebaseUser, {
         displayName: userData.fullName,
       });
-      console.log("Creating user doc for UID:", firebaseUser.uid);
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await setDoc(userDocRef, {
         fullName: userData.fullName,
@@ -186,7 +180,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       return true;
     } catch (error: unknown) {
-      console.error("Signup error:", error);
       if (
         typeof error === "object" &&
         error !== null &&
@@ -212,7 +205,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       // onAuthStateChanged will set user and cookies
       return true;
     } catch (error: unknown) {
-      console.error("Login error:", error);
       // Only show generic error for actual authentication failures
       if (typeof error === "object" && error !== null && "code" in error) {
         const errorCode = (error as { code?: string }).code;
@@ -237,7 +229,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       Cookies.remove("isAdmin");
       localStorage.removeItem("justSignedUp");
     } catch (error: unknown) {
-      console.error("Logout error:", error);
       toast.error(
         typeof error === "object" && error !== null && "message" in error
           ? (error as { message?: string }).message ||
@@ -277,7 +268,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       await reloadUser();
       Cookies.set("isAdmin", userData.isAdmin ? "true" : "false");
     } catch (error: unknown) {
-      console.error("Update error:", error);
       if (error instanceof Error) {
         toast.error(
           error.message || "Failed to update profile. Please try again."
@@ -324,7 +314,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         setUser(freshUserData);
       }
     } catch (error) {
-      console.error("Failed to reload user data:", error);
       // Don't throw error to prevent auth context from signing out user
     }
   };
@@ -340,7 +329,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
       toast.success("Password reset email sent! Please check your inbox and spam folder.");
     } catch (error: unknown) {
-      console.error("Password reset error:", error);
       
       if (error instanceof Error) {
         const errorCode = (error as any).code;
@@ -372,7 +360,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       const querySnapshot = await getDocs(q);
       return !querySnapshot.empty;
     } catch (error) {
-      console.error("Error checking phone:", error);
       return false;
     }
   };

@@ -124,14 +124,12 @@ const PricingTab = ({
                               </div>
                               <div className="flex items-center gap-3">
                                 <span className="text-lg font-bold text-neutral-700 line-through">
-                                  ₹
-                                  {currentPricing.actualPrice.RR.toLocaleString(
+                                  ₹{currentPricing.actualPrice.RR.toLocaleString(
                                     "en-IN"
                                   )}
                                 </span>
                                 <span className="text-xl font-bold text-green-600">
-                                  ₹
-                                  {currentPricing.discountedPrice.RR.toLocaleString(
+                                  ₹{currentPricing.discountedPrice.RR.toLocaleString(
                                     "en-IN"
                                   )}
                                 </span>
@@ -148,8 +146,7 @@ const PricingTab = ({
                                 % OFF
                               </div>
                               <div className="text-xs text-neutral-500 mt-1">
-                                You save ₹
-                                {(
+                                You save ₹{(
                                   currentPricing.actualPrice.RR -
                                   currentPricing.discountedPrice.RR
                                 ).toLocaleString("en-IN")}
@@ -245,8 +242,7 @@ const PricingTab = ({
                     {pricing.actualPrice && pricing.offerPrice && (
                       <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-sm text-green-800">
-                          <strong>Preview:</strong> Customers will see "₹
-                          {pricing.offerPrice.toLocaleString("en-IN")} per year"
+                          <strong>Preview:</strong> Customers will see "₹{pricing.offerPrice.toLocaleString("en-IN")} per year"
                           {pricing.discount &&
                             ` (${
                               pricing.discount
@@ -774,14 +770,12 @@ const PricingTab = ({
                                       </div>
                                     </td>
                                     <td className="px-3 py-2 text-sm text-neutral-600">
-                                      ₹
-                                      {stationPricing?.actual?.toLocaleString(
+                                      ₹{stationPricing?.actual?.toLocaleString(
                                         "en-IN"
                                       ) || 0}
                                     </td>
                                     <td className="px-3 py-2 text-sm font-semibold text-green-600">
-                                      ₹
-                                      {stationPricing?.offer?.toLocaleString(
+                                      ₹{stationPricing?.offer?.toLocaleString(
                                         "en-IN"
                                       ) || 0}
                                     </td>

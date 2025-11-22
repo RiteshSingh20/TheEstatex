@@ -90,7 +90,6 @@ export const fetchStationsByPincode = async (pincode: string) => {
     }
     return [];
   } catch (error) {
-    console.error("Error fetching stations by pincode:", error);
     return [];
   }
 };
@@ -109,7 +108,6 @@ export const fetchStates = async (): Promise<State[]> => {
     );
     return response.data;
   } catch (error) {
-    console.error("Error fetching states:", error);
     return [];
   }
 };
@@ -128,7 +126,6 @@ export const fetchCities = async (stateCode: string): Promise<City[]> => {
     );
     return response.data;
   } catch (error) {
-    console.error("Error fetching cities:", error);
     return [];
   }
 };
@@ -136,12 +133,10 @@ export const fetchCities = async (stateCode: string): Promise<City[]> => {
 // API to fetch district and state by pincode
 export const fetchLocationByPincode = async (pincode: string) => {
   try {
-    console.log(`API call for pincode: ${pincode}`);
     const response = await fetch(
       `https://api.postalpincode.in/pincode/${pincode}`
     );
     const data = await response.json();
-    console.log('API response:', data);
 
     if (
       data?.[0]?.Status === "Success" &&
@@ -149,16 +144,13 @@ export const fetchLocationByPincode = async (pincode: string) => {
       data[0].PostOffice.length > 0
     ) {
       const postOffice = data[0].PostOffice[0];
-      console.log('PostOffice data:', postOffice);
       return {
         district: postOffice.District,
         state: postOffice.State,
       };
     }
-    console.log('No valid data found in response');
     return { district: "", state: "" };
   } catch (error) {
-    console.error("Error fetching location by pincode:", error);
     return { district: "", state: "" };
   }
 };
@@ -174,7 +166,6 @@ export const fetchBanners = async (locations: string[]): Promise<Banner[]> => {
     );
     return response.data;
   } catch (error) {
-    console.error("Error fetching banners:", error);
     return [];
   }
 };
