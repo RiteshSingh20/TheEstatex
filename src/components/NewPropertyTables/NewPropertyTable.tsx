@@ -5,9 +5,7 @@ import React from "react";
 import toast from "react-hot-toast";
 import { needsUpdate } from "../../pages/CostSheetFormProps";
 import { State, City } from "../../types";
-import {
-  updateCostSheet,
-} from "../../utils/firestoreListings";
+import { updateCostSheet } from "../../utils/firestoreListings";
 import { sanitizeInput } from "../../utils/formSubmissionUtils";
 import { CostSheet } from "../CompareModal";
 import Button from "../ui/Button";
@@ -17,6 +15,7 @@ import { handleUpdatedPropertiesTable } from "./handleUpdatedPropertiesTable";
 import { handleUpdateRequiredTable } from "./handleUpdateRequiredTable";
 import { handlePendingNewPropertiesTable } from "./handlePendingNewPropertiesTable";
 import { handleRejectedNewPropertiesTable } from "./handleRejectedNewPropertiesTable";
+import { NewPropertyModal } from "./NewPropertyModal";
 
 export function handleNewPropertyTable(
   costSheets: unknown[],
@@ -126,7 +125,10 @@ export function handleNewPropertyTable(
                   .sort((a: any, b: any) => {
                     if (sortBy.approved === "date") {
                       const getDateValue = (item: any) => {
-                        const dateValue = item.dateUpdateCostSheet || item.updatedAt || item.createdAt;
+                        const dateValue =
+                          item.dateUpdateCostSheet ||
+                          item.updatedAt ||
+                          item.createdAt;
                         if (dateValue instanceof Timestamp) {
                           return dateValue.toDate();
                         }
@@ -145,8 +147,26 @@ export function handleNewPropertyTable(
                         : bProject.localeCompare(aProject);
                     }
                   });
-                return (
-                  handleUpdatedPropertiesTable(searchTerm, setSearchTerm, bhkFilter, setBhkFilter, reraRange, setReraRange, availableBhkTypes, approvedSheets, setSortBy, setSortOrder, sortBy, sortOrder, states, setPreloadedStateData, setSelectedSheet, setEditingProperty, setShowForm, user, setCostSheets)
+                return handleUpdatedPropertiesTable(
+                  searchTerm,
+                  setSearchTerm,
+                  bhkFilter,
+                  setBhkFilter,
+                  reraRange,
+                  setReraRange,
+                  availableBhkTypes,
+                  approvedSheets,
+                  setSortBy,
+                  setSortOrder,
+                  sortBy,
+                  sortOrder,
+                  states,
+                  setPreloadedStateData,
+                  setSelectedSheet,
+                  setEditingProperty,
+                  setShowForm,
+                  user,
+                  setCostSheets
                 );
               })(),
             },
@@ -211,8 +231,24 @@ export function handleNewPropertyTable(
                         : bProject.localeCompare(aProject);
                     }
                   });
-                return (
-                  handleUpdateRequiredTable(searchTerm, setSearchTerm, bhkFilter, setBhkFilter, reraRange, setReraRange, availableBhkTypes, approvedSheets, setSortBy, setSortOrder, sortBy, sortOrder, setSelectedSheet, setEditingProperty, setShowForm, user, setCostSheets)
+                return handleUpdateRequiredTable(
+                  searchTerm,
+                  setSearchTerm,
+                  bhkFilter,
+                  setBhkFilter,
+                  reraRange,
+                  setReraRange,
+                  availableBhkTypes,
+                  approvedSheets,
+                  setSortBy,
+                  setSortOrder,
+                  sortBy,
+                  sortOrder,
+                  setSelectedSheet,
+                  setEditingProperty,
+                  setShowForm,
+                  user,
+                  setCostSheets
                 );
               })(),
             },
@@ -278,8 +314,22 @@ export function handleNewPropertyTable(
                               : bProject.localeCompare(aProject);
                           }
                         });
-                      return (
-                        handlePendingNewPropertiesTable(searchTerm, setSearchTerm, bhkFilter, setBhkFilter, reraRange, setReraRange, availableBhkTypes, pendingSheets, setSortBy, setSortOrder, sortBy, sortOrder, setSelectedSheet, setEditingProperty, setShowForm)
+                      return handlePendingNewPropertiesTable(
+                        searchTerm,
+                        setSearchTerm,
+                        bhkFilter,
+                        setBhkFilter,
+                        reraRange,
+                        setReraRange,
+                        availableBhkTypes,
+                        pendingSheets,
+                        setSortBy,
+                        setSortOrder,
+                        sortBy,
+                        sortOrder,
+                        setSelectedSheet,
+                        setEditingProperty,
+                        setShowForm
                       );
                     })(),
                   },
@@ -355,7 +405,24 @@ export function handleNewPropertyTable(
                             : "No rejected properties."}
                         </p>
                       ) : (
-                        handleRejectedNewPropertiesTable(searchTerm, setSearchTerm, bhkFilter, setBhkFilter, availableBhkTypes, reraRange, setReraRange, setSortBy, setSortOrder, sortBy, sortOrder, rejectedSheets, setSelectedSheet, setEditingProperty, setShowForm, setCostSheets)
+                        handleRejectedNewPropertiesTable(
+                          searchTerm,
+                          setSearchTerm,
+                          bhkFilter,
+                          setBhkFilter,
+                          availableBhkTypes,
+                          reraRange,
+                          setReraRange,
+                          setSortBy,
+                          setSortOrder,
+                          sortBy,
+                          sortOrder,
+                          rejectedSheets,
+                          setSelectedSheet,
+                          setEditingProperty,
+                          setShowForm,
+                          setCostSheets
+                        )
                       );
                     })(),
                   },
@@ -380,7 +447,8 @@ export function handleNewPropertyTable(
             <div className="sticky top-0 bg-white rounded-t-lg border-b border-gray-200 p-6 pr-10 z-10">
               <div className="mb-3">
                 <h3 className="text-xl font-semibold pr-8">
-                  {sanitizeInput(selectedSheet.projectName || '')} by {sanitizeInput(selectedSheet.developerName || '')}
+                  {sanitizeInput(selectedSheet.projectName || "")} by{" "}
+                  {sanitizeInput(selectedSheet.developerName || "")}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   Status:{" "}
@@ -451,256 +519,10 @@ export function handleNewPropertyTable(
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Section 1: Basic Details */}
-              <Section title="Basic Details">
-                <Field
-                  label="Update date"
-                  value={selectedSheet.dateUpdateCostSheet}
-                />
-                <Field label="Location" value={selectedSheet.station} />
-                <Field
-                  label="Developer Name"
-                  value={selectedSheet.developerName}
-                />
-                <Field label="Project Name" value={selectedSheet.projectName} />
-                <Field label="Sub-Location" value={selectedSheet.subLocation} />
-                <Field label="Landmark" value={selectedSheet.landmark} />
-                <Field label="Pin Code" value={selectedSheet.pinCode} />
-                <Field label="District" value={selectedSheet.district} />
-                <Field label="State" value={selectedSheet.state} />
-                <Field label="Land Parcel" value={selectedSheet.landParcel} />
-                <Field label="Total Towers" value={selectedSheet.towers} />
-                <Field label="Total Storey" value={selectedSheet.storey} />
-              </Section>
-
-              {/* Section 2: Pricing Details */}
-              <Section title="Pricing Details">
-                <Field
-                  label="Wing/Building No."
-                  value={selectedSheet.wingBuildingNo}
-                />
-                <Field label="BHK Type" value={selectedSheet.flatType} />
-                <Field
-                  label="Saleable Area"
-                  value={selectedSheet.saleableArea}
-                />
-                <Field
-                  label="RERA Carpet / Usable Carpet"
-                  value={selectedSheet.reraCarpet}
-                />
-                <Field label="Per Sq. ft. Rate" value={selectedSheet.psfRate} />
-                <Field
-                  label="Agreement Value Rate"
-                  value={selectedSheet.avRate}
-                />
-                <Field
-                  label="Floor Rise Rate"
-                  value={selectedSheet.floorRise}
-                />
-                <Field
-                  label="Registration Fee/ Charge"
-                  value={selectedSheet.registration}
-                />
-              </Section>
-
-              {/* Section 3: Other charges & Payment Plans */}
-              <Section title="Other charges & Payment Plans">
-                <Field
-                  label="Fixed Component"
-                  value={selectedSheet.fixedComponent}
-                />
-                <Field
-                  label="Possession Charges"
-                  value={selectedSheet.possessionCharges}
-                />
-                <Field
-                  label="Parking Charges"
-                  value={selectedSheet.parkingCharge}
-                />
-                <Field
-                  label="Total Package"
-                  value={selectedSheet.totalPackage}
-                />
-                <Field
-                  label="Payment Schemes"
-                  value={
-                    Array.isArray(selectedSheet.paymentScheme)
-                      ? selectedSheet.paymentScheme.join(", ")
-                      : "-"
-                  }
-                />
-              </Section>
-
-              {/* Section 4: Amenities */}
-              <Section title="Amenities">
-                <div className="col-span-2">
-                  <h5 className="font-medium mb-2">Apartment Amenities</h5>
-                  <Field
-                    label=""
-                    value={
-                      Array.isArray(selectedSheet.apartmentAmenities)
-                        ? selectedSheet.apartmentAmenities
-                            .sort((a, b) => a.localeCompare(b))
-                            .join(", ")
-                        : "-"
-                    }
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <h5 className="font-medium mb-2">Project Amenities</h5>
-                  <Field
-                    label=""
-                    value={
-                      Array.isArray(selectedSheet.projectAmenities)
-                        ? selectedSheet.projectAmenities
-                            .sort((a, b) => a.localeCompare(b))
-                            .join(", ")
-                        : "-"
-                    }
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <h5 className="font-medium mb-2">Location Highlights</h5>
-                  <Field
-                    label=""
-                    value={
-                      Array.isArray(selectedSheet.locationHighlights)
-                        ? selectedSheet.locationHighlights
-                            .sort((a, b) => a.localeCompare(b))
-                            .join(", ")
-                        : "-"
-                    }
-                  />
-                </div>
-              </Section>
-
-              {/* Section 5: Others */}
-              <Section title="Others">
-                <Field label="Project Type" value={selectedSheet.type} />
-                <Field
-                  label="Maha RERA Number"
-                  value={
-                    selectedSheet.mahaReraLink ? (
-                      <a
-                        href={selectedSheet.mahaReraLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 underline"
-                      >
-                        {selectedSheet.mahaReraNumber}
-                      </a>
-                    ) : (
-                      selectedSheet.mahaReraNumber
-                    )
-                  }
-                />
-                <Field
-                  label="Developer Possession"
-                  value={`${selectedSheet.possessionMonth || "-"} ${
-                    selectedSheet.possessionYear || ""
-                  }`}
-                />
-                <Field
-                  label="Rera Possession"
-                  value={selectedSheet.reraPossession || "-"}
-                />
-                <Field label="Is Cosmo?" value={selectedSheet.isCosmo} />
-                <Field
-                  label="Availability"
-                  value={selectedSheet.availibility}
-                />
-                <Field label="Image URL" value={selectedSheet.imageUrl} />
-                <Field label="Video URL" value={selectedSheet.videoUrl} />
-                <Field
-                  label="Site Head Name"
-                  value={selectedSheet.siteHeadName}
-                />
-                <Field
-                  label="Site Head Number"
-                  value={selectedSheet.siteHeadNumber}
-                />
-                {/* Sourcing Managers */}
-                <div className="col-span-2">
-                  <h5 className="font-medium mb-3">Sourcing Managers</h5>
-                  {selectedSheet.sourcingManagers &&
-                  Array.isArray(selectedSheet.sourcingManagers) &&
-                  selectedSheet.sourcingManagers.length > 0 ? (
-                    <div className="overflow-hidden rounded-lg border border-neutral-200">
-                      <table className="min-w-full divide-y divide-neutral-200">
-                        <thead className="bg-neutral-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                              #
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                              Contact
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-neutral-200">
-                          {selectedSheet.sourcingManagers.map(
-                            (manager: any, index: number) => (
-                              <tr key={index} className="hover:bg-neutral-50">
-                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-neutral-900">
-                                  {index + 1}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
-                                  {manager.name || "-"}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
-                                  {manager.contact || "-"}
-                                </td>
-                              </tr>
-                            )
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    // Fallback to legacy single manager format
-                    <div className="overflow-hidden rounded-lg border border-neutral-200">
-                      <table className="min-w-full divide-y divide-neutral-200">
-                        <thead className="bg-neutral-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                              Contact
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white">
-                          <tr className="hover:bg-neutral-50">
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
-                              {selectedSheet.smName || "-"}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
-                              {selectedSheet.smContact || "-"}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </Section>
-            </div>
+            <NewPropertyModal Section={Section} Field={Field} selectedSheet={selectedSheet} />
           </div>
         </div>
       )}
     </Card>
   );
 }
-
-
-
-
-
-

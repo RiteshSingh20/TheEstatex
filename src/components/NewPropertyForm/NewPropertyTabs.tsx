@@ -315,45 +315,19 @@ export function handleNewEntryForm(
                       setLadderSections
                     )
                   : currentStep === 5
-                  ? (
-                      <>
-                        {currentStepTab5(
-                          siteHeads,
-                          setSiteHeads,
-                          sourcingManagers,
-                          setSourcingManagers,
-                          mediaFiles,
-                          setMediaFiles,
-                          // Get unique typologies from subTabData
-                          Array.from(new Set(
-                            Object.values(subTabData || {}).flatMap((tab: any) => 
-                              (tab?.pricingConfigs || []).map((config: any) => config.typology).filter(Boolean)
-                            )
-                          )),
-                          formData,
-                          subTabData,
-                          paymentSchemes,
-                          // Extract highlights from formData
-                          formData.locationHighlights ? 
-                            Object.entries(formData.locationHighlights || {}).map(([key, value]) => 
-                              `${key} - ${value}`
-                            ) : [],
-                          // Extract project amenities from formData
-                          formData.projectAmenities || [],
-                          // Extract apartment amenities from formData
-                          formData.apartmentAmenities || []
-                        )}
-                        {currentStepTabMediaUpload(
-                          setMediaFiles,
-                          generatePdfThumbnail,
-                          setPdfThumbnail,
-                          mediaFiles,
-                          pdfThumbnail,
-                          subTabData,
-                          existingMedia,
-                          setExistingMedia
-                        )}
-                      </>
+                  ? currentStepTabMediaUpload(
+                      setMediaFiles,
+                      generatePdfThumbnail,
+                      setPdfThumbnail,
+                      mediaFiles,
+                      pdfThumbnail,
+                      subTabData,
+                      existingMedia,
+                      setExistingMedia,
+                      siteHeads,
+                      setSiteHeads,
+                      sourcingManagers,
+                      setSourcingManagers
                     )
                   : null}
 

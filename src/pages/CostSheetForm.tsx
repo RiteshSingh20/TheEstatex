@@ -1206,6 +1206,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           return;
         }
         toast.success("Property updated!");
+        setEditingProperty(null);
       } else {
 
         await addCostSheet(finalClean);
@@ -1237,6 +1238,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         });
         setCurrentStep(0);
         setShowForm(false);
+        setEditingProperty(null);
       }
     } catch (err) {
       

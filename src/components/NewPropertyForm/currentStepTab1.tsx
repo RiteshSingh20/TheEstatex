@@ -578,7 +578,7 @@ export function currentStepTab1(
                     className="grid gap-4 text-sm font-medium text-neutral-700 text-center"
                     style={{
                       gridTemplateColumns:
-                        "1.5fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 1fr 1.2fr 1fr",
+                        "1.2fr 0.8fr 0.8fr 1fr 1fr 1fr 1fr 1.5fr 1fr 1fr 0.6fr 0.6fr 1fr",
                     }}
                   >
                     <div>Typology</div>
@@ -591,6 +591,8 @@ export function currentStepTab1(
                     <div>Total Package</div>
                     <div>Negotiation Scope</div>
                     <div>Availability</div>
+                    <div>BA</div>
+                    <div>TA</div>
                     <div>
                       Unit
                       <br />
@@ -613,7 +615,7 @@ export function currentStepTab1(
                           className="grid gap-4"
                           style={{
                             gridTemplateColumns:
-                              "1.5fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 1fr 1.2fr 1fr",
+                              "1.2fr 0.8fr 0.8fr 1fr 1fr 1fr 1fr 1.5fr 1fr 1fr 0.6fr 0.6fr 1fr",
                           }}
                         >
                           <div>
@@ -771,6 +773,26 @@ export function currentStepTab1(
                               <option value="Available">Available</option>
                               <option value="Sold Out">Sold Out</option>
                             </select>
+                          </div>
+                          <div className="flex justify-center items-center">
+                            <input
+                              type="checkbox"
+                              checked={config.hasBalcony || false}
+                              onChange={(e) => {
+                                handlePricingChange('hasBalcony', e.target.checked, tab.id, index);
+                              }}
+                              className="rounded"
+                            />
+                          </div>
+                          <div className="flex justify-center items-center">
+                            <input
+                              type="checkbox"
+                              checked={config.hasTerrace || false}
+                              onChange={(e) => {
+                                handlePricingChange('hasTerrace', e.target.checked, tab.id, index);
+                              }}
+                              className="rounded"
+                            />
                           </div>
                           <div className="flex justify-center items-center">
                             {config.unitPlan ? (
@@ -943,21 +965,83 @@ export function currentStepTab1(
                         className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
                     ) : (
-                      <input
-                        type="text"
-                        value={formatIndianCurrency(subTabData[tab.id]?.parkingCharges || "")}
-                        onChange={(e) => {
-                          const numericValue = parseIndianCurrency(e.target.value);
-                          setSubTabData((prev) => ({
-                            ...prev,
-                            [tab.id]: {
-                              ...prev[tab.id],
-                              parkingCharges: numericValue,
-                            },
-                          }));
-                        }}
-                        className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm"
-                      />
+                      <>
+                        <input
+                          type="text"
+                          value={formatIndianCurrency(subTabData[tab.id]?.parkingCharges || "")}
+                          onChange={(e) => {
+                            const numericValue = parseIndianCurrency(e.target.value);
+                            setSubTabData((prev) => ({
+                              ...prev,
+                              [tab.id]: {
+                                ...prev[tab.id],
+                                parkingCharges: numericValue,
+                              },
+                            }));
+                          }}
+                          className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm"
+                        />
+                        {subTabData[tab.id]?.parkingCharges && parseIndianCurrency(subTabData[tab.id]?.parkingCharges || "") && (
+                          <>
+                            <label className="text-sm font-medium text-neutral-700 min-w-fit ml-4">
+                              Mandatory with:
+                            </label>
+                            <div className="relative">
+                          <button
+                            type="button"
+                            className="w-48 border border-neutral-300 rounded px-2 py-1 text-sm bg-white cursor-pointer text-left flex justify-between items-center"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const dropdown = e.currentTarget.nextElementSibling;
+                              dropdown.classList.toggle('hidden');
+                            }}
+                          >
+                            <span>
+                              {(subTabData[tab.id]?.mandatoryParkingTypologies || []).length > 0
+                                ? `${(subTabData[tab.id]?.mandatoryParkingTypologies || []).length} selected`
+                                : 'Select typologies'}
+                            </span>
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          <div className="absolute top-full left-0 w-full bg-white border border-neutral-300 rounded mt-1 shadow-lg z-50 hidden max-h-32 overflow-y-auto">
+                            {(() => {
+                              const uniqueTypologies = [...new Set((subTabData[tab.id]?.pricingConfigs || []).map(config => config.typology).filter(Boolean))];
+                              console.log('Available typologies:', uniqueTypologies);
+                              return uniqueTypologies.length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-gray-500">Add typologies first</div>
+                              ) : (
+                                uniqueTypologies.map((typology, index) => (
+                                  <label key={index} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={(subTabData[tab.id]?.mandatoryParkingTypologies || []).includes(typology)}
+                                      onChange={(e) => {
+                                        const current = subTabData[tab.id]?.mandatoryParkingTypologies || [];
+                                        const updated = e.target.checked
+                                          ? [...current, typology]
+                                          : current.filter(t => t !== typology);
+                                        setSubTabData((prev) => ({
+                                          ...prev,
+                                          [tab.id]: {
+                                            ...prev[tab.id],
+                                            mandatoryParkingTypologies: updated,
+                                          },
+                                        }));
+                                      }}
+                                      className="mr-2 rounded"
+                                    />
+                                    <span className="text-sm">{typology}</span>
+                                  </label>
+                                ))
+                              );
+                            })()}
+                            </div>
+                          </div>
+                        </>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -987,6 +1071,8 @@ export function currentStepTab1(
                                 totalPackage: "",
                                 negotiationScope: "",
                                 availability: "",
+                                hasBalcony: false,
+                                hasTerrace: false,
                                 unitPlan: null,
                               },
                             ],
@@ -1082,6 +1168,7 @@ export function currentStepTab1(
                 psfIncludesFixedComponent: false,
                 numberOfParkingIncluded: "",
                 parkingCharges: "",
+                mandatoryParkingTypologies: [],
                 pricingConfigs: [
                   {
                     typology: "",
@@ -1094,6 +1181,8 @@ export function currentStepTab1(
                     totalPackage: "",
                     negotiationScope: "",
                     availability: "",
+                    hasBalcony: false,
+                    hasTerrace: false,
                     unitPlan: null,
                   },
                 ],
