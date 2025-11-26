@@ -156,6 +156,7 @@ interface CurrentStepEditTab1Props {
   parseIndianCurrency: (value: string) => string;
   stampRates: StampDutyRate[];
   formData: FormDataType;
+  isAdmin?: boolean;
 }
 
 export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
@@ -168,7 +169,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
   formatIndianCurrency,
   parseIndianCurrency,
   stampRates,
-  formData
+  formData,
+  isAdmin = false
 }) => {
   const [isLoadingReraData, setIsLoadingReraData] = useState(false);
   const [fixedComponentVisibility, setFixedComponentVisibility] = useState<Record<number, boolean>>({});
@@ -521,7 +523,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                             },
                           }))
                         }
-                        className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                        disabled={!isAdmin}
+                        className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -564,7 +567,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                             }));
                           }
                         }}
-                        className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                        disabled={!isAdmin}
+                        className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       >
                         <option value="">Select</option>
                         <option value="New">New</option>
@@ -612,7 +616,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                             }));
                           }
                         }}
-                        disabled={subTabData[tab.id]?.type === "Pre-launch"}
+                        disabled={!isAdmin || subTabData[tab.id]?.type === "Pre-launch"}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       >
                         <option value="">Select</option>
@@ -637,6 +641,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           }))
                         }
                         disabled={
+                          !isAdmin ||
                           subTabData[tab.id]?.projectStatus ===
                             "Ready to Move" ||
                           subTabData[tab.id]?.projectStatus === "OC Received"
@@ -664,7 +669,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                             updateTabName(tab.id, e.currentTarget.value);
                           }
                         }}
-                        disabled={subTabData[tab.id]?.type === "Pre-launch"}
+                        disabled={!isAdmin || subTabData[tab.id]?.type === "Pre-launch"}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
@@ -682,6 +687,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           }))
                         }
                         disabled={
+                          !isAdmin ||
                           subTabData[tab.id]?.projectStatus ===
                             "Ready to Move" ||
                           subTabData[tab.id]?.projectStatus === "OC Received" ||
@@ -704,7 +710,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                             },
                           }));
                         }}
-                        disabled={subTabData[tab.id]?.type === "Pre-launch"}
+                        disabled={!isAdmin || subTabData[tab.id]?.type === "Pre-launch"}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
@@ -724,10 +730,10 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                 {/* Header Row */}
                 <div className="bg-neutral-100 p-2 rounded-t border">
                   <div
-                    className="grid gap-4 text-sm font-medium text-neutral-700 text-center"
+                    className="grid gap-2 text-sm font-medium text-neutral-700 text-center"
                     style={{
                       gridTemplateColumns:
-                        "1.2fr 0.8fr 0.8fr 1fr 1fr 1fr 1fr 1.5fr 1fr 1fr 0.6fr 0.6fr 1fr",
+                        "1.2fr 0.8fr 0.8fr 1fr 1.6fr 1.6fr 1.6fr 1.5fr 1fr 1.2fr 0.4fr 0.4fr 1fr",
                     }}
                   >
                     <div>Typology</div>
@@ -761,10 +767,10 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         }`}
                       >
                         <div
-                          className="grid gap-4"
+                          className="grid gap-2"
                           style={{
                             gridTemplateColumns:
-                              "1.2fr 0.8fr 0.8fr 1fr 1fr 1fr 1fr 1.5fr 1fr 1fr 0.6fr 0.6fr 1fr",
+                              "1.2fr 0.8fr 0.8fr 1fr 1.6fr 1.6fr 1.6fr 1.5fr 1fr 1.2fr 0.4fr 0.4fr 1fr",
                           }}
                         >
                           <div>
@@ -773,7 +779,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               onChange={(e) => {
                                 handlePricingChange('typology', e.target.value, tab.id, index);
                               }}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
                               <option value="">Select</option>
                               <option value="1 RK">1 RK</option>
@@ -805,7 +812,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 handlePricingChange('saleableArea', e.target.value, tab.id, index);
                               }}
                               onWheel={(e) => e.currentTarget.blur()}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                             />
                           </div>
                           <div>
@@ -816,7 +824,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 handlePricingChange('reraCarpet', e.target.value, tab.id, index);
                               }}
                               onWheel={(e) => e.currentTarget.blur()}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                             />
                           </div>
                           <div>
@@ -829,7 +838,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 );
                                 handlePricingChange('psfRate', numericValue, tab.id, index);
                               }}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -842,7 +852,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 );
                                 handlePricingChange('avRate', numericValue, tab.id, index);
                               }}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -869,7 +880,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                   }));
                                 }, 0);
                               }}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -884,7 +896,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 );
                                 handlePricingChange('possessionCharges', numericValue, tab.id, index);
                               }}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -908,7 +921,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 );
                                 handlePricingChange('negotiationScope', numericValue, tab.id, index);
                               }}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -917,7 +931,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               onChange={(e) => {
                                 handlePricingChange('availability', e.target.value, tab.id, index);
                               }}
-                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                              disabled={!isAdmin}
+                              className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
                               <option value="">Select</option>
                               <option value="Available">Available</option>
@@ -931,7 +946,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               onChange={(e) => {
                                 handlePricingChange('hasBalcony', e.target.checked, tab.id, index);
                               }}
-                              className="rounded"
+                              disabled={!isAdmin}
+                              className="rounded disabled:cursor-not-allowed"
                             />
                           </div>
                           <div className="flex justify-center items-center">
@@ -941,7 +957,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               onChange={(e) => {
                                 handlePricingChange('hasTerrace', e.target.checked, tab.id, index);
                               }}
-                              className="rounded"
+                              disabled={!isAdmin}
+                              className="rounded disabled:cursor-not-allowed"
                             />
                           </div>
                           <div className="flex justify-center items-center">
@@ -989,6 +1006,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 <button
                                   type="button"
                                   onClick={() => {
+                                    if (!isAdmin) return;
                                     // Clean up object URL safely
                                     const urlKey = `${tab.id}-${index}`;
                                     if (objectUrlsRef.current[urlKey]) {
@@ -1018,8 +1036,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                       };
                                     });
                                   }}
-                                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
-                                  title="Remove file"
+                                  disabled={!isAdmin}
+                                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                  title={isAdmin ? "Remove file" : "Admin access required"}
                                 >
                                   ×
                                 </button>
@@ -1028,6 +1047,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               <button
                                 type="button"
                                 onClick={() => {
+                                  if (!isAdmin) return;
                                   const input = document.createElement("input");
                                   input.type = "file";
                                   input.accept = "image/*,.pdf";
@@ -1054,8 +1074,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                   };
                                   input.click();
                                 }}
-                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                                title="Upload unit plan"
+                                disabled={!isAdmin}
+                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                title={isAdmin ? "Upload unit plan" : "Admin access required"}
                               >
                                 <svg
                                   width="24"
@@ -1085,7 +1106,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         type="checkbox"
                         checked={subTabData[tab.id]?.psfIncludesParking || false}
                         onChange={(e) => handleCheckboxChange('psfIncludesParking', e.target.checked, tab.id)}
-                        className="rounded"
+                        disabled={!isAdmin}
+                        className="rounded disabled:cursor-not-allowed"
                       />
                       <span>Per Sq. Ft. Rate includes <strong>'Parking'</strong></span>
                     </label>
@@ -1095,7 +1117,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         type="checkbox"
                         checked={subTabData[tab.id]?.psfIncludesFixedComponent || false}
                         onChange={(e) => handleCheckboxChange('psfIncludesFixedComponent', e.target.checked, tab.id)}
-                        className="rounded"
+                        disabled={!isAdmin}
+                        className="rounded disabled:cursor-not-allowed"
                       />
                       <span>Per Sq. Ft. Rate includes <strong>'Fixed Component'</strong></span>
                     </label>
@@ -1122,7 +1145,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         }
                         onWheel={(e) => e.currentTarget.blur()}
                         placeholder="e.g., 1"
-                        className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                        disabled={!isAdmin}
+                        className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
                     ) : (
                       <>
@@ -1139,66 +1163,49 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               },
                             }));
                           }}
-                          className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm"
+                          disabled={!isAdmin}
+                          className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                         {subTabData[tab.id]?.parkingCharges && parseIndianCurrency(subTabData[tab.id]?.parkingCharges || "") && (
                           <>
-                            <label className="text-sm font-medium text-neutral-700 min-w-fit ml-4">
-                              Mandatory with:
-                            </label>
-                            <div className="relative">
-                          <button
-                            type="button"
-                            className="w-48 border border-neutral-300 rounded px-2 py-1 text-sm bg-white cursor-pointer text-left flex justify-between items-center"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              const dropdown = e.currentTarget.nextElementSibling;
-                              dropdown.classList.toggle('hidden');
-                            }}
-                          >
-                            <span>
-                              {(subTabData[tab.id]?.mandatoryParkingTypologies || []).length > 0
-                                ? `${(subTabData[tab.id]?.mandatoryParkingTypologies || []).length} selected`
-                                : 'Select typologies'}
-                            </span>
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                          <div className="absolute top-full left-0 w-full bg-white border border-neutral-300 rounded mt-1 shadow-lg z-50 hidden max-h-32 overflow-y-auto">
-                            {(() => {
-                              const uniqueTypologies = [...new Set((subTabData[tab.id]?.pricingConfigs || []).map(config => config.typology).filter(Boolean))];
-                              console.log('Available typologies:', uniqueTypologies);
-                              return uniqueTypologies.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-gray-500">Add typologies first</div>
-                              ) : (
-                                uniqueTypologies.map((typology, index) => (
-                                  <label key={index} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={(subTabData[tab.id]?.mandatoryParkingTypologies || []).includes(typology)}
-                                      onChange={(e) => {
-                                        const current = subTabData[tab.id]?.mandatoryParkingTypologies || [];
-                                        const updated = e.target.checked
-                                          ? [...current, typology]
-                                          : current.filter(t => t !== typology);
-                                        setSubTabData((prev) => ({
-                                          ...prev,
-                                          [tab.id]: {
-                                            ...prev[tab.id],
-                                            mandatoryParkingTypologies: updated,
-                                          },
-                                        }));
-                                      }}
-                                      className="mr-2 rounded"
-                                    />
-                                    <span className="text-sm">{typology}</span>
-                                  </label>
-                                ))
-                              );
-                            })()}
+                            <div className="ml-4">
+                              <label className="text-sm font-medium text-neutral-700 block mb-2">
+                                Mandatory with:
+                              </label>
+                              <div className="flex flex-wrap gap-4">
+                                {(() => {
+                                  const uniqueTypologies = [...new Set((subTabData[tab.id]?.pricingConfigs || []).map(config => config.typology).filter(Boolean))];
+                                  return uniqueTypologies.length === 0 ? (
+                                    <div className="text-sm text-gray-500">Add typologies first</div>
+                                  ) : (
+                                    uniqueTypologies.map((typology, index) => (
+                                      <label key={index} className="flex items-center gap-2 text-sm">
+                                        <input
+                                          type="checkbox"
+                                          checked={(subTabData[tab.id]?.mandatoryParkingTypologies || []).includes(typology)}
+                                          onChange={(e) => {
+                                            const current = subTabData[tab.id]?.mandatoryParkingTypologies || [];
+                                            const updated = e.target.checked
+                                              ? [...current, typology]
+                                              : current.filter(t => t !== typology);
+                                            setSubTabData((prev) => ({
+                                              ...prev,
+                                              [tab.id]: {
+                                                ...prev[tab.id],
+                                                mandatoryParkingTypologies: updated,
+                                              },
+                                            }));
+                                          }}
+                                          disabled={!isAdmin}
+                                          className="rounded disabled:cursor-not-allowed"
+                                        />
+                                        <span>{typology}</span>
+                                      </label>
+                                    ))
+                                  );
+                                })()}
+                              </div>
                             </div>
-                          </div>
                         </>
                         )}
                       </>
@@ -1240,7 +1247,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         };
                       });
                     }}
-                    className="w-8 h-8 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 font-bold"
+                    disabled={!isAdmin}
+                    className="w-8 h-8 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 font-bold disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     +
                   </button>
@@ -1260,7 +1268,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           };
                         });
                       }}
-                      className="w-8 h-8 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 font-bold"
+                      disabled={!isAdmin}
+                      className="w-8 h-8 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 font-bold disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                       -
                     </button>
@@ -1293,9 +1302,10 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         );
                       }
                     }}
-                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                    disabled={!isAdmin}
+                    className="w-8 h-8 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 font-bold disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    Remove section
+                    -
                   </button>
                 </div>
               )}
@@ -1304,7 +1314,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
       )}
 
       {/* Add new section button - outside of sub-tab border */}
-      <div className="flex justify-center mt-4">
+      <div className="flex justify-end mt-4">
         <button
           type="button"
           onClick={() => {
@@ -1350,9 +1360,10 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
             }));
             setActiveSubTab(newTab.id);
           }}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          disabled={!isAdmin}
+          className="w-8 h-8 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 font-bold disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          Add new section
+          +
         </button>
       </div>
     </div>

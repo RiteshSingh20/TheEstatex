@@ -39,7 +39,7 @@ const PropertyDetailsModal = (props: PropertyDetailsModalProps) => {
           onClick={props.onClose}
           className="absolute top-6 right-6 text-gray-500 hover:text-red-500 text-xl z-20 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-md"
         >
-          ×
+          ✕
         </button>
 
         <div className="sticky top-0 bg-white rounded-t-lg border-b border-gray-200 p-6 z-10">

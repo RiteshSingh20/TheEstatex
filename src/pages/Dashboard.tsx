@@ -28,7 +28,7 @@ import {
 } from "../utils/firestoreListings";
 import { normalizeForEdit } from "../utils/costSheetAdapter";
 import { generateWhatsAppText } from "../utils/helper";
-import { getWhatsAppUrl } from "../utils/deviceDetection";
+import { getWhatsAppUrl, openWhatsApp } from "../utils/deviceDetection";
 import { stations } from "../utils/stations";
 import { PropertyCategory } from "../types";
 import { CostSheet } from "./Compare";
@@ -1563,8 +1563,7 @@ const Dashboard = () => {
       propertyCategory // pass the property category
     );
 
-    const whatsappUrl = getWhatsAppUrl(receiverWhatsApp, text);
-    window.open(whatsappUrl, "_blank");
+    openWhatsApp(receiverWhatsApp, text);
   };
 
   // const shareOnWhatsApp = () => {
@@ -2041,11 +2040,7 @@ const Dashboard = () => {
                         "New" // propertyCategory for quick send
                       );
 
-                      const whatsappUrl = getWhatsAppUrl(
-                        receiverWhatsApp,
-                        text
-                      );
-                      window.open(whatsappUrl, "_blank");
+                      openWhatsApp(receiverWhatsApp, text);
 
                       setSelectedQuickSendProperty(null);
                     }}
@@ -3737,11 +3732,7 @@ const Dashboard = () => {
               <Button
                 variant="primary"
                 onClick={() => {
-                  const whatsappUrl = getWhatsAppUrl(
-                    receiverWhatsApp,
-                    previewText
-                  );
-                  window.open(whatsappUrl, "_blank");
+                  openWhatsApp(receiverWhatsApp, previewText);
                   setShowPreviewModal(false);
                   setSelectedQuickSendProperty(null);
                 }}

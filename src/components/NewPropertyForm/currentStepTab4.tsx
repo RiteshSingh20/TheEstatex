@@ -20,16 +20,12 @@ export function currentStepTab4(
   >,
   ladderSections: {
     id: number;
-    startDate: string;
-    endDate: string;
     rows: { units: string; ladder: string; additionalIncentive: string }[];
   }[],
   setLadderSections: React.Dispatch<
     React.SetStateAction<
       {
         id: number;
-        startDate: string;
-        endDate: string;
         rows: { units: string; ladder: string; additionalIncentive: string }[];
       }[]
     >

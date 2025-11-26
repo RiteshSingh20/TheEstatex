@@ -5420,7 +5420,7 @@ const Admin = () => {
                 tabs={[
                   {
                     id: "rental-resale",
-                    label: "ðŸ“Š Rental & Resale",
+                    label: " ₹ Rental & Resale",
                     content: (
                       <div>
                         <div className="border-l-4 border-green-500 pl-4 mb-6">
@@ -5632,7 +5632,7 @@ const Admin = () => {
                   },
                   {
                     id: "new-property",
-                    label: "ðŸ¢ New Property",
+                    label: "🏠 New Property",
                     content: (
                       <div className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

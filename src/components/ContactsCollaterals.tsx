@@ -115,28 +115,58 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, string>>({});
   const [uploadStatus, setUploadStatus] = useState<Record<string, 'uploading' | 'success'>>({});
 
+  // Check PDF.js availability on component mount
+  React.useEffect(() => {
+    const pdfjsLib = (window as any).pdfjsLib;
+    console.log('PDF.js availability check:', {
+      available: !!pdfjsLib,
+      version: pdfjsLib?.version || 'N/A',
+      workerSrc: pdfjsLib?.GlobalWorkerOptions?.workerSrc || 'Not set'
+    });
+  }, []);
+
+  const generatePdfThumbnail = async (file: File): Promise<string> => {
+    try {
+      const pdfjsLib = (window as any).pdfjsLib;
+      if (!pdfjsLib) throw new Error('PDF.js not loaded');
+      
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
+      
+      const scale = 2;
+      const viewport = page.getViewport({ scale });
+      
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+      
+      await page.render(renderContext).promise;
+      return canvas.toDataURL('image/png', 0.9);
+    } catch (error) {
+      console.error('PDF thumbnail error:', error);
+      throw error;
+    }
+  };
+
   const generateVideoThumbnail = (file: File, key?: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       if (file.type === 'application/pdf') {
-        // For PDF files, create a canvas to render first page
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const url = URL.createObjectURL(file);
-        
-        // Simple PDF thumbnail - just return a data URL for now
-        canvas.width = 120;
-        canvas.height = 160;
-        if (ctx) {
-          ctx.fillStyle = '#f3f4f6';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = '#374151';
-          ctx.font = '12px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('PDF', canvas.width / 2, canvas.height / 2);
-        }
-        const thumbnail = canvas.toDataURL('image/jpeg', 0.8);
-        if (key) setVideoThumbnails(prev => ({ ...prev, [key]: thumbnail }));
-        resolve(thumbnail);
+        generatePdfThumbnail(file)
+          .then(thumbnail => {
+            if (key) setVideoThumbnails(prev => ({ ...prev, [key]: thumbnail }));
+            resolve(thumbnail);
+          })
+          .catch(reject);
         return;
       }
       
@@ -214,35 +244,28 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
     }
   };
 
-  const handleBrochureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    console.log('Brochure file selected:', file);
-    if (file) {
-      setUploadStatus(prev => ({ ...prev, brochure: 'uploading' }));
-      
-      setTimeout(async () => {
-        setUploadStatus(prev => ({ ...prev, brochure: 'success' }));
-        console.log('Brochure file details:', {
-          name: file.name,
-          size: file.size,
-          type: file.type
-        });
-        setMediaFiles && setMediaFiles(prev => ({ ...prev, brochure: file }));
-        
-        if (file.type === 'application/pdf') {
-          console.log('Generating PDF thumbnail');
-          try {
-            const thumbnail = await generateVideoThumbnail(file);
+  const handleBrochureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setMediaFiles && setMediaFiles(prev => ({ ...prev, brochure: file }));
+    
+    if (file.type === 'application/pdf') {
+      setTimeout(() => {
+        generatePdfThumbnail(file)
+          .then(thumbnail => {
+            console.log('Thumbnail generated, setting state');
             setPdfThumbnail(thumbnail);
-          } catch (error) {
-            console.error('Failed to generate PDF thumbnail:', error);
+          })
+          .catch(error => {
+            console.error('Thumbnail generation failed:', error);
             setPdfThumbnail(null);
-          }
-        } else {
-          setPdfThumbnail(null);
-        }
-      }, 1000);
+          });
+      }, 100);
+    } else {
+      setPdfThumbnail(null);
     }
+    
     e.target.value = '';
   };
 
@@ -313,6 +336,7 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
     if (type === 'brochure') {
       setMediaFiles(prev => ({ ...prev, brochure: null }));
       setPdfThumbnail(null);
+      console.log('Brochure and PDF thumbnail removed');
     } else if (typology && (type === 'typologyImages' || type === 'typologyVideos')) {
       if (type === 'typologyImages' && index !== undefined) {
         setMediaFiles(prev => ({
@@ -485,23 +509,16 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
           />
           <label htmlFor="brochure-upload" className="block w-full">
             <div className="aspect-square w-32 mx-auto border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center justify-center">
-              {uploadStatus['brochure'] === 'uploading' ? (
-                <div className="text-center">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                  <p className="text-sm text-blue-600">Uploading...</p>
-                </div>
-              ) : displayMedia.brochure ? (
+              {displayMedia.brochure ? (
                 <div className="relative w-full h-full">
-                  <div className="w-full h-full flex items-center justify-center">
-                    {typeof displayMedia.brochure !== 'string' && displayMedia.brochure.type === 'application/pdf' && pdfThumbnail ? (
-                      <img src={pdfThumbnail} alt="PDF Preview" className="w-full h-full object-cover rounded" />
-                    ) : (
-                      <div className="w-full h-full bg-green-500 rounded flex flex-col items-center justify-center text-white">
-                        <div className="text-2xl mb-2">📄</div>
-                        <div className="text-xs font-bold">{typeof displayMedia.brochure === 'string' || (displayMedia.brochure && displayMedia.brochure.type === 'application/pdf') ? 'PDF' : 'DOC'}</div>
-                      </div>
-                    )}
-                  </div>
+                  {pdfThumbnail ? (
+                    <img src={pdfThumbnail} alt="PDF Preview" className="w-full h-full object-cover rounded" />
+                  ) : (
+                    <div className="w-full h-full bg-red-500 rounded flex flex-col items-center justify-center text-white">
+                      <div className="text-2xl mb-2">📄</div>
+                      <div className="text-xs font-bold">PDF</div>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={(e) => {

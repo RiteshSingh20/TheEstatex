@@ -16,6 +16,49 @@ const MediaUploadSection: React.FC = () => {
     floorPlanImages: [],
     projectWalkthrough: []
   });
+  const [pdfThumbnail, setPdfThumbnail] = useState<string | null>(null);
+
+  // Check PDF.js availability
+  React.useEffect(() => {
+    const pdfjsLib = (window as any).pdfjsLib;
+    console.log('MediaUploadSection - PDF.js check:', {
+      available: !!pdfjsLib,
+      version: pdfjsLib?.version || 'N/A'
+    });
+  }, []);
+
+  const generatePdfThumbnail = async (file: File): Promise<string> => {
+    try {
+      const pdfjsLib = (window as any).pdfjsLib;
+      if (!pdfjsLib) throw new Error('PDF.js not loaded');
+      
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
+      
+      const scale = 2;
+      const viewport = page.getViewport({ scale });
+      
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+      
+      await page.render(renderContext).promise;
+      return canvas.toDataURL('image/png', 0.9);
+    } catch (error) {
+      console.error('PDF thumbnail error:', error);
+      throw error;
+    }
+  };
 
   return (
     <div className="bg-white p-4">
@@ -49,11 +92,19 @@ const MediaUploadSection: React.FC = () => {
               accept=".pdf,.doc,.docx"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file)
-                  setMediaFiles((prev) => ({
-                    ...prev,
-                    brochure: file,
-                  }));
+                if (!file) return;
+                
+                setMediaFiles((prev) => ({ ...prev, brochure: file }));
+                
+                if (file.type === 'application/pdf') {
+                  setTimeout(() => {
+                    generatePdfThumbnail(file)
+                      .then(setPdfThumbnail)
+                      .catch(() => setPdfThumbnail(null));
+                  }, 100);
+                } else {
+                  setPdfThumbnail(null);
+                }
               }}
               className="hidden"
               id="brochure-upload"
@@ -65,10 +116,16 @@ const MediaUploadSection: React.FC = () => {
               <div className="h-full flex items-center justify-center">
                 {mediaFiles.brochure ? (
                   <div className="text-center p-4 w-full">
-                    <div className="w-16 h-16 mx-auto mb-2 bg-red-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                      </svg>
+                    <div className="w-16 h-16 mx-auto mb-2 rounded-lg overflow-hidden">
+                      {pdfThumbnail ? (
+                        <img src={pdfThumbnail} alt="PDF Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-red-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
                     <span className="text-sm text-gray-600 block truncate px-2">
                       {mediaFiles.brochure.name}
@@ -82,6 +139,7 @@ const MediaUploadSection: React.FC = () => {
                         e.preventDefault();
                         e.stopPropagation();
                         setMediaFiles((prev) => ({ ...prev, brochure: null }));
+                        setPdfThumbnail(null);
                       }}
                       className="mt-2 text-red-500 hover:text-red-700 text-xs"
                     >

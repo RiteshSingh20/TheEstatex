@@ -575,10 +575,10 @@ export function currentStepTab1(
                 {/* Header Row */}
                 <div className="bg-neutral-100 p-2 rounded-t border">
                   <div
-                    className="grid gap-4 text-sm font-medium text-neutral-700 text-center"
+                    className="grid gap-2 text-sm font-medium text-neutral-700 text-center"
                     style={{
                       gridTemplateColumns:
-                        "1.2fr 0.8fr 0.8fr 1fr 1fr 1fr 1fr 1.5fr 1fr 1fr 0.6fr 0.6fr 1fr",
+                        "1.2fr 0.8fr 0.8fr 1fr 1.6fr 1.6fr 1.6fr 1.5fr 1fr 1.2fr 0.4fr 0.4fr 1fr",
                     }}
                   >
                     <div>Typology</div>
@@ -612,10 +612,10 @@ export function currentStepTab1(
                         }`}
                       >
                         <div
-                          className="grid gap-4"
+                          className="grid gap-2"
                           style={{
                             gridTemplateColumns:
-                              "1.2fr 0.8fr 0.8fr 1fr 1fr 1fr 1fr 1.5fr 1fr 1fr 0.6fr 0.6fr 1fr",
+                              "1.2fr 0.8fr 0.8fr 1fr 1.6fr 1.6fr 1.6fr 1.5fr 1fr 1.2fr 0.4fr 0.4fr 1fr",
                           }}
                         >
                           <div>
@@ -983,62 +983,44 @@ export function currentStepTab1(
                         />
                         {subTabData[tab.id]?.parkingCharges && parseIndianCurrency(subTabData[tab.id]?.parkingCharges || "") && (
                           <>
-                            <label className="text-sm font-medium text-neutral-700 min-w-fit ml-4">
-                              Mandatory with:
-                            </label>
-                            <div className="relative">
-                          <button
-                            type="button"
-                            className="w-48 border border-neutral-300 rounded px-2 py-1 text-sm bg-white cursor-pointer text-left flex justify-between items-center"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              const dropdown = e.currentTarget.nextElementSibling;
-                              dropdown.classList.toggle('hidden');
-                            }}
-                          >
-                            <span>
-                              {(subTabData[tab.id]?.mandatoryParkingTypologies || []).length > 0
-                                ? `${(subTabData[tab.id]?.mandatoryParkingTypologies || []).length} selected`
-                                : 'Select typologies'}
-                            </span>
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                          <div className="absolute top-full left-0 w-full bg-white border border-neutral-300 rounded mt-1 shadow-lg z-50 hidden max-h-32 overflow-y-auto">
-                            {(() => {
-                              const uniqueTypologies = [...new Set((subTabData[tab.id]?.pricingConfigs || []).map(config => config.typology).filter(Boolean))];
-                              console.log('Available typologies:', uniqueTypologies);
-                              return uniqueTypologies.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-gray-500">Add typologies first</div>
-                              ) : (
-                                uniqueTypologies.map((typology, index) => (
-                                  <label key={index} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={(subTabData[tab.id]?.mandatoryParkingTypologies || []).includes(typology)}
-                                      onChange={(e) => {
-                                        const current = subTabData[tab.id]?.mandatoryParkingTypologies || [];
-                                        const updated = e.target.checked
-                                          ? [...current, typology]
-                                          : current.filter(t => t !== typology);
-                                        setSubTabData((prev) => ({
-                                          ...prev,
-                                          [tab.id]: {
-                                            ...prev[tab.id],
-                                            mandatoryParkingTypologies: updated,
-                                          },
-                                        }));
-                                      }}
-                                      className="mr-2 rounded"
-                                    />
-                                    <span className="text-sm">{typology}</span>
-                                  </label>
-                                ))
-                              );
-                            })()}
+                            <div className="ml-4">
+                              <label className="text-sm font-medium text-neutral-700 block mb-2">
+                                Mandatory with:
+                              </label>
+                              <div className="flex flex-wrap gap-4">
+                                {(() => {
+                                  const uniqueTypologies = [...new Set((subTabData[tab.id]?.pricingConfigs || []).map(config => config.typology).filter(Boolean))];
+                                  console.log('Available typologies:', uniqueTypologies);
+                                  return uniqueTypologies.length === 0 ? (
+                                    <div className="text-sm text-gray-500">Add typologies first</div>
+                                  ) : (
+                                    uniqueTypologies.map((typology, index) => (
+                                      <label key={index} className="flex items-center gap-2 text-sm">
+                                        <input
+                                          type="checkbox"
+                                          checked={(subTabData[tab.id]?.mandatoryParkingTypologies || []).includes(typology)}
+                                          onChange={(e) => {
+                                            const current = subTabData[tab.id]?.mandatoryParkingTypologies || [];
+                                            const updated = e.target.checked
+                                              ? [...current, typology]
+                                              : current.filter(t => t !== typology);
+                                            setSubTabData((prev) => ({
+                                              ...prev,
+                                              [tab.id]: {
+                                                ...prev[tab.id],
+                                                mandatoryParkingTypologies: updated,
+                                              },
+                                            }));
+                                          }}
+                                          className="rounded"
+                                        />
+                                        <span>{typology}</span>
+                                      </label>
+                                    ))
+                                  );
+                                })()}
+                              </div>
                             </div>
-                          </div>
                         </>
                         )}
                       </>

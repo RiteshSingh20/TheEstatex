@@ -6154,7 +6154,7 @@ const Admin = () => {
                       }}
                       className="text-gray-500 hover:text-gray-700"
                     >
-                      ?
+                      <X className="h-6 w-6" />
                     </button>
                   </div>
                   <div className="flex-1 overflow-auto p-4">
@@ -6228,7 +6228,7 @@ const Admin = () => {
                                         {isResale ? (
                                           <div>
                                             <div className="font-medium">
-                                              ?
+                                              ₹
                                               {(
                                                 property.expectedPrice / 100000
                                               ).toFixed(1)}
@@ -6346,7 +6346,7 @@ const Admin = () => {
                 tabs={[
                   {
                     id: "rental-resale",
-                    label: "₹₹ Rental & Resale",
+                    label: " 🏠 Rental & Resale",
                     content: (
                       <div>
                         <div className="border-l-4 border-green-500 pl-4 mb-6">
@@ -6368,13 +6368,13 @@ const Admin = () => {
                                     </div>
                                     <div className="flex items-center gap-3">
                                       <span className="text-lg font-bold text-neutral-700 line-through">
-                                        ?
+                                        ₹
                                         {currentPricing.actualPrice.RR.toLocaleString(
                                           "en-IN"
                                         )}
                                       </span>
                                       <span className="text-xl font-bold text-green-600">
-                                        ?
+                                        ₹
                                         {currentPricing.discountedPrice.RR.toLocaleString(
                                           "en-IN"
                                         )}
@@ -6551,14 +6551,14 @@ const Admin = () => {
                           }}
                           className="w-full md:w-auto"
                         >
-                          ₹₹ Save Rental & Resale Pricing
+                          &#8377;&#8377; Save Rental & Resale Pricing
                         </Button>
                       </div>
                     ),
                   },
                   {
                     id: "new-property",
-                    label: "₹₹ New Property",
+                    label: "🏠 New Property",
                     content: (
                       <div className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

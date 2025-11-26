@@ -200,16 +200,6 @@ export function currentStepEditTab0(
                     ...prev,
                     district: selectedDistrict,
                   }));
-                  if (selectedDistrict) {
-                    const matchingRate = stampRates.find(
-                      (rate) =>
-                        rate.jurisdiction.toLowerCase() ===
-                        selectedDistrict.toLowerCase()
-                    );
-                    if (!matchingRate) {
-                      setShowJurisdictionModal(true);
-                    }
-                  }
                 }}
                 disabled={!selectedStateCode && !formData.district}
                 className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100"
