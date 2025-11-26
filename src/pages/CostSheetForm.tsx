@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Button from "../components/ui/Button";
 import toast from "react-hot-toast";
 
 // PDF.js for thumbnail generation with proper error handling
 export const pdfjsLib = (() => {
   try {
-    return (window as any)?.pdfjsLib || null;
+    return (window as Window & { pdfjsLib?: unknown })?.pdfjsLib || null;
   } catch (error) {
     console.warn('PDF.js library not available:', error);
     return null;
@@ -29,8 +29,7 @@ import { deleteMatchedPropertiesFromOldDB } from "../utils/deleteMatchedProperti
 import {
   normalizeForEdit,
 } from "../utils/costSheetAdapter";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../utils/firebase";
+
 
 import { CostSheet } from "./Compare";
 import {
@@ -48,6 +47,9 @@ import { StampDutyRate } from "../../src/pages/Compare";
 import { fetchCities, fetchStates } from "../utils/api";
 import { State, City } from "../types";
 import AmenityModal from "../components/AmenityModal";
+import StampDutyDebugger from "../components/StampDutyDebugger";
+import JurisdictionModal from "../components/JurisdictionModal";
+import { getStampDutyRate, debugStampDutyLookup, findStampDutyRate } from "../utils/stampDutyUtils";
 import { costSheetFields } from "./costSheetFields";
 import {
   categories,
@@ -231,6 +233,8 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     },
   });
   const [showJurisdictionModal, setShowJurisdictionModal] = useState(false);
+  const [showStampDutyDebugger, setShowStampDutyDebugger] = useState(false);
+  const [lastCheckedDistrict, setLastCheckedDistrict] = useState<string>("");
   const [floorRiseConfig, setFloorRiseConfig] = useState({
     startsFrom: "",
     rate: "",
@@ -280,41 +284,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
 
   const generatePdfThumbnail = generatePdfThumbnailFromFile();
 
-  // Helper function to render existing media URLs
-  const renderExistingMedia = (
-    mediaUrls: string[] | string | null,
-    type: string
-  ) => {
-    if (!mediaUrls || (Array.isArray(mediaUrls) && mediaUrls.length === 0))
-      return null;
-
-    const urls = Array.isArray(mediaUrls) ? mediaUrls : [mediaUrls];
-
-    return (
-      <div className="mb-4 p-3 bg-blue-50 rounded border">
-        <h4 className="text-sm font-medium text-blue-800 mb-2">
-          Existing {type}:
-        </h4>
-        <div className="grid grid-cols-2 gap-2">
-          {urls.map((url, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 text-xs truncate flex-1"
-                title={url}
-              >
-                {type} {index + 1}
-              </a>
-              <span className="text-green-600 text-xs">✓</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   // Add minimalistic glow effect with blink
   useEffect(() => {
     const style = document.createElement("style");
@@ -331,7 +300,9 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       }
     `;
     document.head.appendChild(style);
-    return () => document.head.removeChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
   }, []);
 
   // Set initial state code from formData when available
@@ -937,14 +908,23 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
             let calculatedTotalPackage = "";
             if (saleableArea && avRate) {
               const baseAmount = saleableArea * avRate - fixedComponent;
-              const matchingRate = stampRates.find(
-                (rate) =>
-                  rate.jurisdiction.toLowerCase() ===
-                  (formData.district as string)?.toLowerCase()
+              // Use utility function for stamp duty rate lookup
+              const stampDutyRatePercent = getStampDutyRate(
+                stampRates,
+                formData.district as string,
+                undefined,
+                7 // Default to 7%
               );
-              const stampDutyRate = matchingRate
-                ? parseFloat(String(matchingRate.rate)) / 100
-                : 0.06;
+              
+              const stampDutyRate = stampDutyRatePercent / 100;
+              
+              // Debug only if no matching rate found
+              if (stampDutyRatePercent === 7 && formData.district) {
+                const { rate } = findStampDutyRate(stampRates, formData.district as string);
+                if (!rate) {
+                  debugStampDutyLookup(stampRates, formData.district as string);
+                }
+              }
               const stampDuty = baseAmount * stampDutyRate;
               const gstRate = baseAmount > 4500000 ? 0.05 : 0.01;
               const gst = baseAmount * gstRate;
@@ -1307,17 +1287,20 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     const baseArea = saleableArea > reraCarpet ? saleableArea : reraCarpet;
     const agreementValue = avRate * baseArea;
 
-    const matchingRate = stampRates.find(
-      (rate) =>
-        rate.jurisdiction.toLowerCase() ===
-        (typeof formData.district === "string"
-          ? formData.district.toLowerCase()
-          : "")
+    // Use utility function for stamp duty rate lookup
+    const stampDutyRatePercent = getStampDutyRate(
+      stampRates,
+      formData.district as string,
+      undefined, // No station in this context
+      7 // Default to 7%
     );
-
-    const stampDutyRate = matchingRate
-      ? parseFloat(String(matchingRate.rate)) / 100
-      : 0.06;
+    
+    const stampDutyRate = stampDutyRatePercent / 100;
+    
+    // Silent stamp duty lookup
+    if (formData.district && stampRates.length > 0) {
+      findStampDutyRate(stampRates, formData.district as string);
+    }
 
     const stampDuty = agreementValue * stampDutyRate;
     const gst =
@@ -1539,6 +1522,22 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         setFormData={setFormData}
         setExpandedAmenities={setExpandedAmenities}
         setCustomAmenities={setCustomAmenities}
+      />
+      
+      {/* Stamp Duty Debugger Modal */}
+      {showStampDutyDebugger && (
+        <StampDutyDebugger
+          district={formData.district as string || "Thane"}
+          onClose={() => setShowStampDutyDebugger(false)}
+        />
+      )}
+      
+      {/* Jurisdiction Missing Modal */}
+      <JurisdictionModal
+        isOpen={showJurisdictionModal}
+        onClose={() => setShowJurisdictionModal(false)}
+        district={formData.district as string || ""}
+        availableRates={stampRates}
       />
     </div>
   );

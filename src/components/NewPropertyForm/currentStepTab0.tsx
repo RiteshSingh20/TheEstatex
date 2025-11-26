@@ -200,6 +200,10 @@ export function currentStepTab0(
                     ...prev,
                     district: selectedDistrict,
                   }));
+<<<<<<< Updated upstream
+=======
+                  // Removed automatic modal trigger - let user manually check if needed
+>>>>>>> Stashed changes
                 }}
                 disabled={!selectedStateCode && !formData.district}
                 className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100"

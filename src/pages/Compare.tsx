@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import Button from "../components/ui/Button";
 import { getStampDutyRates, getCostSheets } from "../utils/firestoreListings";
+import StampDutyDebugger from "../components/StampDutyDebugger";
+import { getStampDutyRate, debugStampDutyLookup } from "../utils/stampDutyUtils";
 
 export interface CostSheet {
   id: string;
@@ -90,7 +92,7 @@ export interface CostSheet {
 
 export interface StampDutyRate {
   id: string;
-  location: string;
+  location?: string;
   jurisdiction: string;
   rate: number;
 }
@@ -101,6 +103,7 @@ const Compare = () => {
   const [costSheets, setCostSheets] = useState<CostSheet[]>([]);
   const [stampDutyRates, setStampDutyRates] = useState<StampDutyRate[]>([]);
   const [allCostSheets, setAllCostSheets] = useState<CostSheet[]>([]);
+  const [showStampDutyDebugger, setShowStampDutyDebugger] = useState(false);
   const safeNumber = (val: unknown, fallback = undefined) => {
     if (typeof val === "number" && !isNaN(val)) return val;
     if (typeof val === "string") {
@@ -140,30 +143,18 @@ const Compare = () => {
       const gstRate = agreementValue < 4500000 ? 0.01 : 0.05;
       const gst = Math.ceil(agreementValue * gstRate);
 
-      // Find matching stamp duty rate
-      const matchedRate =
-        stampDutyRates.find(
-          (r) =>
-            (r.location || "").toLowerCase() ===
-            (sheet.station || "").toLowerCase()
-        ) ||
-        stampDutyRates.find(
-          (r) =>
-            (r.jurisdiction || "").toLowerCase() ===
-            (sheet.station || "").toLowerCase()
-        ) ||
-        stampDutyRates.find(
-          (r) =>
-            (r.location || "").toLowerCase() ===
-            (sheet.district || "").toLowerCase()
-        ) ||
-        stampDutyRates.find(
-          (r) =>
-            (r.jurisdiction || "").toLowerCase() ===
-            (sheet.district || "").toLowerCase()
-        );
-
-      const rateUsed = matchedRate?.rate ?? 6;
+      // Use utility function for stamp duty rate lookup
+      const rateUsed = getStampDutyRate(
+        stampDutyRates,
+        sheet.district,
+        sheet.station,
+        7 // Default to 7%
+      );
+      
+      // Debug stamp duty lookup if no rate found
+      if (rateUsed === 7 && (sheet.district || sheet.station)) {
+        debugStampDutyLookup(stampDutyRates, sheet.district, sheet.station);
+      }
       const stampDuty =
         Math.ceil((agreementValue * rateUsed) / 100 / 100) * 100;
 
@@ -372,13 +363,21 @@ const Compare = () => {
         {/* Modern Header */}
         <div className="bg-[#0a1f44] px-6 py-4 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-white">Property Comparison</h2>
-          <button
-            className="text-white hover:text-gray-300 transition-colors"
-            onClick={handleClose}
-            aria-label="Close compare page"
-          >
-            <X className="h-7 w-7" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="text-white hover:text-gray-300 transition-colors px-3 py-1 border border-white/30 rounded text-sm"
+              onClick={() => setShowStampDutyDebugger(true)}
+            >
+              Debug Stamp Duty
+            </button>
+            <button
+              className="text-white hover:text-gray-300 transition-colors"
+              onClick={handleClose}
+              aria-label="Close compare page"
+            >
+              <X className="h-7 w-7" />
+            </button>
+          </div>
         </div>
 
         {/* Table Container with Sticky Headers */}
@@ -857,6 +856,14 @@ const Compare = () => {
           </div>
         </div>
       </div>
+      
+      {/* Stamp Duty Debugger Modal */}
+      {showStampDutyDebugger && (
+        <StampDutyDebugger
+          district="Thane"
+          onClose={() => setShowStampDutyDebugger(false)}
+        />
+      )}
     </div>
   );
 };
