@@ -1,10 +1,4 @@
 import React from "react";
-import ContactsCollaterals from "../ContactsCollaterals";
-
-interface Contact {
-  name: string;
-  phone: string;
-}
 
 export function currentStepTabMediaUpload(
   setMediaFiles: React.Dispatch<
@@ -30,51 +24,6 @@ export function currentStepTabMediaUpload(
     typologyVideos: Record<string, File | null>;
   },
   pdfThumbnail: string | null,
-<<<<<<< Updated upstream
-  subTabData: Record<string, any>,
-  existingMedia: {
-    brochure: string | null;
-    elevationImages: string[];
-    amenitiesImages: string[];
-    floorPlanImages: string[];
-    projectWalkthrough: string[];
-    typologyImages: Record<string, string[]>;
-    typologyVideos: Record<string, string | null>;
-  },
-  setExistingMedia: React.Dispatch<
-    React.SetStateAction<{
-      brochure: string | null;
-      elevationImages: string[];
-      amenitiesImages: string[];
-      floorPlanImages: string[];
-      projectWalkthrough: string[];
-      typologyImages: Record<string, string[]>;
-      typologyVideos: Record<string, string | null>;
-    }>
-  >,
-  siteHeads?: Contact[],
-  setSiteHeads?: React.Dispatch<React.SetStateAction<Contact[]>>,
-  sourcingManagers?: Contact[],
-  setSourcingManagers?: React.Dispatch<React.SetStateAction<Contact[]>>
-): React.ReactNode {
-  // Extract typologies from subTabData
-  const typologies = Object.values(subTabData).flatMap(tabData => 
-    tabData.pricingConfigs?.map(config => config.typology).filter(Boolean) || []
-  );
-  const uniqueTypologies = [...new Set(typologies)];
-
-  return (
-    <ContactsCollaterals
-      siteHeads={siteHeads || [{ name: '', phone: '' }]}
-      setSiteHeads={setSiteHeads || (() => {})}
-      sourcingManagers={sourcingManagers || [{ name: '', phone: '' }]}
-      setSourcingManagers={setSourcingManagers || (() => {})}
-      mediaFiles={mediaFiles}
-      setMediaFiles={setMediaFiles}
-      existingMedia={existingMedia}
-      typologies={uniqueTypologies}
-    />
-=======
   subTabData: {
     0: {
       wingBuildingNo: string;
@@ -271,7 +220,7 @@ export function currentStepTabMediaUpload(
                                 <img
                                   src={imageUrl}
                                   alt={`Elevation ${index + 1}`}
-                                  className="w-full h-14 object-cover rounded"
+                                  className="w-full h-14 object-cover rounded aspect-square"
                                   onLoad={() => URL.revokeObjectURL(imageUrl)}
                                   onError={(e) => {
                                     console.error("Image failed to load:", e);
@@ -369,7 +318,7 @@ export function currentStepTabMediaUpload(
                                 <img
                                   src={imageUrl}
                                   alt={`Amenity ${index + 1}`}
-                                  className="w-full h-14 object-cover rounded"
+                                  className="w-full h-14 object-cover rounded aspect-square"
                                   onLoad={() => URL.revokeObjectURL(imageUrl)}
                                   onError={(e) => {
                                     console.error("Image failed to load:", e);
@@ -469,7 +418,7 @@ export function currentStepTabMediaUpload(
                                 <img
                                   src={imageUrl}
                                   alt={`Floor plan ${index + 1}`}
-                                  className="w-full h-14 object-cover rounded"
+                                  className="w-full h-14 object-cover rounded aspect-square"
                                   onLoad={() => URL.revokeObjectURL(imageUrl)}
                                   onError={(e) => {
                                     console.error("Image failed to load:", e);
@@ -566,7 +515,7 @@ export function currentStepTabMediaUpload(
                             <div key={index} className="relative">
                               <video
                                 src={videoUrl}
-                                className="max-w-32 max-h-24 object-contain rounded border"
+                                className="w-24 h-24 object-cover rounded border aspect-square"
                                 controls={false}
                                 onLoadedData={() =>
                                   URL.revokeObjectURL(videoUrl)
@@ -721,7 +670,7 @@ export function currentStepTabMediaUpload(
                                             <img
                                               src={imageUrl}
                                               alt={`${typology} ${index + 1}`}
-                                              className="w-full h-12 object-cover rounded"
+                                              className="w-full h-12 object-cover rounded aspect-square"
                                               onLoad={() =>
                                                 URL.revokeObjectURL(imageUrl)
                                               }
@@ -870,7 +819,7 @@ export function currentStepTabMediaUpload(
                                         src={URL.createObjectURL(
                                           mediaFiles.typologyVideos[typology]!
                                         )}
-                                        className="max-w-24 max-h-16 object-contain rounded border"
+                                        className="w-16 h-16 object-cover rounded border aspect-square"
                                         controls={false}
                                         onLoadedData={(e) =>
                                           URL.revokeObjectURL(
@@ -927,6 +876,5 @@ export function currentStepTabMediaUpload(
         </div>
       </div>
     </div>
->>>>>>> Stashed changes
   );
 }

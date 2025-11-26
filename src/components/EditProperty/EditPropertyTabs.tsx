@@ -234,7 +234,18 @@ export function handleEditPropertyForm(
   isLoading: boolean,
   handleSubmitForm: (e: React.FormEvent) => Promise<void>,
   setEditingProperty?: React.Dispatch<React.SetStateAction<any>>,
-  showJurisdictionModal: boolean
+  showJurisdictionModal: boolean,
+  locationData?: {
+    locationSuggestions: string[];
+    subLocationSuggestions: string[];
+    roadSuggestions: string[];
+    landmarkSuggestions: string[];
+    isLoading: boolean;
+    searchLocations: (term: string) => void;
+    searchSubLocations: (term: string) => void;
+    searchRoads: (term: string) => void;
+    searchLandmarks: (term: string) => void;
+  }
 ) {
   return (
     <div>
@@ -272,7 +283,8 @@ export function handleEditPropertyForm(
                       stampRates,
                       setShowJurisdictionModal,
                       cities,
-                      handleInputChange
+                      handleInputChange,
+                      locationData
                     )
                   : currentStep === 1
                   ? <CurrentStepEditTab1

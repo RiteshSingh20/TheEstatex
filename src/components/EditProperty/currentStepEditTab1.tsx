@@ -729,11 +729,10 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
 
                 {/* Header Row */}
                 <div className="bg-neutral-100 p-2 rounded-t border">
-                  <div
-                    className="grid gap-2 text-sm font-medium text-neutral-700 text-center"
+                  <div 
+                    className="grid gap-1 text-xs font-medium text-neutral-700 text-center"
                     style={{
-                      gridTemplateColumns:
-                        "1.2fr 0.8fr 0.8fr 1fr 1.6fr 1.6fr 1.6fr 1.5fr 1fr 1.2fr 0.4fr 0.4fr 1fr",
+                      gridTemplateColumns: "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
                     }}
                   >
                     <div>Typology</div>
@@ -766,11 +765,10 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           index > 0 ? "border-t border-neutral-200" : ""
                         }`}
                       >
-                        <div
-                          className="grid gap-2"
+                        <div 
+                          className="grid gap-1"
                           style={{
-                            gridTemplateColumns:
-                              "1.2fr 0.8fr 0.8fr 1fr 1.6fr 1.6fr 1.6fr 1.5fr 1fr 1.2fr 0.4fr 0.4fr 1fr",
+                            gridTemplateColumns: "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
                           }}
                         >
                           <div>
@@ -839,6 +837,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 handlePricingChange('psfRate', numericValue, tab.id, index);
                               }}
                               disabled={!isAdmin}
+                              maxLength={11}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
@@ -853,6 +852,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 handlePricingChange('avRate', numericValue, tab.id, index);
                               }}
                               disabled={!isAdmin}
+                              maxLength={11}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
@@ -881,6 +881,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 }, 0);
                               }}
                               disabled={!isAdmin}
+                              maxLength={11}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
@@ -897,6 +898,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 handlePricingChange('possessionCharges', numericValue, tab.id, index);
                               }}
                               disabled={!isAdmin}
+                              maxLength={11}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
@@ -906,6 +908,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               value={config.totalPackage || ""}
                               disabled
                               onWheel={(e) => e.currentTarget.blur()}
+                              maxLength={15}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm bg-neutral-100 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                             />
                           </div>

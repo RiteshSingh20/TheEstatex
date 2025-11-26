@@ -2,6 +2,8 @@ import React from "react";
 import { FormDataType, toTitleCase } from "../../pages/CostSheetFormProps";
 import { State, City } from "../../types";
 import { StampDutyRate } from "../CompareModal";
+import LocationDropdown from "../ui/LocationDropdown";
+import { useLocationData } from "../../hooks/useLocationData";
 
 export function currentStepTab0(
   formData: FormDataType,
@@ -16,8 +18,30 @@ export function currentStepTab0(
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
-  ) => void
+  ) => void,
+  locationData?: {
+    locationSuggestions: string[];
+    subLocationSuggestions: string[];
+    roadSuggestions: string[];
+    landmarkSuggestions: string[];
+    isLoading: boolean;
+    searchLocations: (term: string) => void;
+    searchSubLocations: (term: string) => void;
+    searchRoads: (term: string) => void;
+    searchLandmarks: (term: string) => void;
+  }
 ): React.ReactNode {
+  const {
+    locationSuggestions = [],
+    subLocationSuggestions = [],
+    roadSuggestions = [],
+    landmarkSuggestions = [],
+    isLoading = false,
+    searchLocations = () => {},
+    searchSubLocations = () => {},
+    searchRoads = () => {},
+    searchLandmarks = () => {},
+  } = locationData || {};
   return (
     <div className="space-y-4">
       {/* Project Basic Information Section */}
@@ -82,60 +106,124 @@ export function currentStepTab0(
               />
             </div>
             <div>
-              <input
-                type="text"
-                value={String(formData.location || "")}
-                onChange={(e) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    location: toTitleCase(e.target.value),
-                  }));
-                }}
-                className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
-                required
-              />
+              {locationData ? (
+                <LocationDropdown
+                  value={String(formData.location || "")}
+                  onChange={(value) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      location: value,
+                    }));
+                  }}
+                  suggestions={locationSuggestions}
+                  onSearch={searchLocations}
+                  placeholder="Type location..."
+                  isLoading={isLoading}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={String(formData.location || "")}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      location: toTitleCase(e.target.value),
+                    }));
+                  }}
+                  className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                  required
+                />
+              )}
             </div>
             <div>
-              <input
-                type="text"
-                value={String(formData.subLocation || "")}
-                onChange={(e) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    subLocation: toTitleCase(e.target.value),
-                  }));
-                }}
-                className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
-                required
-              />
+              {locationData ? (
+                <LocationDropdown
+                  value={String(formData.subLocation || "")}
+                  onChange={(value) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      subLocation: value,
+                    }));
+                  }}
+                  suggestions={subLocationSuggestions}
+                  onSearch={searchSubLocations}
+                  placeholder="Type sub-location..."
+                  isLoading={isLoading}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={String(formData.subLocation || "")}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      subLocation: toTitleCase(e.target.value),
+                    }));
+                  }}
+                  className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                  required
+                />
+              )}
             </div>
             <div>
-              <input
-                type="text"
-                value={String(formData.road || "")}
-                onChange={(e) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    road: toTitleCase(e.target.value),
-                  }));
-                }}
-                className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
-                required
-              />
+              {locationData ? (
+                <LocationDropdown
+                  value={String(formData.road || "")}
+                  onChange={(value) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      road: value,
+                    }));
+                  }}
+                  suggestions={roadSuggestions}
+                  onSearch={searchRoads}
+                  placeholder="Type road..."
+                  isLoading={isLoading}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={String(formData.road || "")}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      road: toTitleCase(e.target.value),
+                    }));
+                  }}
+                  className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                  required
+                />
+              )}
             </div>
             <div>
-              <input
-                type="text"
-                value={String(formData.landmark || "")}
-                onChange={(e) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    landmark: toTitleCase(e.target.value),
-                  }));
-                }}
-                className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
-                required
-              />
+              {locationData ? (
+                <LocationDropdown
+                  value={String(formData.landmark || "")}
+                  onChange={(value) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      landmark: value,
+                    }));
+                  }}
+                  suggestions={landmarkSuggestions}
+                  onSearch={searchLandmarks}
+                  placeholder="Type landmark..."
+                  isLoading={isLoading}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={String(formData.landmark || "")}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      landmark: toTitleCase(e.target.value),
+                    }));
+                  }}
+                  className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                  required
+                />
+              )}
             </div>
           </div>
         </div>
@@ -200,10 +288,7 @@ export function currentStepTab0(
                     ...prev,
                     district: selectedDistrict,
                   }));
-<<<<<<< Updated upstream
-=======
                   // Removed automatic modal trigger - let user manually check if needed
->>>>>>> Stashed changes
                 }}
                 disabled={!selectedStateCode && !formData.district}
                 className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100"

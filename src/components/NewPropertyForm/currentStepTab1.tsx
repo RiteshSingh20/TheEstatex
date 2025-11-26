@@ -574,11 +574,10 @@ export function currentStepTab1(
 
                 {/* Header Row */}
                 <div className="bg-neutral-100 p-2 rounded-t border">
-                  <div
-                    className="grid gap-2 text-sm font-medium text-neutral-700 text-center"
+                  <div 
+                    className="grid gap-1 text-xs font-medium text-neutral-700 text-center"
                     style={{
-                      gridTemplateColumns:
-                        "1.2fr 0.8fr 0.8fr 1fr 1.6fr 1.6fr 1.6fr 1.5fr 1fr 1.2fr 0.4fr 0.4fr 1fr",
+                      gridTemplateColumns: "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
                     }}
                   >
                     <div>Typology</div>
@@ -611,11 +610,10 @@ export function currentStepTab1(
                           index > 0 ? "border-t border-neutral-200" : ""
                         }`}
                       >
-                        <div
-                          className="grid gap-2"
+                        <div 
+                          className="grid gap-1"
                           style={{
-                            gridTemplateColumns:
-                              "1.2fr 0.8fr 0.8fr 1fr 1.6fr 1.6fr 1.6fr 1.5fr 1fr 1.2fr 0.4fr 0.4fr 1fr",
+                            gridTemplateColumns: "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
                           }}
                         >
                           <div>
@@ -680,6 +678,7 @@ export function currentStepTab1(
                                 );
                                 handlePricingChange('psfRate', numericValue, tab.id, index);
                               }}
+                              maxLength={11}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
                           </div>
@@ -693,6 +692,7 @@ export function currentStepTab1(
                                 );
                                 handlePricingChange('avRate', numericValue, tab.id, index);
                               }}
+                              maxLength={11}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
                           </div>
@@ -720,6 +720,7 @@ export function currentStepTab1(
                                   }
                                 }, 0);
                               }}
+                              maxLength={11}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
                           </div>
@@ -735,6 +736,7 @@ export function currentStepTab1(
                                 );
                                 handlePricingChange('possessionCharges', numericValue, tab.id, index);
                               }}
+                              maxLength={11}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             />
                           </div>
@@ -743,6 +745,7 @@ export function currentStepTab1(
                               type="text"
                               value={config.totalPackage}
                               readOnly
+                              maxLength={15}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm bg-neutral-100"
                             />
                           </div>

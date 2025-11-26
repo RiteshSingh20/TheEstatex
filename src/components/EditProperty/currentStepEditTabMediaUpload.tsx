@@ -268,7 +268,7 @@ export function currentStepEditTabMediaUpload(
                             <img
                               src={url}
                               alt={`Elevation ${index + 1}`}
-                              className="w-full h-14 object-cover rounded"
+                              className="w-full h-14 object-cover rounded aspect-square"
                               onError={(e) => {
                                 console.error("Image failed to load:", e);
                                 e.currentTarget.style.display = "none";
@@ -297,7 +297,7 @@ export function currentStepEditTabMediaUpload(
                               <img
                                 src={imageUrl}
                                 alt={`Elevation ${index + 1}`}
-                                className="w-full h-14 object-cover rounded"
+                                className="w-full h-14 object-cover rounded aspect-square"
                                 onLoad={() => {
                                   if (typeof file !== 'string') {
                                     URL.revokeObjectURL(imageUrl);
@@ -392,7 +392,7 @@ export function currentStepEditTabMediaUpload(
                             <img
                               src={url}
                               alt={`Amenity ${index + 1}`}
-                              className="w-full h-14 object-cover rounded"
+                              className="w-full h-14 object-cover rounded aspect-square"
                               onError={(e) => {
                                 console.error("Image failed to load:", e);
                                 e.currentTarget.style.display = "none";
@@ -421,7 +421,7 @@ export function currentStepEditTabMediaUpload(
                               <img
                                 src={imageUrl}
                                 alt={`Amenity ${index + 1}`}
-                                className="w-full h-14 object-cover rounded"
+                                className="w-full h-14 object-cover rounded aspect-square"
                                 onLoad={() => {
                                   if (typeof file !== 'string') {
                                     URL.revokeObjectURL(imageUrl);
@@ -518,7 +518,7 @@ export function currentStepEditTabMediaUpload(
                             <img
                               src={url}
                               alt={`Floor plan ${index + 1}`}
-                              className="w-full h-14 object-cover rounded"
+                              className="w-full h-14 object-cover rounded aspect-square"
                               onError={(e) => {
                                 console.error("Image failed to load:", e);
                                 e.currentTarget.style.display = "none";
@@ -547,7 +547,7 @@ export function currentStepEditTabMediaUpload(
                               <img
                                 src={imageUrl}
                                 alt={`Floor plan ${index + 1}`}
-                                className="w-full h-14 object-cover rounded"
+                                className="w-full h-14 object-cover rounded aspect-square"
                                 onLoad={() => {
                                   if (typeof file !== 'string') {
                                     URL.revokeObjectURL(imageUrl);
@@ -643,7 +643,7 @@ export function currentStepEditTabMediaUpload(
                           <div key={`existing-${index}`} className="relative">
                             <video
                               src={url}
-                              className="max-w-32 max-h-24 object-contain rounded border"
+                              className="w-24 h-24 object-cover rounded border aspect-square"
                               controls={false}
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center">
@@ -677,7 +677,7 @@ export function currentStepEditTabMediaUpload(
                             <div key={`new-${index}`} className="relative">
                               <video
                                 src={videoUrl}
-                                className="max-w-32 max-h-24 object-contain rounded border"
+                                className="w-24 h-24 object-cover rounded border aspect-square"
                                 controls={false}
                                 onLoadedData={() => {
                                   if (typeof file !== 'string') {
@@ -824,7 +824,7 @@ export function currentStepEditTabMediaUpload(
                                         <img
                                           src={url}
                                           alt={`${typology} ${index + 1}`}
-                                          className="w-full h-12 object-cover rounded"
+                                          className="w-full h-12 object-cover rounded aspect-square"
                                         />
                                         <button
                                           type="button"
@@ -852,7 +852,7 @@ export function currentStepEditTabMediaUpload(
                                           <img
                                             src={imageUrl}
                                             alt={`${typology} ${index + 1}`}
-                                            className="w-full h-12 object-cover rounded"
+                                            className="w-full h-12 object-cover rounded aspect-square"
                                             onLoad={() => {
                                               if (typeof file !== 'string') {
                                                 URL.revokeObjectURL(imageUrl);
@@ -988,7 +988,7 @@ export function currentStepEditTabMediaUpload(
                                     <div className="relative">
                                       <video
                                         src={existingMedia.typologyVideos[typology] || (typeof mediaFiles.typologyVideos[typology] === 'string' ? mediaFiles.typologyVideos[typology] : URL.createObjectURL(mediaFiles.typologyVideos[typology]!))}
-                                        className="max-w-24 max-h-16 object-contain rounded border"
+                                        className="w-16 h-16 object-cover rounded border aspect-square"
                                         controls={false}
                                         onLoadedData={(e) => {
                                           if (typeof mediaFiles.typologyVideos[typology] !== 'string' && mediaFiles.typologyVideos[typology]) {

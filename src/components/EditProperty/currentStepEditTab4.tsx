@@ -19,19 +19,80 @@ export function currentStepEditTab4(
   >,
   ladderSections: {
     id: number;
+    startDate: string;
+    endDate: string;
     rows: { units: string; ladder: string; additionalIncentive: string }[];
   }[],
   setLadderSections: React.Dispatch<
     React.SetStateAction<
       {
         id: number;
+        startDate: string;
+        endDate: string;
         rows: { units: string; ladder: string; additionalIncentive: string }[];
       }[]
     >
-  >
+  >,
+  taggingValid: string,
+  setTaggingValid: React.Dispatch<React.SetStateAction<string>>
 ): React.ReactNode {
+  
+  // Enhanced scheme name change handler
+  const handleSchemeNameChange = (value: string, index: number) => {
+    const newSchemes = [...paymentSchemes];
+    newSchemes[index].schemeName = value;
+    
+    // Auto-fill description for CLP scheme
+    if (value === "CLP") {
+      newSchemes[index].description = "Construction Linked Plan";
+    } else {
+      // Set appropriate placeholder based on selection
+      switch(value) {
+        case "Developer Subvention":
+          newSchemes[index].description = "";
+          break;
+        case "Bank Subvention":
+          newSchemes[index].description = "";
+          break;
+        case "Flexible Payment Plan":
+          newSchemes[index].description = "";
+          break;
+        case "Down Payment":
+          newSchemes[index].description = "";
+          break;
+        default:
+          newSchemes[index].description = "";
+      }
+    }
+    
+    setPaymentSchemes(newSchemes);
+  };
+
   return (
     <div className="space-y-4">
+      {/* Tagging Valid For Section */}
+      <div className="border border-gray-300 rounded-lg bg-white">
+        <div className="px-2 py-1 text-sm font-medium text-gray-700">
+          ▶ Tagging Valid For
+        </div>
+        <div className="mb-2">
+          <div className="bg-white p-2 border">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700">Tagging Valid</span>
+              <input
+                type="number"
+                value={taggingValid ? taggingValid.replace(' days', '') : ''}
+                onChange={(e) => setTaggingValid(e.target.value + ' days')}
+                onWheel={(e) => e.currentTarget.blur()}
+                className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="Enter value"
+              />
+              <span className="text-sm text-gray-600">days</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Payment Schemes Section */}
       <div className="border border-gray-300 rounded-lg bg-white">
         <div className="px-2 py-1 text-sm font-medium text-gray-700">
@@ -64,11 +125,7 @@ export function currentStepEditTab4(
                   <div>
                     <select
                       value={scheme.schemeName}
-                      onChange={(e) => {
-                        const newSchemes = [...paymentSchemes];
-                        newSchemes[index].schemeName = e.target.value;
-                        setPaymentSchemes(newSchemes);
-                      }}
+                      onChange={(e) => handleSchemeNameChange(e.target.value, index)}
                       className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                     >
                       <option value="">Select Scheme</option>
@@ -88,8 +145,17 @@ export function currentStepEditTab4(
                         newSchemes[index].description = e.target.value;
                         setPaymentSchemes(newSchemes);
                       }}
-                      className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
-                      placeholder="Describe"
+                      readOnly={scheme.schemeName === "CLP"}
+                      className={`w-full border border-neutral-300 rounded px-2 py-1 text-sm ${
+                        scheme.schemeName === "CLP" ? "bg-neutral-100" : ""
+                      }`}
+                      placeholder={
+                        scheme.schemeName === "Developer Subvention" ? "e.g.: 20:80 Scheme" :
+                        scheme.schemeName === "Bank Subvention" ? "e.g.: 10:90 Scheme" :
+                        scheme.schemeName === "Flexible Payment Plan" ? "e.g.: 25:25:25:25" :
+                        scheme.schemeName === "Down Payment" ? "Describe" :
+                        "e.g.: 20:80 Scheme"
+                      }
                     />
                   </div>
                   <div>

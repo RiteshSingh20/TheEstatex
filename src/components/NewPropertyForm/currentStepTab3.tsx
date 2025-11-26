@@ -11,45 +11,77 @@ import { db } from "../../utils/firebase";
 import Input from "../ui/Input";
 import { generateMarketingMessage } from "../../lib/propertyFormLogic";
 
-export function currentStepTab3(
-  activeCategory: { label: string; fields: string[] },
-  formData: FormDataType,
-  stationSearchTerm: string,
-  setStationSearchTerm: React.Dispatch<React.SetStateAction<string>>,
-  setSelectedStationIndex: React.Dispatch<React.SetStateAction<number>>,
-  setShowStationDropdown: React.Dispatch<React.SetStateAction<boolean>>,
-  setFormData: React.Dispatch<React.SetStateAction<FormDataType>>,
-  stationOptions: { value: string; label: string }[],
-  selectedStationIndex: number,
-  showStationDropdown: boolean,
-  states: State[],
-  selectedStateCode: string,
-  handleStateChange: (e: React.ChangeEvent<HTMLSelectElement>) => Promise<void>,
-  cities: City[],
+interface CurrentStepTab3Props {
+  activeCategory: { label: string; fields: string[] };
+  formData: FormDataType;
+  stationSearchTerm: string;
+  setStationSearchTerm: React.Dispatch<React.SetStateAction<string>>;
+  setSelectedStationIndex: React.Dispatch<React.SetStateAction<number>>;
+  setShowStationDropdown: React.Dispatch<React.SetStateAction<boolean>>;
+  setFormData: React.Dispatch<React.SetStateAction<FormDataType>>;
+  stationOptions: { value: string; label: string }[];
+  selectedStationIndex: number;
+  showStationDropdown: boolean;
+  states: State[];
+  selectedStateCode: string;
+  handleStateChange: (e: React.ChangeEvent<HTMLSelectElement>) => Promise<void>;
+  cities: City[];
   handleInputChange: (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
-  ) => void,
-  customAmenities: Record<string, string[]>,
-  expandedAmenities: Record<string, boolean>,
+  ) => void;
+  customAmenities: Record<string, string[]>;
+  expandedAmenities: Record<string, boolean>;
   setExpandedAmenities: React.Dispatch<
     React.SetStateAction<Record<string, boolean>>
-  >,
-  addingAmenityFor: string | null,
-  customAmenityInput: Record<string, string>,
-  setCustomAmenityInput: React.Dispatch<React.SetStateAction<Record<string, string>>>,
-  user: User | null,
+  >;
+  addingAmenityFor: string | null;
+  customAmenityInput: Record<string, string>;
+  setCustomAmenityInput: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  user: User | null;
   setCustomAmenities: React.Dispatch<
     React.SetStateAction<Record<string, string[]>>
-  >,
-  setAddingAmenityFor: React.Dispatch<React.SetStateAction<string | null>>,
-  setCurrentAmenityField: React.Dispatch<React.SetStateAction<string>>,
-  setShowAmenityModal: React.Dispatch<React.SetStateAction<boolean>>,
-  calculateTotalPackage: () => string,
-  numberFields: string[],
-  subTabData: any
-): React.ReactNode {
+  >;
+  setAddingAmenityFor: React.Dispatch<React.SetStateAction<string | null>>;
+  setCurrentAmenityField: React.Dispatch<React.SetStateAction<string>>;
+  setShowAmenityModal: React.Dispatch<React.SetStateAction<boolean>>;
+  calculateTotalPackage: () => string;
+  numberFields: string[];
+  subTabData: any;
+}
+
+export function currentStepTab3({
+  activeCategory,
+  formData,
+  stationSearchTerm,
+  setStationSearchTerm,
+  setSelectedStationIndex,
+  setShowStationDropdown,
+  setFormData,
+  stationOptions,
+  selectedStationIndex,
+  showStationDropdown,
+  states,
+  selectedStateCode,
+  handleStateChange,
+  cities,
+  handleInputChange,
+  customAmenities,
+  expandedAmenities,
+  setExpandedAmenities,
+  addingAmenityFor,
+  customAmenityInput,
+  setCustomAmenityInput,
+  user,
+  setCustomAmenities,
+  setAddingAmenityFor,
+  setCurrentAmenityField,
+  setShowAmenityModal,
+  calculateTotalPackage,
+  numberFields,
+  subTabData
+}: CurrentStepTab3Props): React.ReactNode {
   // Extract unique typologies with their saleable areas from subTabData
   const getGroupedTypologies = () => {
     const grouped: Record<string, string[]> = {};
@@ -107,18 +139,50 @@ export function currentStepTab3(
       toast.success('Marketing message generated successfully!');
       
     } catch (error) {
-      
+      console.error('Error generating marketing message:', error);
       toast.error('Error generating message. Please check your form data.');
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* Marketing Message Generator Button */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-blue-800">Marketing Message</h3>
+            <p className="text-sm text-blue-600 mt-1">
+              Generate an automated marketing message based on your form data
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={generateEnhancedMarketingMessage}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+          >
+            Generate Message
+          </button>
+        </div>
+        
+        {/* Preview of generated message */}
+        {formData.projectMessage && (
+          <div className="mt-4 p-3 bg-white border border-blue-300 rounded-md">
+            <label className="block text-sm font-medium text-blue-800 mb-2">
+              Preview:
+            </label>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+              {formData.projectMessage}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Existing Amenities Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {activeCategory.fields.map((fieldId) => {
-        const field = costSheetFields.find((f) => f.id === fieldId)!;
+        const field = costSheetFields.find((f) => f.id === fieldId);
+        if (!field) return null;
+        
         const value = formData[field.id] ?? "";
 
         if (field.id === "station") {
@@ -155,7 +219,7 @@ export function currentStepTab3(
                   const filteredOptions = stationOptions.filter((option) =>
                     option.label
                       .toLowerCase()
-                      .includes(searchValue.toLowerCase())
+                      .includes(String(searchValue).toLowerCase())
                   );
 
                   if (e.key === "ArrowDown") {
@@ -266,7 +330,7 @@ export function currentStepTab3(
                     const searchValue = formData.station || stationSearchTerm;
                     return option.label
                       .toLowerCase()
-                      .includes(searchValue.toLowerCase());
+                      .includes(String(searchValue).toLowerCase());
                   }).length === 0 && (
                     <div className="px-3 py-2 text-neutral-500">
                       No stations found. You can type to add a new station.
@@ -516,10 +580,18 @@ export function currentStepTab3(
                                       }))
                                     }
                                     onKeyDown={(e) => {
-                                      if (
-                                        e.key === "ArrowUp" ||
-                                        e.key === "ArrowDown"
-                                      ) {
+                                      // Allow numbers and common characters for time/distance input
+                                      const allowedKeys = [
+                                        'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+                                        'ArrowLeft', 'ArrowRight', 'Home', 'End'
+                                      ];
+                                      
+                                      if (allowedKeys.includes(e.key)) {
+                                        return; // Allow these keys
+                                      }
+                                      
+                                      // Allow numbers, letters, space, and common punctuation for time/distance
+                                      if (!/[0-9a-zA-Z\s\-\.\,\:]/.test(e.key)) {
                                         e.preventDefault();
                                       }
                                     }}

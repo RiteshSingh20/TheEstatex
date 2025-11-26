@@ -79,16 +79,16 @@ export function currentStepEditTab3(
       // Collect highlights from form data (if available)
       const highlights: string[] = [];
       // Add logic to collect highlights from form fields if needed
-      
+
       // Collect amenities from form data (if available)
       const projectAmenities: string[] = [];
       const apartmentAmenities: string[] = [];
       // Add logic to collect amenities from form fields if needed
-      
+
       // Collect payment schemes (this would come from step 4 data)
       const paymentSchemes: Array<{ schemeName: string; description: string }> = [];
       // This would be passed from parent component or accessed from global state
-      
+
       // Use the shared marketing message generation function with EXACT SAME LOGIC AS HTML
       const message = generateMarketingMessage({
         formData,
@@ -98,17 +98,17 @@ export function currentStepEditTab3(
         projectAmenities,
         apartmentAmenities
       });
-      
+
       // Set the generated message
       setFormData(prev => ({
         ...prev,
         projectMessage: message
       }));
-      
+
       toast.success('Marketing message generated successfully!');
-      
+
     } catch (error) {
-      
+
       toast.error('Error generating message. Please check your form data.');
     }
   };
@@ -243,7 +243,7 @@ export function currentStepEditTab3(
                           formData.station || stationSearchTerm;
                         return option.label
                           .toLowerCase()
-                          .includes(searchValue.toLowerCase());
+                          .includes(String(searchValue).toLowerCase());
                       })
                       .map((option, index) => (
                         <div
@@ -270,7 +270,7 @@ export function currentStepEditTab3(
                       const searchValue = formData.station || stationSearchTerm;
                       return option.label
                         .toLowerCase()
-                        .includes(searchValue.toLowerCase());
+                        .includes(String(searchValue).toLowerCase());
                     }).length === 0 && (
                       <div className="px-3 py-2 text-neutral-500">
                         No stations found. You can type to add a new station.
@@ -357,7 +357,7 @@ export function currentStepEditTab3(
                     {/* Show stored state value immediately if not in API data */}
                     {formData.state &&
                       !states.find((s) => s.name === formData.state) && (
-                        <option value={formData.state}>{formData.state}</option>
+                        <option value={String(formData.state)}>{String(formData.state)}</option>
                       )}
                     {states.map((state) => (
                       <option key={state.iso2} value={state.iso2}>
@@ -381,8 +381,8 @@ export function currentStepEditTab3(
                     {/* Show stored district value immediately if not in API data */}
                     {formData.district &&
                       !cities.find((c) => c.name === formData.district) && (
-                        <option value={formData.district}>
-                          {formData.district}
+                        <option value={String(formData.district)}>
+                          {String(formData.district)}
                         </option>
                       )}
                     {cities.map((city) => (
@@ -417,7 +417,7 @@ export function currentStepEditTab3(
                   id={field.id}
                   value={
                     typeof value === "string" || typeof value === "number"
-                      ? value
+                      ? String(value)
                       : ""
                   }
                   onChange={(e) => {
@@ -439,8 +439,8 @@ export function currentStepEditTab3(
                 >
                   <option value="">Select</option>
                   {field.options!.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
+                    <option key={opt} value={String(opt)}>
+                      {String(opt)}
                     </option>
                   ))}
                 </select>
@@ -520,13 +520,21 @@ export function currentStepEditTab3(
                                         }))
                                       }
                                       onKeyDown={(e) => {
-                                        if (
-                                          e.key === "ArrowUp" ||
-                                          e.key === "ArrowDown"
-                                        ) {
+                                        // Allow numbers and common characters for time/distance input
+                                        const allowedKeys = [
+                                          'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+                                          'ArrowLeft', 'ArrowRight', 'Home', 'End'
+                                        ];
+                                        
+                                        if (allowedKeys.includes(e.key)) {
+                                          return; // Allow these keys
+                                        }
+                                        
+                                        // Allow numbers, letters, space, and common punctuation for time/distance
+                                        if (!/[0-9a-zA-Z\s\-\.\,\:]/.test(e.key)) {
                                           e.preventDefault();
                                         }
-                                      }}
+                                      }
                                       className="ml-2 border px-2 py-1 rounded w-[80px] text-xs appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                                     />
                                   )}
@@ -738,7 +746,7 @@ export function currentStepEditTab3(
           if (field.id === "mahaReraNumber") {
             const hasReraNumber =
               formData.mahaReraNumber &&
-              String(formData.mahaReraNumber).trim() !== "";
+              String(formData.mahaReraNumber || "").trim() !== "";
             return (
               <React.Fragment key="rera-fields">
                 <Input
@@ -787,7 +795,7 @@ export function currentStepEditTab3(
                 typeof value === "string" ||
                 typeof value === "number" ||
                 Array.isArray(value)
-                  ? value
+                  ? String(value)
                   : value === undefined || value === null
                   ? ""
                   : String(value)
@@ -831,6 +839,46 @@ export function currentStepEditTab3(
             />
           );
         })}
+      </div>
+
+      {/* Marketing Message Generation Section */}
+      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Marketing Message Generator
+          </h3>
+          <button
+            type="button"
+            onClick={generateEnhancedMarketingMessage}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Generate Message
+          </button>
+        </div>
+        
+        {/* Display current typologies */}
+        {Object.keys(groupedTypologies).length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              Available Typologies:
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(groupedTypologies).map(([typology, areas]) => (
+                <span
+                  key={typology}
+                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                >
+                  {typology} ({areas.join(", ")} sq ft)
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <p className="text-sm text-gray-600">
+          Generate a comprehensive marketing message based on your property details, 
+          typologies, and amenities.
+        </p>
       </div>
     </div>
   );

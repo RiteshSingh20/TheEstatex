@@ -594,7 +594,7 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
                     <img
                       src={typeof file === 'string' ? file : URL.createObjectURL(file)}
                       alt={`Elevation ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover aspect-square"
                       onLoad={() => console.log(`Elevation image ${index + 1} loaded successfully`)}
                       onError={() => console.error(`Failed to load elevation image ${index + 1}`)}
                     />
@@ -665,7 +665,7 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
                     <img
                       src={typeof file === 'string' ? file : URL.createObjectURL(file)}
                       alt={`Amenity ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover aspect-square"
                       onLoad={() => console.log(`Amenity image ${index + 1} loaded successfully`)}
                       onError={() => console.error(`Failed to load amenity image ${index + 1}`)}
                     />
@@ -739,7 +739,7 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
                     <img
                       src={typeof file === 'string' ? file : URL.createObjectURL(file)}
                       alt={`Floor Plan ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover aspect-square"
                       onLoad={() => console.log(`Floor plan image ${index + 1} loaded successfully`)}
                       onError={() => console.error(`Failed to load floor plan image ${index + 1}`)}
                     />
@@ -816,12 +816,12 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
                         <img
                           src={videoThumbnails[videoKey]}
                           alt={`Video ${index + 1}`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover aspect-square"
                         />
                       ) : (
                         <video
                           src={typeof file === 'string' ? file : URL.createObjectURL(file)}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover aspect-square"
                           muted
                         />
                       )}
@@ -878,7 +878,7 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
                           <img
                             src={typeof file === 'string' ? file : URL.createObjectURL(file)}
                             alt={`${typology} ${index + 1}`}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover aspect-square"
                             onLoad={() => console.log(`${typology} image ${index + 1} loaded successfully`)}
                             onError={() => console.error(`Failed to load ${typology} image ${index + 1}`)}
                           />
@@ -935,12 +935,12 @@ const ContactsCollaterals: React.FC<ContactsCollateralsProps> = ({
                             <img
                               src={videoThumbnails[videoKey]}
                               alt={`${typology} video`}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover aspect-square"
                             />
                           ) : (
                             <video
                               src={typeof file === 'string' ? file : URL.createObjectURL(file)}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover aspect-square"
                               muted
                             />
                           )}

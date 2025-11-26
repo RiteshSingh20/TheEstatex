@@ -229,3 +229,39 @@ export const fetchLocalitiesByCity = async (
 
   return mockLocalities[city] || [];
 };
+
+// API to fetch location suggestions from TestingCostSheets database
+export const fetchLocationSuggestions = async (
+  searchTerm: string,
+  field: 'location' | 'subLocation' | 'road' | 'landmark',
+  database: string = 'TestingCostSheets'
+): Promise<string[]> => {
+  try {
+    const { getDocs, collection } = await import('firebase/firestore');
+    const { db } = await import('../utils/firebase');
+    
+    const snapshot = await getDocs(collection(db, database));
+    const suggestions = new Set<string>();
+    const searchLower = searchTerm.toLowerCase().trim();
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const fieldValue = data[field];
+      
+      if (fieldValue && typeof fieldValue === 'string') {
+        const valueLower = fieldValue.toLowerCase().trim();
+        
+        if (valueLower.startsWith(searchLower) || valueLower.includes(searchLower)) {
+          suggestions.add(fieldValue);
+        }
+      }
+    });
+    
+    return Array.from(suggestions)
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, 15);
+  } catch (error) {
+    console.error('Error fetching location suggestions:', error);
+    return [];
+  }
+};

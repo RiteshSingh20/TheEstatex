@@ -20,16 +20,22 @@ export function currentStepTab4(
   >,
   ladderSections: {
     id: number;
+    startDate: string;
+    endDate: string;
     rows: { units: string; ladder: string; additionalIncentive: string }[];
   }[],
   setLadderSections: React.Dispatch<
     React.SetStateAction<
       {
         id: number;
+        startDate: string;
+        endDate: string;
         rows: { units: string; ladder: string; additionalIncentive: string }[];
       }[]
     >
-  >
+  >,
+  taggingValid: string,
+  setTaggingValid: React.Dispatch<React.SetStateAction<string>>
 ): React.ReactNode {
   
   // Enhanced scheme name change handler
@@ -65,6 +71,29 @@ export function currentStepTab4(
 
   return (
     <div className="space-y-4">
+      {/* Tagging Valid For Section */}
+      <div className="border border-gray-300 rounded-lg bg-white">
+        <div className="px-2 py-1 text-sm font-medium text-gray-700">
+          ▶ Tagging Valid For
+        </div>
+        <div className="mb-2">
+          <div className="bg-white p-2 border">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700">Tagging Valid</span>
+              <input
+                type="number"
+                value={taggingValid ? taggingValid.replace(' days', '') : ''}
+                onChange={(e) => setTaggingValid(e.target.value + ' days')}
+                onWheel={(e) => e.currentTarget.blur()}
+                className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="Enter value"
+              />
+              <span className="text-sm text-gray-600">days</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Payment Schemes Section */}
       <div className="border border-gray-300 rounded-lg bg-white">
         <div className="px-2 py-1 text-sm font-medium text-gray-700">
