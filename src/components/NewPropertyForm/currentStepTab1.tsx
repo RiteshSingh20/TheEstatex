@@ -1095,7 +1095,7 @@ export function currentStepTab1(
 
               {/* Remove section button - only show if more than 1 sub-tab */}
               {subTabs.length > 1 && (
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-center mt-4">
                   <button
                     type="button"
                     onClick={() => {
@@ -1120,7 +1120,7 @@ export function currentStepTab1(
                     }}
                     className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                   >
-                    Remove section
+                    Remove Section
                   </button>
                 </div>
               )}
@@ -1175,9 +1175,9 @@ export function currentStepTab1(
             }));
             setActiveSubTab(newTab.id);
           }}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
         >
-          Add new section
+          Add New Section
         </button>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FormDataType } from "../../pages/CostSheetFormProps";
 import { StampDutyRate } from "../CompareModal";
-import { getCostSheetsByProjectName } from "../../utils/firestoreListings";
+
 import { calculatePricingTotal } from "../../lib/propertyFormLogic";
 import { calculateBaseAmountWithFixedComponent } from "../../lib/fixedComponentLogic";
 
@@ -170,7 +170,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
   parseIndianCurrency,
   stampRates,
   formData,
-  isAdmin = false
+  isAdmin = true
 }) => {
   const [isLoadingReraData, setIsLoadingReraData] = useState(false);
   const [fixedComponentVisibility, setFixedComponentVisibility] = useState<Record<number, boolean>>({});
@@ -294,118 +294,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
     });
   };
 
-  // Fetch and populate RERA tabs for old formatted properties
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchReraData = async () => {
-      // Only fetch if this is an old format property (v1) and has a project name
-      if (formData.dataVersion === 'v1' && formData.projectName && formData.id) {
-        if (!isMounted) return;
-        setIsLoadingReraData(true);
-        
-        try {
-          const relatedProperties = await getCostSheetsByProjectName(formData.projectName);
-          if (!isMounted) return;
 
-          // Group properties by unique RERA numbers
-          const reraGroups = new Map();
-          let tabIdCounter = 0;
-          
-          relatedProperties.forEach((property, index) => {
-            const reraNumber = property.mahaReraNumber || `RERA-${index + 1}`;
-
-            // Check if this RERA number already exists
-            let existingGroup = null;
-            for (const [key, group] of reraGroups) {
-              if (group.name === reraNumber) {
-                existingGroup = { key, group };
-                break;
-              }
-            }
-            
-            const pricingConfig = {
-              typology: property.flatType || "",
-              saleableArea: property.saleableArea || "",
-              reraCarpet: property.reraCarpet || "",
-              psfRate: property.psfRate || "",
-              avRate: property.avRate || "",
-              fixedComponent: property.fixedComponent || "",
-              possessionCharges: property.possessionCharges || "",
-              totalPackage: property.totalPackage || "",
-              negotiationScope: property.negotiationScope || "",
-              availability: property.availibility || property.availability || "",
-              unitPlan: null,
-            };
-            
-            if (existingGroup) {
-              // Add pricing config to existing RERA group
-              existingGroup.group.data.pricingConfigs.push(pricingConfig);
-            } else {
-              // Create new RERA group
-              const uniqueTabId = tabIdCounter++;
-              reraGroups.set(uniqueTabId, {
-                id: uniqueTabId,
-                name: reraNumber,
-                data: {
-                  wingBuildingNo: property.wingBuildingNo || "",
-                  projectStatus: property.projectStatus || "",
-                  type: property.type || "",
-                  developerPossession: property.developerPossession || "",
-                  reraPossession: property.reraPossession || "",
-                  mahaReraNumber: property.mahaReraNumber || "",
-                  mahaReraLink: property.mahaReraLink || "",
-                  pricingConfigs: [pricingConfig],
-                }
-              });
-            }
-          });
-
-          // Update sub tabs and sub tab data only if component is still mounted
-          if (reraGroups.size > 0 && isMounted) {
-            const newSubTabs = Array.from(reraGroups.values()).map(group => ({
-              id: group.id,
-              name: group.name
-            }));
-            
-            const newSubTabData = {};
-            reraGroups.forEach((group, tabId) => {
-              newSubTabData[tabId] = group.data;
-            });
-
-            // Use setTimeout to defer state updates to next tick
-            setTimeout(() => {
-              if (isMounted) {
-                setSubTabs(newSubTabs);
-                setSubTabData(newSubTabData);
-                
-                // Set active tab to first one
-                if (newSubTabs.length > 0) {
-                  setActiveSubTab(newSubTabs[0].id);
-                }
-              }
-            }, 0);
-          }
-        } catch (error) {
-          console.error('Failed to fetch RERA data:', error);
-        } finally {
-          if (isMounted) {
-            setIsLoadingReraData(false);
-          }
-        }
-      }
-    };
-
-    // Use setTimeout to defer the async operation
-    const timeoutId = setTimeout(() => {
-      fetchReraData();
-    }, 0);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-    };
-  }, [formData.dataVersion, formData.projectName, formData.id]);
 
   // Cleanup object URLs on unmount and when configs change
   useEffect(() => {
@@ -905,7 +794,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           <div>
                             <input
                               type="text"
-                              value={config.totalPackage || ""}
+                              value={formatIndianCurrency(config.totalPackage || "")}
                               disabled
                               onWheel={(e) => e.currentTarget.blur()}
                               maxLength={15}
@@ -1282,7 +1171,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
 
               {/* Remove section button - only show if more than 1 sub-tab */}
               {subTabs.length > 1 && (
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-center mt-4">
                   <button
                     type="button"
                     onClick={() => {
@@ -1306,9 +1195,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                       }
                     }}
                     disabled={!isAdmin}
-                    className="w-8 h-8 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 font-bold disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    -
+                    Remove Section
                   </button>
                 </div>
               )}
@@ -1317,7 +1206,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
       )}
 
       {/* Add new section button - outside of sub-tab border */}
-      <div className="flex justify-end mt-4">
+      <div className="flex justify-center mt-4">
         <button
           type="button"
           onClick={() => {
@@ -1364,9 +1253,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
             setActiveSubTab(newTab.id);
           }}
           disabled={!isAdmin}
-          className="w-8 h-8 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 font-bold disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          +
+          Add New Section
         </button>
       </div>
     </div>

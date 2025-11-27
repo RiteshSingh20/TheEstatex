@@ -20,7 +20,7 @@ import {
 } from "../utils/firestoreListings";
 import { User } from "../types";
 import { useAuth } from "../utils/authContext";
-import CostSheetForm from "./CostSheetForm";
+import CostSheetForm from "../components/Admin Components/CostSheetForm";
 import Input from "../components/ui/Input";
 import { useForm } from "react-hook-form";
 import SearchableDropdown from "../components/ui/SearchableDropdown";
@@ -403,9 +403,7 @@ const Admin = () => {
             .then((citiesData) => {
               setCities(citiesData);
             })
-            .catch((error) => {
-              
-            });
+            .catch((error) => {});
         });
       }
     }
@@ -523,7 +521,6 @@ const Admin = () => {
       // Refresh data
       window.location.reload();
     } catch (error) {
-      
       toast.error("Failed to update property. Please try again.");
     } finally {
       setActionLoading(false);
@@ -565,9 +562,7 @@ const Admin = () => {
             .then((citiesData) => {
               setCities(citiesData);
             })
-            .catch((error) => {
-              
-            });
+            .catch((error) => {});
         });
       }
     }
@@ -655,7 +650,6 @@ const Admin = () => {
       // Refresh data
       window.location.reload();
     } catch (error) {
-      
       toast.error("Failed to update property. Please try again.");
     } finally {
       setActionLoading(false);
@@ -801,7 +795,6 @@ const Admin = () => {
                       const citiesData = await fetchCities(stateCode);
                       setCities(citiesData);
                     } catch (error) {
-                      
                       setCities([]);
                     }
                   } else {
@@ -1242,7 +1235,7 @@ const Admin = () => {
       const availableStations = new Set<string>();
 
       // Fetch from costSheets
-      const costSheetsSnap = await getDocs(collection(db, "costSheets"));
+      const costSheetsSnap = await getDocs(collection(db, "TestingCostSheets"));
       //
 
       costSheetsSnap.forEach((doc) => {
@@ -1312,7 +1305,6 @@ const Admin = () => {
 
       setCostSheetStationsLoaded(true);
     } catch (error) {
-      
       setCostSheetStationsLoaded(true);
     }
   };
@@ -1395,7 +1387,7 @@ const Admin = () => {
 
         // Set up real-time listener for cost sheets
         costSheetsUnsubscribe = onSnapshot(
-          collection(db, "costSheets"),
+          collection(db, "TestingCostSheets"),
           (snapshot) => {
             const updatedNewProperties = snapshot.docs.map((doc) => ({
               id: doc.id,
@@ -1406,9 +1398,7 @@ const Admin = () => {
               newProperties: updatedNewProperties,
             }));
           },
-          (error) => {
-            
-          }
+          (error) => {}
         );
 
         // Convert Firestore timestamps to Date objects
@@ -1428,7 +1418,6 @@ const Admin = () => {
           newProperties: allNewProperties,
         });
       } catch (error) {
-        
         toast.error("Failed to fetch admin data. Please try again later.");
       } finally {
         setLoading(false);
@@ -1455,9 +1444,7 @@ const Admin = () => {
       try {
         const statesData = await fetchStates();
         setStates(statesData);
-      } catch (error) {
-        
-      }
+      } catch (error) {}
     };
     loadStates();
   }, []);
@@ -2172,7 +2159,6 @@ const Admin = () => {
 
       toast.success("Property approved!");
     } catch (error) {
-      
       toast.error("Failed to approve property - " + (error as Error).message);
     } finally {
       setActionLoading(false);
@@ -2189,7 +2175,7 @@ const Admin = () => {
 
       if (category === "newProperty") {
         // Update costSheets document for new properties
-        const propertyRef = doc(db, "costSheets", docId);
+        const propertyRef = doc(db, "TestingCostSheets", docId);
         await updateDoc(propertyRef, {
           isApproved: false,
           isRejected: true,
@@ -2267,7 +2253,6 @@ const Admin = () => {
         toast.success("Property rejected!");
       }
     } catch (error) {
-      
       toast.error("Failed to reject property - " + (error as Error).message);
     } finally {
       setActionLoading(false);
@@ -2339,7 +2324,7 @@ const Admin = () => {
 
       if (category === "newProperty") {
         // Handle new property approval
-        const propertyRef = doc(db, "costSheets", propertyId);
+        const propertyRef = doc(db, "TestingCostSheets", propertyId);
         await updateDoc(propertyRef, {
           isApproved: true,
           isRejected: false,
@@ -2364,13 +2349,11 @@ const Admin = () => {
         }
 
         if (!property) {
-
           toast.error("Property not found");
           return;
         }
 
         if (!property.userId) {
-          
           toast.error("Property missing user information");
           return;
         }
@@ -2433,7 +2416,6 @@ const Admin = () => {
 
       toast.success("Property approved successfully");
     } catch (error) {
-      
       toast.error("Failed to approve property");
     } finally {
       setActionLoading(false);
@@ -2557,7 +2539,6 @@ const Admin = () => {
       setRates(updatedRates);
     } catch (err) {
       toast.error("Failed to save rate");
-      
     }
   };
 
@@ -2572,7 +2553,6 @@ const Admin = () => {
       const updatedRates = await getStampDutyRates();
       setRates(updatedRates);
     } catch (error) {
-      
       toast.error("Failed to delete stamp duty rate");
     }
   };
@@ -2684,7 +2664,6 @@ const Admin = () => {
 
       setUserSubscriptions(subscriptions as SubscriptionInfo[]);
     } catch (error) {
-      
       toast.error("Failed to load subscriptions");
     } finally {
       setLoadingSubscriptions(false);
@@ -6017,7 +5996,6 @@ const Admin = () => {
                                     );
                                   } catch (error) {
                                     toast.error(`Failed to update discounts`);
-                                    
                                   }
                                 }}
                                 className="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white text-xs py-2"
@@ -6431,10 +6409,9 @@ const Admin = () => {
       return;
     setActionLoading(true);
     try {
-
       // Clean up the property data - remove UI-specific fields
       const { category, ...propertyData } = editedProperty;
-      
+
       // Process data based on category
       let processedData: any = {
         ...propertyData,
@@ -6445,29 +6422,59 @@ const Admin = () => {
       if (category === "resale") {
         processedData = {
           ...processedData,
-          expectedPrice: processedData.expectedPrice ? Number(processedData.expectedPrice) : undefined,
-          carpetArea: processedData.carpetArea ? Number(processedData.carpetArea) : undefined,
-          builtUpArea: processedData.builtUpArea ? Number(processedData.builtUpArea) : undefined,
-          maintenance: processedData.maintenance ? Number(processedData.maintenance) : undefined,
-          flatNo: processedData.flatNo ? Number(processedData.flatNo) : undefined,
-          floorNo: processedData.floorNo ? Number(processedData.floorNo) : undefined,
-          totalFloors: processedData.totalFloors ? Number(processedData.totalFloors) : undefined,
-          propertyAge: processedData.propertyAge ? Number(processedData.propertyAge) : undefined,
-          negotiable: processedData.negotiable === true || processedData.negotiable === "true",
+          expectedPrice: processedData.expectedPrice
+            ? Number(processedData.expectedPrice)
+            : undefined,
+          carpetArea: processedData.carpetArea
+            ? Number(processedData.carpetArea)
+            : undefined,
+          builtUpArea: processedData.builtUpArea
+            ? Number(processedData.builtUpArea)
+            : undefined,
+          maintenance: processedData.maintenance
+            ? Number(processedData.maintenance)
+            : undefined,
+          flatNo: processedData.flatNo
+            ? Number(processedData.flatNo)
+            : undefined,
+          floorNo: processedData.floorNo
+            ? Number(processedData.floorNo)
+            : undefined,
+          totalFloors: processedData.totalFloors
+            ? Number(processedData.totalFloors)
+            : undefined,
+          propertyAge: processedData.propertyAge
+            ? Number(processedData.propertyAge)
+            : undefined,
+          negotiable:
+            processedData.negotiable === true ||
+            processedData.negotiable === "true",
         };
       }
-      
+
       // Convert string values to appropriate types for rental properties
       if (category === "rental") {
         processedData = {
           ...processedData,
           rent: processedData.rent ? Number(processedData.rent) : undefined,
-          deposit: processedData.deposit ? Number(processedData.deposit) : undefined,
-          flatNo: processedData.flatNo ? Number(processedData.flatNo) : undefined,
-          floorNo: processedData.floorNo ? Number(processedData.floorNo) : undefined,
-          totalFloors: processedData.totalFloors ? Number(processedData.totalFloors) : undefined,
-          propertyAge: processedData.propertyAge ? Number(processedData.propertyAge) : undefined,
-          negotiable: processedData.negotiable === true || processedData.negotiable === "true",
+          deposit: processedData.deposit
+            ? Number(processedData.deposit)
+            : undefined,
+          flatNo: processedData.flatNo
+            ? Number(processedData.flatNo)
+            : undefined,
+          floorNo: processedData.floorNo
+            ? Number(processedData.floorNo)
+            : undefined,
+          totalFloors: processedData.totalFloors
+            ? Number(processedData.totalFloors)
+            : undefined,
+          propertyAge: processedData.propertyAge
+            ? Number(processedData.propertyAge)
+            : undefined,
+          negotiable:
+            processedData.negotiable === true ||
+            processedData.negotiable === "true",
         };
       }
 
@@ -6489,7 +6496,7 @@ const Admin = () => {
       }
 
       toast.success("Property updated successfully!");
-      
+
       // Refresh the page to ensure data consistency
       setTimeout(() => {
         window.location.reload();
@@ -6497,7 +6504,6 @@ const Admin = () => {
 
       cancelEditProperty();
     } catch (error) {
-      
       toast.error(
         `Failed to update property: ${
           error && typeof error === "object" && "message" in error
@@ -7270,7 +7276,9 @@ const Admin = () => {
                           <div className="text-neutral-500 font-medium mb-2">
                             Sourcing Managers
                           </div>
-                          {showPropertyDetails.sourcingManagers && Array.isArray(showPropertyDetails.sourcingManagers) && showPropertyDetails.sourcingManagers.length > 0 ? (
+                          {showPropertyDetails.sourcingManagers &&
+                          Array.isArray(showPropertyDetails.sourcingManagers) &&
+                          showPropertyDetails.sourcingManagers.length > 0 ? (
                             <div className="overflow-hidden rounded-lg border border-neutral-200">
                               <table className="min-w-full divide-y divide-neutral-200">
                                 <thead className="bg-neutral-50">
@@ -7287,19 +7295,24 @@ const Admin = () => {
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-neutral-200">
-                                  {showPropertyDetails.sourcingManagers.map((manager: any, index: number) => (
-                                    <tr key={index} className="hover:bg-neutral-50">
-                                      <td className="px-3 py-2 text-sm font-medium text-neutral-900">
-                                        {index + 1}
-                                      </td>
-                                      <td className="px-3 py-2 text-sm text-neutral-800">
-                                        {manager.name || "-"}
-                                      </td>
-                                      <td className="px-3 py-2 text-sm text-neutral-800">
-                                        {manager.contact || "-"}
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {showPropertyDetails.sourcingManagers.map(
+                                    (manager: any, index: number) => (
+                                      <tr
+                                        key={index}
+                                        className="hover:bg-neutral-50"
+                                      >
+                                        <td className="px-3 py-2 text-sm font-medium text-neutral-900">
+                                          {index + 1}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800">
+                                          {manager.name || "-"}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800">
+                                          {manager.contact || "-"}
+                                        </td>
+                                      </tr>
+                                    )
+                                  )}
                                 </tbody>
                               </table>
                             </div>
@@ -7320,10 +7333,14 @@ const Admin = () => {
                                 <tbody className="bg-white">
                                   <tr className="hover:bg-neutral-50">
                                     <td className="px-3 py-2 text-sm text-neutral-800">
-                                      {String(showPropertyDetails.smName ?? "-")}
+                                      {String(
+                                        showPropertyDetails.smName ?? "-"
+                                      )}
                                     </td>
                                     <td className="px-3 py-2 text-sm text-neutral-800">
-                                      {String(showPropertyDetails.smContact ?? "-")}
+                                      {String(
+                                        showPropertyDetails.smContact ?? "-"
+                                      )}
                                     </td>
                                   </tr>
                                 </tbody>
@@ -7461,7 +7478,6 @@ const Admin = () => {
                                   "Property unapproved successfully!"
                                 );
                               } catch (error) {
-                                
                                 toast.error("Failed to unapprove property");
                               } finally {
                                 setActionLoading(false);
@@ -7485,17 +7501,27 @@ const Admin = () => {
                       onSubmit={handleSubmitRental((data) => {
                         const processedData = {
                           ...data,
-                          rent: data.expectedRent ? Number(data.expectedRent) : undefined,
-                          deposit: data.securityDeposit ? Number(data.securityDeposit) : undefined,
+                          rent: data.expectedRent
+                            ? Number(data.expectedRent)
+                            : undefined,
+                          deposit: data.securityDeposit
+                            ? Number(data.securityDeposit)
+                            : undefined,
                           cosmo: data.cosmoSociety === "true",
                           masterBed: data.masterBed === "true",
                           negotiable: data.negotiable === "true",
                           contactName: data.ownerName,
                           contactNumber: data.ownerNumber,
                           flatNo: data.flatNo ? Number(data.flatNo) : undefined,
-                          floorNo: data.floorNo ? Number(data.floorNo) : undefined,
-                          totalFloors: data.totalFloors ? Number(data.totalFloors) : undefined,
-                          propertyAge: data.propertyAge ? Number(data.propertyAge) : undefined,
+                          floorNo: data.floorNo
+                            ? Number(data.floorNo)
+                            : undefined,
+                          totalFloors: data.totalFloors
+                            ? Number(data.totalFloors)
+                            : undefined,
+                          propertyAge: data.propertyAge
+                            ? Number(data.propertyAge)
+                            : undefined,
                           amenities: data.amenities || [],
                         };
 
@@ -7719,14 +7745,28 @@ const Admin = () => {
                       onSubmit={handleSubmitResale((data) => {
                         const processedData = {
                           ...data,
-                          expectedPrice: data.expectedPrice ? Number(data.expectedPrice) : undefined,
-                          carpetArea: data.carpetArea ? Number(data.carpetArea) : undefined,
-                          builtUpArea: data.builtUpArea ? Number(data.builtUpArea) : undefined,
-                          maintenance: data.maintenance ? Number(data.maintenance) : undefined,
+                          expectedPrice: data.expectedPrice
+                            ? Number(data.expectedPrice)
+                            : undefined,
+                          carpetArea: data.carpetArea
+                            ? Number(data.carpetArea)
+                            : undefined,
+                          builtUpArea: data.builtUpArea
+                            ? Number(data.builtUpArea)
+                            : undefined,
+                          maintenance: data.maintenance
+                            ? Number(data.maintenance)
+                            : undefined,
                           flatNo: data.flatNo ? Number(data.flatNo) : undefined,
-                          floorNo: data.floorNo ? Number(data.floorNo) : undefined,
-                          totalFloors: data.totalFloors ? Number(data.totalFloors) : undefined,
-                          propertyAge: data.propertyAge ? Number(data.propertyAge) : undefined,
+                          floorNo: data.floorNo
+                            ? Number(data.floorNo)
+                            : undefined,
+                          totalFloors: data.totalFloors
+                            ? Number(data.totalFloors)
+                            : undefined,
+                          propertyAge: data.propertyAge
+                            ? Number(data.propertyAge)
+                            : undefined,
                           negotiable: data.negotiable === "true",
                           ocAvailable: data.ocAvailable === "true",
                           cosmo: data.cosmoSociety === "true",
@@ -7759,111 +7799,365 @@ const Admin = () => {
 
                       {/* Basic Details */}
                       <div className="bg-neutral-50 rounded-lg p-4">
-                        <h5 className="font-semibold text-neutral-700 mb-3">Basic Details</h5>
+                        <h5 className="font-semibold text-neutral-700 mb-3">
+                          Basic Details
+                        </h5>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Input id="society" label="Building/Society Name" error={errorsResale.society?.message} {...registerResale("society", { required: "Building/Society name is required" })} />
-                          <Input id="sublocation" label="Sublocation" {...registerResale("sublocation")} />
-                          <Input id="landmark" label="Landmark" {...registerResale("landmark")} />
-                          <Input id="pincode" label="PIN Code" type="text" maxLength={6} {...registerResale("pincode", { required: "PIN code is required", pattern: { value: /^[0-9]{6}$/, message: "Enter valid 6-digit PIN code" } })} />
-                          <Input id="station" label="Station" {...registerResale("station")} />
-                          <Input id="district" label="District" {...registerResale("district")} />
-                          <Input id="state" label="State" {...registerResale("state")} />
+                          <Input
+                            id="society"
+                            label="Building/Society Name"
+                            error={errorsResale.society?.message}
+                            {...registerResale("society", {
+                              required: "Building/Society name is required",
+                            })}
+                          />
+                          <Input
+                            id="sublocation"
+                            label="Sublocation"
+                            {...registerResale("sublocation")}
+                          />
+                          <Input
+                            id="landmark"
+                            label="Landmark"
+                            {...registerResale("landmark")}
+                          />
+                          <Input
+                            id="pincode"
+                            label="PIN Code"
+                            type="text"
+                            maxLength={6}
+                            {...registerResale("pincode", {
+                              required: "PIN code is required",
+                              pattern: {
+                                value: /^[0-9]{6}$/,
+                                message: "Enter valid 6-digit PIN code",
+                              },
+                            })}
+                          />
+                          <Input
+                            id="station"
+                            label="Station"
+                            {...registerResale("station")}
+                          />
+                          <Input
+                            id="district"
+                            label="District"
+                            {...registerResale("district")}
+                          />
+                          <Input
+                            id="state"
+                            label="State"
+                            {...registerResale("state")}
+                          />
                         </div>
                       </div>
 
                       {/* Property Details */}
                       <div className="bg-neutral-50 rounded-lg p-4">
-                        <h5 className="font-semibold text-neutral-700 mb-3">Property Details</h5>
+                        <h5 className="font-semibold text-neutral-700 mb-3">
+                          Property Details
+                        </h5>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <SearchableDropdown label="Configuration" value={watchResale("type")} onChange={(val) => setValueResale("type", val)} options={propertyTypes} error={errorsResale.type?.message} />
+                          <SearchableDropdown
+                            label="Configuration"
+                            value={watchResale("type")}
+                            onChange={(val) => setValueResale("type", val)}
+                            options={propertyTypes}
+                            error={errorsResale.type?.message}
+                          />
                           {watchResale("type") === "1 BHK" && (
                             <div>
-                              <label className="block text-sm font-medium text-neutral-700 mb-1">Master Bed</label>
+                              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                                Master Bed
+                              </label>
                               <div className="flex space-x-4">
                                 <label className="inline-flex items-center">
-                                  <input type="radio" value="true" {...registerResale("masterBed")} className="h-4 w-4 text-primary border-neutral-300" />
+                                  <input
+                                    type="radio"
+                                    value="true"
+                                    {...registerResale("masterBed")}
+                                    className="h-4 w-4 text-primary border-neutral-300"
+                                  />
                                   <span className="ml-2">Yes</span>
                                 </label>
                                 <label className="inline-flex items-center">
-                                  <input type="radio" value="false" {...registerResale("masterBed")} className="h-4 w-4 text-primary border-neutral-300" />
+                                  <input
+                                    type="radio"
+                                    value="false"
+                                    {...registerResale("masterBed")}
+                                    className="h-4 w-4 text-primary border-neutral-300"
+                                  />
                                   <span className="ml-2">No</span>
                                 </label>
                               </div>
                             </div>
                           )}
-                          <Input id="buildingNo" label="Building No./Wing" {...registerResale("buildingNo", { required: "Building No./Wing is required" })} />
-                          <Input id="flatNo" label="Flat No." type="text" {...registerResale("flatNo", { required: "Flat No. is required" })} />
-                          <Input id="floorNo" label="Floor No." type="text" {...registerResale("floorNo", { required: "Floor No. is required" })} />
-                          <Input id="totalFloors" label="Total Floors" type="text" {...registerResale("totalFloors", { required: "Total floors is required" })} />
-                          <Input id="carpetArea" label="Carpet Area (sq ft)" type="text" {...registerResale("carpetArea", { required: "Carpet area is required" })} />
-                          <Input id="builtUpArea" label="Built-up Area (sq ft)" type="text" {...registerResale("builtUpArea", { required: "Built-up area is required" })} />
-                          <Input id="propertyAge" label="Property Age (years)" type="text" {...registerResale("propertyAge", { required: "Property age is required" })} />
+                          <Input
+                            id="buildingNo"
+                            label="Building No./Wing"
+                            {...registerResale("buildingNo", {
+                              required: "Building No./Wing is required",
+                            })}
+                          />
+                          <Input
+                            id="flatNo"
+                            label="Flat No."
+                            type="text"
+                            {...registerResale("flatNo", {
+                              required: "Flat No. is required",
+                            })}
+                          />
+                          <Input
+                            id="floorNo"
+                            label="Floor No."
+                            type="text"
+                            {...registerResale("floorNo", {
+                              required: "Floor No. is required",
+                            })}
+                          />
+                          <Input
+                            id="totalFloors"
+                            label="Total Floors"
+                            type="text"
+                            {...registerResale("totalFloors", {
+                              required: "Total floors is required",
+                            })}
+                          />
+                          <Input
+                            id="carpetArea"
+                            label="Carpet Area (sq ft)"
+                            type="text"
+                            {...registerResale("carpetArea", {
+                              required: "Carpet area is required",
+                            })}
+                          />
+                          <Input
+                            id="builtUpArea"
+                            label="Built-up Area (sq ft)"
+                            type="text"
+                            {...registerResale("builtUpArea", {
+                              required: "Built-up area is required",
+                            })}
+                          />
+                          <Input
+                            id="propertyAge"
+                            label="Property Age (years)"
+                            type="text"
+                            {...registerResale("propertyAge", {
+                              required: "Property age is required",
+                            })}
+                          />
                           <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">OC Available</label>
+                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                              OC Available
+                            </label>
                             <div className="flex space-x-4">
                               <label className="inline-flex items-center">
-                                <input type="radio" value="true" {...registerResale("ocAvailable", { required: "Please select OC availability" })} className="h-4 w-4 text-primary border-neutral-300" />
+                                <input
+                                  type="radio"
+                                  value="true"
+                                  {...registerResale("ocAvailable", {
+                                    required: "Please select OC availability",
+                                  })}
+                                  className="h-4 w-4 text-primary border-neutral-300"
+                                />
                                 <span className="ml-2">Yes</span>
                               </label>
                               <label className="inline-flex items-center">
-                                <input type="radio" value="false" {...registerResale("ocAvailable", { required: "Please select OC availability" })} className="h-4 w-4 text-primary border-neutral-300" />
+                                <input
+                                  type="radio"
+                                  value="false"
+                                  {...registerResale("ocAvailable", {
+                                    required: "Please select OC availability",
+                                  })}
+                                  className="h-4 w-4 text-primary border-neutral-300"
+                                />
                                 <span className="ml-2">No</span>
                               </label>
                             </div>
                           </div>
                           <div className="col-span-2">
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">Amenities</label>
-                            <input type="text" placeholder="Enter amenities separated by commas" value={Array.isArray(watchResale("amenities")) ? watchResale("amenities").join(", ") : ""} onChange={(e) => { const amenities = e.target.value.split(",").map((item) => item.trim()).filter(Boolean); setValueResale("amenities", amenities); }} className="w-full border border-neutral-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
+                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                              Amenities
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Enter amenities separated by commas"
+                              value={
+                                Array.isArray(watchResale("amenities"))
+                                  ? watchResale("amenities").join(", ")
+                                  : ""
+                              }
+                              onChange={(e) => {
+                                const amenities = e.target.value
+                                  .split(",")
+                                  .map((item) => item.trim())
+                                  .filter(Boolean);
+                                setValueResale("amenities", amenities);
+                              }}
+                              className="w-full border border-neutral-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            />
                           </div>
-                          <SearchableDropdown label="Furnishing" value={watchResale("furnishing")} onChange={(val) => setValueResale("furnishing", val)} options={furnishingOptions} />
-                          <SearchableDropdown label="Parking" value={watchResale("parking")} onChange={(val) => setValueResale("parking", val)} options={parkingOptions} />
-                          <SearchableDropdown label="Terrace/Gallery" value={watchResale("terraceGallery")} onChange={(val) => setValueResale("terraceGallery", val)} options={[{ value: "Terrace", label: "Terrace" }, { value: "Gallery", label: "Gallery" }]} />
+                          <SearchableDropdown
+                            label="Furnishing"
+                            value={watchResale("furnishing")}
+                            onChange={(val) =>
+                              setValueResale("furnishing", val)
+                            }
+                            options={furnishingOptions}
+                          />
+                          <SearchableDropdown
+                            label="Parking"
+                            value={watchResale("parking")}
+                            onChange={(val) => setValueResale("parking", val)}
+                            options={parkingOptions}
+                          />
+                          <SearchableDropdown
+                            label="Terrace/Gallery"
+                            value={watchResale("terraceGallery")}
+                            onChange={(val) =>
+                              setValueResale("terraceGallery", val)
+                            }
+                            options={[
+                              { value: "Terrace", label: "Terrace" },
+                              { value: "Gallery", label: "Gallery" },
+                            ]}
+                          />
                           <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">Cosmo Society</label>
+                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                              Cosmo Society
+                            </label>
                             <div className="flex space-x-4">
                               <label className="inline-flex items-center">
-                                <input type="radio" value="true" {...registerResale("cosmoSociety", { required: "Please select Cosmo society" })} className="h-4 w-4 text-primary border-neutral-300" />
+                                <input
+                                  type="radio"
+                                  value="true"
+                                  {...registerResale("cosmoSociety", {
+                                    required: "Please select Cosmo society",
+                                  })}
+                                  className="h-4 w-4 text-primary border-neutral-300"
+                                />
                                 <span className="ml-2">Yes</span>
                               </label>
                               <label className="inline-flex items-center">
-                                <input type="radio" value="false" {...registerResale("cosmoSociety", { required: "Please select Cosmo society" })} className="h-4 w-4 text-primary border-neutral-300" />
+                                <input
+                                  type="radio"
+                                  value="false"
+                                  {...registerResale("cosmoSociety", {
+                                    required: "Please select Cosmo society",
+                                  })}
+                                  className="h-4 w-4 text-primary border-neutral-300"
+                                />
                                 <span className="ml-2">No</span>
                               </label>
                             </div>
                           </div>
-                          <Input id="expectedPrice" label="Expected Price (₹)" type="text" {...registerResale("expectedPrice", { required: "Expected price is required" })} />
+                          <Input
+                            id="expectedPrice"
+                            label="Expected Price (₹)"
+                            type="text"
+                            {...registerResale("expectedPrice", {
+                              required: "Expected price is required",
+                            })}
+                          />
                           <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">Negotiable</label>
+                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                              Negotiable
+                            </label>
                             <div className="flex space-x-4">
                               <label className="inline-flex items-center">
-                                <input type="radio" value="true" {...registerResale("negotiable", { required: "Please select negotiable option" })} className="h-4 w-4 text-primary border-neutral-300" />
+                                <input
+                                  type="radio"
+                                  value="true"
+                                  {...registerResale("negotiable", {
+                                    required: "Please select negotiable option",
+                                  })}
+                                  className="h-4 w-4 text-primary border-neutral-300"
+                                />
                                 <span className="ml-2">Yes</span>
                               </label>
                               <label className="inline-flex items-center">
-                                <input type="radio" value="false" {...registerResale("negotiable", { required: "Please select negotiable option" })} className="h-4 w-4 text-primary border-neutral-300" />
+                                <input
+                                  type="radio"
+                                  value="false"
+                                  {...registerResale("negotiable", {
+                                    required: "Please select negotiable option",
+                                  })}
+                                  className="h-4 w-4 text-primary border-neutral-300"
+                                />
                                 <span className="ml-2">No</span>
                               </label>
                             </div>
                           </div>
-                          <Input id="maintenance" label="Maintenance (₹)" type="text" {...registerResale("maintenance")} />
+                          <Input
+                            id="maintenance"
+                            label="Maintenance (₹)"
+                            type="text"
+                            {...registerResale("maintenance")}
+                          />
                         </div>
                       </div>
 
                       {/* Others */}
                       <div className="bg-neutral-50 rounded-lg p-4">
-                        <h5 className="font-semibold text-neutral-700 mb-3">Others</h5>
+                        <h5 className="font-semibold text-neutral-700 mb-3">
+                          Others
+                        </h5>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Input id="ownerName" label="Owner Name" {...registerResale("ownerName", { required: "Owner name is required" })} />
-                          <Input id="ownerNumber" label="Owner Number" type="text" maxLength={10} {...registerResale("ownerNumber", { required: "Owner number is required", pattern: { value: /^[0-9]{10}$/, message: "Enter valid 10-digit number" } })} />
-                          <Input id="connectedPerson" label="Connected Person" placeholder="Employee name" {...registerResale("connectedPerson")} />
-                          <Input id="imageUrl" label="Image URL" {...registerResale("imageUrl")} />
-                          <Input id="videoUrl" label="Video URL" {...registerResale("videoUrl")} />
+                          <Input
+                            id="ownerName"
+                            label="Owner Name"
+                            {...registerResale("ownerName", {
+                              required: "Owner name is required",
+                            })}
+                          />
+                          <Input
+                            id="ownerNumber"
+                            label="Owner Number"
+                            type="text"
+                            maxLength={10}
+                            {...registerResale("ownerNumber", {
+                              required: "Owner number is required",
+                              pattern: {
+                                value: /^[0-9]{10}$/,
+                                message: "Enter valid 10-digit number",
+                              },
+                            })}
+                          />
+                          <Input
+                            id="connectedPerson"
+                            label="Connected Person"
+                            placeholder="Employee name"
+                            {...registerResale("connectedPerson")}
+                          />
+                          <Input
+                            id="imageUrl"
+                            label="Image URL"
+                            {...registerResale("imageUrl")}
+                          />
+                          <Input
+                            id="videoUrl"
+                            label="Video URL"
+                            {...registerResale("videoUrl")}
+                          />
                         </div>
                       </div>
 
                       <div className="flex gap-2">
-                        <Button type="submit" variant="primary" isLoading={actionLoading}>Save</Button>
-                        <Button type="button" variant="outline" onClick={cancelEditProperty}>Cancel</Button>
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          isLoading={actionLoading}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={cancelEditProperty}
+                        >
+                          Cancel
+                        </Button>
                       </div>
                     </form>
                   ) : (

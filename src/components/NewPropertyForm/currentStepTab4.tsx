@@ -74,19 +74,20 @@ export function currentStepTab4(
       {/* Tagging Valid For Section */}
       <div className="border border-gray-300 rounded-lg bg-white">
         <div className="px-2 py-1 text-sm font-medium text-gray-700">
-          ▶ Tagging Valid For
+          ▶ Tagging Period
         </div>
         <div className="mb-2">
           <div className="bg-white p-2 border">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-700">Tagging Valid</span>
+              <span className="text-sm text-gray-700">Tagging Valid For</span>
               <input
                 type="number"
-                value={taggingValid ? taggingValid.replace(' days', '') : ''}
-                onChange={(e) => setTaggingValid(e.target.value + ' days')}
+                value={taggingValid}
+                onChange={(e) => setTaggingValid(e.target.value)}
                 onWheel={(e) => e.currentTarget.blur()}
                 className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 placeholder="Enter value"
+                min="0"
               />
               <span className="text-sm text-gray-600">days</span>
             </div>
@@ -341,51 +342,55 @@ export function currentStepTab4(
             </div>
 
             {/* All buttons in one row */}
-            <div className="flex justify-end gap-1 px-2 py-1 bg-gray-50 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={() => {
-                  const newSections = [...ladderSections];
-                  newSections[sectionIndex].rows.push({
-                    units: "",
-                    ladder: "",
-                    additionalIncentive: "",
-                  });
-                  setLadderSections(newSections);
-                }}
-                className="w-6 h-6 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-sm font-bold"
-                title="Add Row"
-              >
-                +
-              </button>
-              {section.rows.length > 1 && (
+            <div className="flex justify-between items-center px-2 py-1 bg-gray-50 border-t border-gray-200">
+              <div className="flex justify-center flex-1">
+                {ladderSections.length > 1 && sectionIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newSections = ladderSections.filter(
+                        (_, index) => index !== sectionIndex
+                      );
+                      setLadderSections(newSections);
+                    }}
+                    className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
+                  >
+                    Remove Section
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-1">
                 <button
                   type="button"
                   onClick={() => {
                     const newSections = [...ladderSections];
-                    newSections[sectionIndex].rows.splice(-1, 1);
+                    newSections[sectionIndex].rows.push({
+                      units: "",
+                      ladder: "",
+                      additionalIncentive: "",
+                    });
                     setLadderSections(newSections);
                   }}
-                  className="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-sm font-bold"
-                  title="Remove Row"
+                  className="w-6 h-6 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-sm font-bold"
+                  title="Add Row"
                 >
-                  -
+                  +
                 </button>
-              )}
-              {ladderSections.length > 1 && sectionIndex > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newSections = ladderSections.filter(
-                      (_, index) => index !== sectionIndex
-                    );
-                    setLadderSections(newSections);
-                  }}
-                  className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
-                >
-                  Remove Section
-                </button>
-              )}
+                {section.rows.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newSections = [...ladderSections];
+                      newSections[sectionIndex].rows.splice(-1, 1);
+                      setLadderSections(newSections);
+                    }}
+                    className="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-sm font-bold"
+                    title="Remove Row"
+                  >
+                    -
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}

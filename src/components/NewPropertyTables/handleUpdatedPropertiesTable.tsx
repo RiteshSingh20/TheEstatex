@@ -248,7 +248,8 @@ export function handleUpdatedPropertiesTable(
                               )
                             ) {
                               try {
-                                await deleteCostSheet(item.id!);
+                                const version = item.dataVersion === 'v1' ? 'v1' : 'v2';
+                                await deleteCostSheet(item.id!, version);
                                 setCostSheets((prev) =>
                                   prev.filter(
                                     (sheet) =>

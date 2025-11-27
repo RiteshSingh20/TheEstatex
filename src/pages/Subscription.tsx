@@ -169,7 +169,7 @@ const Subscription = () => {
 
       // Fetch ND stations (costSheets)
       const ndAvailableStations = new Set<string>();
-      const costSheetsSnap = await getDocs(collection(db, "costSheets"));
+      const costSheetsSnap = await getDocs(collection(db, "TestingCostSheets"));
       costSheetsSnap.forEach((doc) => {
         const data = doc.data();
         if (data.station) {

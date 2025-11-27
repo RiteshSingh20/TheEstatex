@@ -23,7 +23,7 @@ import {
   getUsers,
   getResaleProperties,
   getRentalProperties,
-  getAllCostSheets,
+  getCostSheets,
   getUserActiveSubscriptions,
 } from "../utils/firestoreListings";
 import { normalizeForEdit } from "../utils/costSheetAdapter";
@@ -757,7 +757,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchCostSheets = async () => {
-      const allSheets = await getAllCostSheets();
+      const allSheets = await getCostSheets();
       // Filter to only show approved properties and normalize data
       const approvedSheets = allSheets
         .filter((sheet) => {

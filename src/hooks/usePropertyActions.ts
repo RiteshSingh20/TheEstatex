@@ -29,7 +29,7 @@ export const usePropertyActions = () => {
       setActionLoading(true);
 
       if (category === "newProperty") {
-        const propertyRef = doc(db, "costSheets", docId);
+        const propertyRef = doc(db, "TestingCostSheets", docId);
         await updateDoc(propertyRef, {
           isApproved: false,
           isRejected: true,
@@ -89,7 +89,7 @@ export const usePropertyActions = () => {
       setActionLoading(true);
 
       if (category === "newProperty") {
-        const propertyRef = doc(db, "costSheets", propertyId);
+        const propertyRef = doc(db, "TestingCostSheets", propertyId);
         await updateDoc(propertyRef, {
           isApproved: true,
           isRejected: false,

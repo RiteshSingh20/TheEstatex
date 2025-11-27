@@ -1,5 +1,5 @@
 import { Timestamp } from "firebase/firestore";
-import { pdfjsLib } from "./CostSheetForm";
+import { pdfjsLib } from "../components/Admin Components/CostSheetForm";
 import React from "react";
 import {
   getUsers,
@@ -12,7 +12,12 @@ export interface CostSheetFormProps {
   onSave?: (updatedProperty: any) => void;
 }
 export interface FormDataType {
-  [key: string]: string[] | string | number | undefined | { [key: string]: string };
+  [key: string]:
+    | string[]
+    | string
+    | number
+    | undefined
+    | { [key: string]: string };
   locationHighlightTimes: { [key: string]: string };
 }
 export const stepDefinitions = [
@@ -152,7 +157,6 @@ export function generatePdfThumbnailFromFile() {
       await page.render({ canvasContext: context, viewport }).promise;
       return canvas.toDataURL();
     } catch (error) {
-      
       return null;
     }
   };
@@ -229,9 +233,7 @@ export function fetchCostSheetStations(
             });
           } catch (error) {}
         }
-      } catch (error) {
-        
-      }
+      } catch (error) {}
 
       const additionalLocationOptions = Array.from(additionalLocations)
         .sort()
@@ -243,9 +245,7 @@ export function fetchCostSheetStations(
       ];
 
       setStationOptions(allLocationOptions);
-    } catch (error) {
-      
-    }
+    } catch (error) {}
   };
 }
 export function getApprovedFlatTypes(costSheets: unknown[]) {

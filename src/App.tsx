@@ -12,7 +12,7 @@ const Inventory = lazy(() => import("./pages/Inventory"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Subscription = lazy(() => import("./pages/Subscription"));
 const SubscriptionCheckout = lazy(() => import("./pages/SubscriptionCheckout"));
-const Admin = lazy(() => import("./pages/Admin"));
+const Admin = lazy(() => import("./components/Admin Components/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Compare = lazy(() => import("./pages/Compare"));
 const Pricing = lazy(() => import("./pages/Pricing"));

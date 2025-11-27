@@ -110,7 +110,7 @@ export const useAdminData = () => {
         const allNewProperties = await getCostSheets();
 
         costSheetsUnsubscribe = onSnapshot(
-          collection(db, "costSheets"),
+          collection(db, "TestCostSheets"),
           (snapshot) => {
             const updatedNewProperties = snapshot.docs.map((doc) => ({
               id: doc.id,

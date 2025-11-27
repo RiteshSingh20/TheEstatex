@@ -381,66 +381,30 @@ export const addCostSheet = async (data: any) => {
   });
 };
 
-// Unified function to get all cost sheets from both collections
-export const getAllCostSheets = async (): Promise<any[]> => {
-  const [oldSheets, newSheets] = await Promise.all([
-    getOldCostSheets(),
-    getNewCostSheets()
-  ]);
-  
-  return [
-    ...oldSheets.map(sheet => ({ ...sheet, dataVersion: 'v1', collection: 'costSheets' })),
-    ...newSheets.map(sheet => ({ ...sheet, dataVersion: 'v2', collection: 'TestingCostSheets' }))
-  ];
-};
-
-// Get old structure cost sheets
-export const getOldCostSheets = async (): Promise<any[]> => {
-  const costSheetCollection = collection(db, "costSheets");
-  const querySnapshot = await getDocs(costSheetCollection);
-  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-};
-
-// Get new structure cost sheets
-export const getNewCostSheets = async (): Promise<any[]> => {
+export const getCostSheets = async (): Promise<any[]> => {
   const costSheetCollection = collection(db, "TestingCostSheets");
   const querySnapshot = await getDocs(costSheetCollection);
   return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
-// Legacy function for backward compatibility
-export const getCostSheets = async (): Promise<any[]> => {
-  return getNewCostSheets();
+export const updateCostSheet = async (id: string, data: any) => {
+  const docRef = doc(db, "TestingCostSheets", id);
+  
+  // Exclude createdAt and other timestamp fields from updates to preserve original timestamps
+  const { createdAt, editedAt, updatedAt, ...updateData } = data;
+  
+  await updateDoc(docRef, { ...updateData, editedAt: serverTimestamp(), updatedAt: serverTimestamp() });
 };
 
-// Update cost sheet (handles both versions)
-export const updateCostSheet = async (id: string, data: any, version: 'v1' | 'v2') => {
-  const collectionName = version === 'v1' ? 'costSheets' : 'TestingCostSheets';
-  const docRef = doc(db, collectionName, id);
-  await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
-};
-
-// Delete cost sheet (handles both versions)
-export const deleteCostSheet = async (id: string, version: 'v1' | 'v2') => {
-  const collectionName = version === 'v1' ? 'costSheets' : 'TestingCostSheets';
-  const docRef = doc(db, collectionName, id);
+export const deleteCostSheet = async (id: string) => {
+  const docRef = doc(db, "TestingCostSheets", id);
   await deleteDoc(docRef);
 };
 
-// Get single cost sheet by ID and version
-export const getCostSheetById = async (id: string, version: 'v1' | 'v2') => {
-  const collectionName = version === 'v1' ? 'costSheets' : 'TestingCostSheets';
-  const docRef = doc(db, collectionName, id);
+export const getCostSheetById = async (id: string) => {
+  const docRef = doc(db, "TestingCostSheets", id);
   const docSnap = await getDoc(docRef);
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
-};
-
-// Get all cost sheets with the same project name from old format (v1)
-export const getCostSheetsByProjectName = async (projectName: string): Promise<any[]> => {
-  const costSheetCollection = collection(db, "costSheets");
-  const q = query(costSheetCollection, where("projectName", "==", projectName));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
 // ==================== Subscription & Payment Functions ====================

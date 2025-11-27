@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Button from "../components/ui/Button";
+import Button from "../ui/Button";
 import toast from "react-hot-toast";
 
 // PDF.js for thumbnail generation with proper error handling
@@ -7,7 +7,7 @@ export const pdfjsLib = (() => {
   try {
     return (window as Window & { pdfjsLib?: unknown })?.pdfjsLib || null;
   } catch (error) {
-    console.warn('PDF.js library not available:', error);
+    console.warn("PDF.js library not available:", error);
     return null;
   }
 })();
@@ -17,21 +17,18 @@ if (pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
   } catch (error) {
-    console.error('Failed to configure PDF.js worker:', error);
+    console.error("Failed to configure PDF.js worker:", error);
   }
 }
 import {
-  getAllCostSheets,
+  getCostSheets,
   addCostSheet,
   updateCostSheet,
-} from "../utils/firestoreListings";
-import { deleteMatchedPropertiesFromOldDB } from "../utils/deleteMatchedProperties";
-import {
-  normalizeForEdit,
-} from "../utils/costSheetAdapter";
+} from "../../utils/firestoreListings";
+import { deleteMatchedPropertiesFromOldDB } from "../../utils/deleteMatchedProperties";
+import { normalizeForEdit } from "../../utils/costSheetAdapter";
 
-
-import { CostSheet } from "./Compare";
+import { CostSheet } from "../../pages/Compare";
 import {
   doc,
   updateDoc,
@@ -41,17 +38,21 @@ import {
   onSnapshot,
   getDocs,
 } from "firebase/firestore";
-import { db } from "../utils/firebase";
-import { useAuth } from "../../src/utils/authContext";
-import { StampDutyRate } from "../../src/pages/Compare";
-import { fetchCities, fetchStates } from "../utils/api";
-import { State, City } from "../types";
-import AmenityModal from "../components/AmenityModal";
-import StampDutyDebugger from "../components/StampDutyDebugger";
-import JurisdictionModal from "../components/JurisdictionModal";
-import { getStampDutyRate, debugStampDutyLookup, findStampDutyRate } from "../utils/stampDutyUtils";
-import { costSheetFields } from "./costSheetFields";
-import { useLocationData } from "../hooks/useLocationData";
+import { db } from "../../utils/firebase";
+import { useAuth } from "../../utils/authContext";
+import { StampDutyRate } from "../../pages/Compare";
+import { fetchCities, fetchStates } from "../../utils/api";
+import { State, City } from "../../types";
+import AmenityModal from "../AmenityModal";
+import StampDutyDebugger from "../StampDutyDebugger";
+import JurisdictionModal from "../JurisdictionModal";
+import {
+  getStampDutyRate,
+  debugStampDutyLookup,
+  findStampDutyRate,
+} from "../../utils/stampDutyUtils";
+import { costSheetFields } from "../../pages/costSheetFields";
+import { useLocationData } from "../../hooks/useLocationData";
 import {
   categories,
   CostSheetFormProps,
@@ -61,18 +62,18 @@ import {
   getApprovedFlatTypes,
   requiredPerStep,
   toTitleCase,
-} from "./CostSheetFormProps";
-import { handleEditPropertyForm } from "../components/EditProperty/EditPropertyTabs";
-import { handleNewEntryForm } from "../components/NewPropertyForm/NewPropertyTabs";
-import { handleNewPropertyTable } from "../components/NewPropertyTables/NewPropertyTable";
-import { 
-  cleanFileName, 
-  uploadFile, 
-  uploadFiles, 
-  convertReraPossession, 
+} from "../../pages/CostSheetFormProps";
+import { handleEditPropertyForm } from "../EditProperty/EditPropertyTabs";
+import { handleNewEntryForm } from "../NewPropertyForm/NewPropertyTabs";
+import { handleNewPropertyTable } from "../NewPropertyTables/NewPropertyTable";
+import {
+  cleanFileName,
+  uploadFile,
+  uploadFiles,
+  convertReraPossession,
   removeUndefined,
-  sanitizeInput 
-} from "../utils/formSubmissionUtils";
+  sanitizeInput,
+} from "../../utils/formSubmissionUtils";
 
 const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   const locationData = useLocationData();
@@ -139,9 +140,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       fixedRateStartsFrom: "",
       typologyRates: {},
     });
-    setFloorBandConfig([
-      { fromFloor: "", toFloor: "", rates: {} },
-    ]);
+    setFloorBandConfig([{ fromFloor: "", toFloor: "", rates: {} }]);
     setPaymentSchemes([
       { schemeName: "", description: "", fromDate: "", toDate: "" },
     ]);
@@ -251,7 +250,9 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   const [modalAmenityInput, setModalAmenityInput] = useState("");
   const [showAmenityModal, setShowAmenityModal] = useState(false);
   const [currentAmenityField, setCurrentAmenityField] = useState<string>("");
-  const [customAmenityInput, setCustomAmenityInput] = useState<Record<string, string>>({});
+  const [customAmenityInput, setCustomAmenityInput] = useState<
+    Record<string, string>
+  >({});
   const [addingAmenityFor, setAddingAmenityFor] = useState<string | null>(null);
   const [paymentSchemes, setPaymentSchemes] = useState([
     { schemeName: "", description: "", fromDate: "", toDate: "" },
@@ -322,7 +323,10 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   // Update station options when cost sheets data changes
   useEffect(() => {
     if (costSheets.length > 0) {
-      const fetchOptions = fetchCostSheetStations(costSheets, setStationOptions);
+      const fetchOptions = fetchCostSheetStations(
+        costSheets,
+        setStationOptions
+      );
       fetchOptions();
     }
   }, [costSheets]);
@@ -377,7 +381,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         }));
         setStampRates(rates);
       } catch (error) {
-        console.error('Failed to fetch stamp duty rates:', error);
+        console.error("Failed to fetch stamp duty rates:", error);
       }
     };
 
@@ -393,11 +397,13 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           );
           if (stateObj) {
             setSelectedStateCode(stateObj.iso2);
-            fetchCities(stateObj.iso2).then(setCities).catch(() => {});
+            fetchCities(stateObj.iso2)
+              .then(setCities)
+              .catch(() => {});
           }
         }
       } catch (error) {
-        console.error('Failed to load states or cities:', error);
+        console.error("Failed to load states or cities:", error);
       }
     };
 
@@ -407,42 +413,20 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
 
   useEffect(() => {
     // Listen to both collections for real-time updates
-    const unsubscribeOld = onSnapshot(
-      collection(db, "costSheets"),
-      async () => {
-        try {
-          const allSheets = await getAllCostSheets();
-          setCostSheets(allSheets);
-        } catch (error) {
-          
-        }
-      },
-      (error) => {
-        
-        toast.error(
-          "Error syncing old data - " +
-            (error instanceof Error ? error.message : String(error))
-        );
-      }
-    );
-
-    const unsubscribeNew = onSnapshot(
+    const unsubscribe = onSnapshot(
       collection(db, "TestingCostSheets"),
       async () => {
         try {
-          const allSheets = await getAllCostSheets();
-          setCostSheets(allSheets);
-        } catch (error) {
-          
-        }
+          const sheets = await getCostSheets();
+          setCostSheets(sheets);
+        } catch (error) {}
       },
       (error) => {
-        
         toast.error(
-          "Error syncing new data - " +
+          "Error syncing data - " +
             (error instanceof Error ? error.message : String(error))
         );
-      } 
+      }
     );
 
     const fetchUserData = async () => {
@@ -452,9 +436,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           const userSnap = await getDoc(userRef);
           const userData = userSnap.exists() ? userSnap.data() : {};
           setCustomAmenities(userData.customAmenities || {});
-        } catch (error) {
-          
-        }
+        } catch (error) {}
       }
     };
 
@@ -467,8 +449,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     }));
 
     return () => {
-      unsubscribeOld();
-      unsubscribeNew();
+      unsubscribe();
     };
   }, [user?.id]);
 
@@ -607,9 +588,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
             .then((citiesData) => {
               setCities(citiesData);
             })
-            .catch((error) => {
-              
-            });
+            .catch((error) => {});
         }
       }
 
@@ -676,14 +655,12 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
             typologyImages: editData.mediaFiles.typologyImages || {},
             typologyVideos: editData.mediaFiles.typologyVideos || {},
           }));
-        } catch (err) {
-          
-        }
+        } catch (err) {}
       }
 
       // Update the date when editing a property
       const today = new Date().toISOString().split("T")[0];
-      
+
       setFormData({
         ...editData,
         locationHighlightTimes,
@@ -697,10 +674,13 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   useEffect(() => {
     (async () => {
       try {
-        const sheets = await getAllCostSheets();
+        const sheets = await getCostSheets();
         setCostSheets(sheets);
 
-        const fetchOptions = fetchCostSheetStations(costSheets, setStationOptions);
+        const fetchOptions = fetchCostSheetStations(
+          costSheets,
+          setStationOptions
+        );
         await fetchOptions();
       } catch (error) {
         toast.error(
@@ -753,7 +733,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         const citiesData = await fetchCities(stateCode);
         setCities(citiesData);
       } catch (error) {
-        
         setCities([]);
       }
     } else {
@@ -917,12 +896,15 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
                 undefined,
                 7 // Default to 7%
               );
-              
+
               const stampDutyRate = stampDutyRatePercent / 100;
-              
+
               // Debug only if no matching rate found
               if (stampDutyRatePercent === 7 && formData.district) {
-                const { rate } = findStampDutyRate(stampRates, formData.district as string);
+                const { rate } = findStampDutyRate(
+                  stampRates,
+                  formData.district as string
+                );
                 if (!rate) {
                   debugStampDutyLookup(stampRates, formData.district as string);
                 }
@@ -962,10 +944,15 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
             // existing URL is present, preserve it by default.
             let unitPlanUrl = config.unitPlanUrl || "";
             if (config.unitPlan && (config.unitPlan as any).name) {
-              const cleanTypology = config.typology.replace(/[^a-zA-Z0-9]/g, "_");
+              const cleanTypology = config.typology.replace(
+                /[^a-zA-Z0-9]/g,
+                "_"
+              );
               unitPlanUrl = await uploadFile(
                 config.unitPlan as File,
-                `${basePath}/unitPlans/${cleanTypology}/${cleanFileName((config.unitPlan as File).name)}`
+                `${basePath}/unitPlans/${cleanTypology}/${cleanFileName(
+                  (config.unitPlan as File).name
+                )}`
               );
             }
 
@@ -1152,26 +1139,27 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         const existingSheet = costSheets.find(
           (sheet) => (sheet as any).id === formData.id
         );
-        const isOldFormat = (existingSheet as any)?.dataVersion === "v1" || 
-                           (existingSheet as any)?.collection === "costSheets";
-        
+        const isOldFormat =
+          (existingSheet as any)?.dataVersion === "v1" ||
+          (existingSheet as any)?.collection === "costSheets";
+
         // Always save as v2 format in TestingCostSheets
         const updatedData = { ...finalClean, dataVersion: "v2" };
-        
+
         if (isOldFormat) {
           // Migration: Create new document in TestingCostSheets
-
           await addCostSheet(updatedData);
           // Delete old format data
           if (formData.projectName) {
-            await deleteMatchedPropertiesFromOldDB(formData.projectName as string);
+            await deleteMatchedPropertiesFromOldDB(
+              formData.projectName as string
+            );
           }
         } else {
           // Update existing v2 document
-
-          await updateCostSheet(formData.id as string, updatedData, "v2");
+          await updateCostSheet(formData.id as string, updatedData);
         }
-        
+
         setCostSheets((prev) =>
           prev.map((sheet) =>
             (sheet as CostSheet).id === formData.id
@@ -1190,7 +1178,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         toast.success("Property updated!");
         setEditingProperty(null);
       } else {
-
         await addCostSheet(finalClean);
         setCostSheets((prev) => [
           ...prev,
@@ -1223,7 +1210,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         setEditingProperty(null);
       }
     } catch (err) {
-      
       if (err instanceof Error && err.message.includes("storage")) {
         toast.error(
           "Failed to upload files. Please check your internet connection and try again."
@@ -1296,9 +1282,9 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       undefined, // No station in this context
       7 // Default to 7%
     );
-    
+
     const stampDutyRate = stampDutyRatePercent / 100;
-    
+
     // Silent stamp duty lookup
     if (formData.district && stampRates.length > 0) {
       findStampDutyRate(stampRates, formData.district as string);
@@ -1322,10 +1308,6 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     return isNaN(total) ? "" : Math.round(total).toString();
   };
 
-
-
-
-
   // Track toast display to avoid duplicates
   const toastShownRef = React.useRef<string | null>(null);
 
@@ -1335,18 +1317,90 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       resetFormStates();
     }
   }, [editingProperty, showForm]);
-  
+
   // Show toast when entering edit mode
   React.useEffect(() => {
-    if (editingProperty && formData.id && toastShownRef.current !== editingProperty.id) {
+    if (
+      editingProperty &&
+      formData.id &&
+      toastShownRef.current !== editingProperty.id
+    ) {
       toast.success("Editing property. Make your changes and submit.");
       toastShownRef.current = editingProperty.id;
     }
   }, [editingProperty?.id, formData.id]);
-  
+
   // Use EditPropertyTabs for any editing operation (both editProperty and editingProperty)
   if ((editProperty && onSave) || editingProperty) {
-    return handleEditPropertyForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, setEditingProperty, showJurisdictionModal, locationData);
+    return handleEditPropertyForm(
+      allowedSteps,
+      currentStep,
+      formData,
+      setFormData,
+      states,
+      selectedStateCode,
+      handleStateChange,
+      stampRates,
+      setShowJurisdictionModal,
+      cities,
+      handleInputChange,
+      subTabs,
+      setActiveSubTab,
+      activeSubTab,
+      subTabData,
+      setSubTabData,
+      setSubTabs,
+      formatIndianCurrency,
+      parseIndianCurrency,
+      setFloorRiseConfig,
+      setFloorBandConfig,
+      floorRiseConfig,
+      floorBandConfig,
+      paymentSchemes,
+      setPaymentSchemes,
+      ladderSections,
+      setLadderSections,
+      activeCategory,
+      stationSearchTerm,
+      setStationSearchTerm,
+      setSelectedStationIndex,
+      setShowStationDropdown,
+      stationOptions,
+      selectedStationIndex,
+      showStationDropdown,
+      customAmenities,
+      expandedAmenities,
+      setExpandedAmenities,
+      addingAmenityFor,
+      customAmenityInput,
+      setCustomAmenityInput,
+      user,
+      setCustomAmenities,
+      setAddingAmenityFor,
+      setCurrentAmenityField,
+      setShowAmenityModal,
+      calculateTotalPackage,
+      numberFields,
+      siteHeads,
+      setSiteHeads,
+      sourcingManagers,
+      setSourcingManagers,
+      setMediaFiles,
+      generatePdfThumbnail,
+      setPdfThumbnail,
+      mediaFiles,
+      pdfThumbnail,
+      existingMedia,
+      setExistingMedia,
+      setCurrentStep,
+      totalSteps,
+      isStepValid,
+      isLoading,
+      handleSubmitForm,
+      setEditingProperty,
+      showJurisdictionModal,
+      locationData
+    );
   }
 
   return (
@@ -1366,11 +1420,172 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         </div>
         {(() => {
           if (editingProperty) {
-            return handleEditPropertyForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, setEditingProperty, showJurisdictionModal, locationData);
+            return handleEditPropertyForm(
+              allowedSteps,
+              currentStep,
+              formData,
+              setFormData,
+              states,
+              selectedStateCode,
+              handleStateChange,
+              stampRates,
+              setShowJurisdictionModal,
+              cities,
+              handleInputChange,
+              subTabs,
+              setActiveSubTab,
+              activeSubTab,
+              subTabData,
+              setSubTabData,
+              setSubTabs,
+              formatIndianCurrency,
+              parseIndianCurrency,
+              setFloorRiseConfig,
+              setFloorBandConfig,
+              floorRiseConfig,
+              floorBandConfig,
+              paymentSchemes,
+              setPaymentSchemes,
+              ladderSections,
+              setLadderSections,
+              activeCategory,
+              stationSearchTerm,
+              setStationSearchTerm,
+              setSelectedStationIndex,
+              setShowStationDropdown,
+              stationOptions,
+              selectedStationIndex,
+              showStationDropdown,
+              customAmenities,
+              expandedAmenities,
+              setExpandedAmenities,
+              addingAmenityFor,
+              customAmenityInput,
+              setCustomAmenityInput,
+              user,
+              setCustomAmenities,
+              setAddingAmenityFor,
+              setCurrentAmenityField,
+              setShowAmenityModal,
+              calculateTotalPackage,
+              numberFields,
+              siteHeads,
+              setSiteHeads,
+              sourcingManagers,
+              setSourcingManagers,
+              setMediaFiles,
+              generatePdfThumbnail,
+              setPdfThumbnail,
+              mediaFiles,
+              pdfThumbnail,
+              existingMedia,
+              setExistingMedia,
+              setCurrentStep,
+              totalSteps,
+              isStepValid,
+              isLoading,
+              handleSubmitForm,
+              setEditingProperty,
+              showJurisdictionModal,
+              locationData
+            );
           } else if (showForm) {
-            return handleNewEntryForm(allowedSteps, currentStep, formData, setFormData, states, selectedStateCode, handleStateChange, stampRates, setShowJurisdictionModal, cities, handleInputChange, subTabs, setActiveSubTab, activeSubTab, subTabData, setSubTabData, setSubTabs, formatIndianCurrency, parseIndianCurrency, setFloorRiseConfig, setFloorBandConfig, floorRiseConfig, floorBandConfig, paymentSchemes, setPaymentSchemes, ladderSections, setLadderSections, activeCategory, stationSearchTerm, setStationSearchTerm, setSelectedStationIndex, setShowStationDropdown, stationOptions, selectedStationIndex, showStationDropdown, customAmenities, expandedAmenities, setExpandedAmenities, addingAmenityFor, customAmenityInput, setCustomAmenityInput, user, setCustomAmenities, setAddingAmenityFor, setCurrentAmenityField, setShowAmenityModal, calculateTotalPackage, numberFields, siteHeads, setSiteHeads, sourcingManagers, setSourcingManagers, setMediaFiles, generatePdfThumbnail, setPdfThumbnail, mediaFiles, pdfThumbnail, existingMedia, setExistingMedia, setCurrentStep, totalSteps, isStepValid, isLoading, handleSubmitForm, showJurisdictionModal, locationData);
+            return handleNewEntryForm(
+              allowedSteps,
+              currentStep,
+              formData,
+              setFormData,
+              states,
+              selectedStateCode,
+              handleStateChange,
+              stampRates,
+              setShowJurisdictionModal,
+              cities,
+              handleInputChange,
+              subTabs,
+              setActiveSubTab,
+              activeSubTab,
+              subTabData,
+              setSubTabData,
+              setSubTabs,
+              formatIndianCurrency,
+              parseIndianCurrency,
+              setFloorRiseConfig,
+              setFloorBandConfig,
+              floorRiseConfig,
+              floorBandConfig,
+              paymentSchemes,
+              setPaymentSchemes,
+              ladderSections,
+              setLadderSections,
+              activeCategory,
+              stationSearchTerm,
+              setStationSearchTerm,
+              setSelectedStationIndex,
+              setShowStationDropdown,
+              stationOptions,
+              selectedStationIndex,
+              showStationDropdown,
+              customAmenities,
+              expandedAmenities,
+              setExpandedAmenities,
+              addingAmenityFor,
+              customAmenityInput,
+              setCustomAmenityInput,
+              user,
+              setCustomAmenities,
+              setAddingAmenityFor,
+              setCurrentAmenityField,
+              setShowAmenityModal,
+              calculateTotalPackage,
+              numberFields,
+              siteHeads,
+              setSiteHeads,
+              sourcingManagers,
+              setSourcingManagers,
+              setMediaFiles,
+              generatePdfThumbnail,
+              setPdfThumbnail,
+              mediaFiles,
+              pdfThumbnail,
+              existingMedia,
+              setExistingMedia,
+              setCurrentStep,
+              totalSteps,
+              isStepValid,
+              isLoading,
+              handleSubmitForm,
+              showJurisdictionModal,
+              locationData
+            );
           } else {
-            return handleNewPropertyTable(costSheets, user, searchTerm, bhkFilter, reraRange, sortBy, sortOrder, setSearchTerm, setBhkFilter, setReraRange, availableBhkTypes, setSortBy, setSortOrder, states, setPreloadedStateData, setSelectedSheet, setEditingProperty, setShowForm, setCostSheets, selectedSheet, preloadedStateData, setSelectedStateCode, setCities, Section, Field);
+            return handleNewPropertyTable(
+              costSheets,
+              user,
+              searchTerm,
+              bhkFilter,
+              reraRange,
+              sortBy,
+              sortOrder,
+              setSearchTerm,
+              setBhkFilter,
+              setReraRange,
+              availableBhkTypes,
+              setSortBy,
+              setSortOrder,
+              states,
+              setPreloadedStateData,
+              setSelectedSheet,
+              setEditingProperty,
+              setShowForm,
+              setCostSheets,
+              selectedSheet,
+              preloadedStateData,
+              setSelectedStateCode,
+              setCities,
+              Section,
+              Field
+            );
           }
         })()}
 
@@ -1509,7 +1724,10 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         onClose={() => {
           setTimeout(() => {
             setShowAmenityModal(false);
-            setCustomAmenityInput(prev => ({ ...prev, [currentAmenityField]: "" }));
+            setCustomAmenityInput((prev) => ({
+              ...prev,
+              [currentAmenityField]: "",
+            }));
             setCurrentAmenityField("");
           }, 0);
         }}
@@ -1518,27 +1736,30 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
           costSheetFields.find((f) => f.id === currentAmenityField)?.label || ""
         }
         customAmenityInput={customAmenityInput[currentAmenityField] || ""}
-        setCustomAmenityInput={(value: string) => 
-          setCustomAmenityInput(prev => ({ ...prev, [currentAmenityField]: value }))
+        setCustomAmenityInput={(value: string) =>
+          setCustomAmenityInput((prev) => ({
+            ...prev,
+            [currentAmenityField]: value,
+          }))
         }
         setFormData={setFormData}
         setExpandedAmenities={setExpandedAmenities}
         setCustomAmenities={setCustomAmenities}
       />
-      
+
       {/* Stamp Duty Debugger Modal */}
       {showStampDutyDebugger && (
         <StampDutyDebugger
-          district={formData.district as string || "Thane"}
+          district={(formData.district as string) || "Thane"}
           onClose={() => setShowStampDutyDebugger(false)}
         />
       )}
-      
+
       {/* Jurisdiction Missing Modal */}
       <JurisdictionModal
         isOpen={showJurisdictionModal}
         onClose={() => setShowJurisdictionModal(false)}
-        district={formData.district as string || ""}
+        district={(formData.district as string) || ""}
         availableRates={stampRates}
       />
     </div>
@@ -1546,4 +1767,3 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
 };
 
 export default CostSheetForm;
-

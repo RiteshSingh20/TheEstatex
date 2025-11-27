@@ -3,7 +3,7 @@ import { PropertiesTab } from ".././components/tabs/PropertiesTab";
 import { UsersTab } from ".././components/tabs/UsersTab";
 import { PricingTab } from ".././components/tabs/PricingTab";
 import { StampDutyTab } from ".././components/tabs/StampDutyTab";
-import CostSheetForm from "../pages/CostSheetForm";
+import CostSheetForm from "../components/Admin Components/CostSheetForm";
 
 interface AdminTabsProps {
   user: any;
@@ -33,11 +33,14 @@ interface AdminTabsProps {
 export const getTabs = (props: AdminTabsProps): Tab[] => {
   const baseTabs = [];
 
-  if (props.permissions.canApproveNewProperty() || props.permissions.canApproveResaleRental()) {
+  if (
+    props.permissions.canApproveNewProperty() ||
+    props.permissions.canApproveResaleRental()
+  ) {
     baseTabs.push({
       id: "properties",
       label: "Properties",
-      content: <PropertiesTab {...props} />
+      content: <PropertiesTab {...props} />,
     });
   }
 
@@ -45,7 +48,7 @@ export const getTabs = (props: AdminTabsProps): Tab[] => {
     baseTabs.push({
       id: "costsheet",
       label: "New Property",
-      content: <CostSheetForm />
+      content: <CostSheetForm />,
     });
   }
 
@@ -53,7 +56,7 @@ export const getTabs = (props: AdminTabsProps): Tab[] => {
     baseTabs.push({
       id: "users",
       label: "Users",
-      content: <UsersTab {...props} />
+      content: <UsersTab {...props} />,
     });
   }
 
@@ -61,7 +64,7 @@ export const getTabs = (props: AdminTabsProps): Tab[] => {
     baseTabs.push({
       id: "pricing",
       label: "Pricing",
-      content: <PricingTab {...props} />
+      content: <PricingTab {...props} />,
     });
   }
 
@@ -69,7 +72,7 @@ export const getTabs = (props: AdminTabsProps): Tab[] => {
     baseTabs.push({
       id: "stampDuty",
       label: "Stamp Duty",
-      content: <StampDutyTab {...props} />
+      content: <StampDutyTab {...props} />,
     });
   }
 
