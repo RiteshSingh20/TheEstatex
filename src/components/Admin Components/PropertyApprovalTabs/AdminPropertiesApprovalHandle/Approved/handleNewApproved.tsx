@@ -18,7 +18,8 @@ export function handleNewApproved(
     rental: Property[];
     newProperties: any[];
   },
-  setShowPropertyDetails: any
+  setShowPropertyDetails: any,
+  getUserInfo: (userId: string) => any
 ) {
   return (
     <div className="space-y-4">
@@ -209,10 +210,10 @@ export function handleNewApproved(
                     Station
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-purple-700 uppercase tracking-wider border-r border-purple-200">
-                    Type
+                    Sub Location
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-purple-700 uppercase tracking-wider border-r border-purple-200">
-                    RERA Carpet
+                    Approved By
                   </th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-purple-700 uppercase tracking-wider">
                     Actions
@@ -261,23 +262,69 @@ export function handleNewApproved(
                         </div>
                       </td>
                       <td className="px-3 py-3 border-r border-neutral-100">
-                        <div className="max-w-xs">
-                          <div className="text-sm text-neutral-900 truncate">
-                            {property.subLocation}
-                          </div>
-                          <div className="text-xs text-neutral-500">
-                            {property.station}
-                          </div>
+                        <div className="text-sm text-neutral-900">
+                          {property.location || property.station}
                         </div>
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
+                      <td className="px-3 py-3 border-r border-neutral-100">
                         <div className="text-sm text-neutral-900">
-                          {property.flatType || "-"}
+                          {property.subLocation}
                         </div>
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
-                        <div className="text-sm text-neutral-900">
-                          {property.reraCarpet || "-"} sq ft
+                      <td className="px-3 py-3 border-r border-neutral-100">
+                        <div className="w-fit">
+                          {(() => {
+                            // Show approved by user details
+                            if (property.approvedBy) {
+                              const getValidDate = (value: any) => {
+                                if (!value) return null;
+                                if (value?.seconds) return new Date(value.seconds * 1000);
+                                if (value instanceof Date) return value;
+                                const d = new Date(value);
+                                return isNaN(d.getTime()) ? null : d;
+                              };
+                              
+                              const approvedDate = getValidDate(property.approvedAt);
+                              
+                              return (
+                                <div className="flex flex-col space-y-1">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-green-100 text-green-700">
+                                    Admin (Approved)
+                                  </span>
+                                  {approvedDate && (
+                                    <span className="text-[10px] text-neutral-400">
+                                      {format(approvedDate, "dd MMM yy - hh:mm a")}
+                                    </span>
+                                  )}
+                                  <div className="text-xs text-neutral-600">
+                                    {(() => {
+                                      if (getUserInfo && typeof getUserInfo === 'function') {
+                                        const user = getUserInfo(property.approvedBy);
+                                        if (user) {
+                                          return (
+                                            <div className="space-y-0.5">
+                                              <div className="text-xs text-neutral-600 truncate">
+                                                {user.email}
+                                              </div>
+                                              <div className="text-xs text-neutral-400 truncate">
+                                                {user.fullName}
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                      }
+                                      return `ID: ${property.approvedBy}`;
+                                    })()} 
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="text-xs text-neutral-500">
+                                -
+                              </div>
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap text-center">

@@ -31,7 +31,8 @@ export function handlePendingProperties(
   pendingNewPropertyReraRange: { min: string; max: string },
   setPendingNewPropertyReraRange: any,
   getUserInfo: (userId: string) => User,
-  handleApproveNewProperty: (id: string) => Promise<void>
+  handleApproveNewProperty: (id: string) => Promise<void>,
+  setShowNewPropertyModal: any
 ) {
   return (
     <div className="overflow-x-auto">
@@ -91,7 +92,7 @@ export function handlePendingProperties(
               handleApproveNewProperty,
               actionLoading,
               setRejectingProperty,
-              setShowRejectModal
+              setShowRejectModal,
             ),
           },
         ]}

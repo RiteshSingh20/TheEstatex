@@ -1,4 +1,4 @@
-import { toDate, format } from "date-fns";
+import { format } from "date-fns";
 import { Eye } from "lucide-react";
 import Button from "../../../../ui/Button";
 import { Property } from "../../../helperFunctions";
@@ -233,7 +233,7 @@ export function handleResaleApproved(
                         {(() => {
                           try {
                             if (!property.createdAt) return "-";
-                            const date = toDate(property.createdAt);
+                            const date = property.createdAt.toDate ? property.createdAt.toDate() : new Date(property.createdAt);
                             return isNaN(date.getTime())
                               ? "-"
                               : format(date, "dd/MM/yy");

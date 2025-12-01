@@ -33,6 +33,7 @@ export function renderPropertyApprovalTabs(
   setPendingNewPropertyReraRange,
   getUserInfo: (userId: string) => User,
   handleApproveNewProperty: (id: string) => Promise<void>,
+  setShowNewPropertyModal,
   approvedProperties: {
     resale: Property[];
     rental: Property[];
@@ -104,7 +105,8 @@ export function renderPropertyApprovalTabs(
               pendingNewPropertyReraRange,
               setPendingNewPropertyReraRange,
               getUserInfo,
-              handleApproveNewProperty
+              handleApproveNewProperty,
+              setShowNewPropertyModal
             ),
           },
           {
@@ -120,7 +122,8 @@ export function renderPropertyApprovalTabs(
               filteredApprovedProperties,
               setShowPropertyDetails,
               getAvailableRentalTypes,
-              getAvailableNewPropertyTypes
+              getAvailableNewPropertyTypes,
+              getUserInfo
             ),
           },
           {

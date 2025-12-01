@@ -272,7 +272,7 @@ export function handleEditPropertyForm(
           disabled: !allowedSteps[index],
           content: (
             <div className="p-6">
-              <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+              <div className="space-y-6">
                 {currentStep === 0
                   ? currentStepEditTab0(
                       formData,
@@ -349,7 +349,9 @@ export function handleEditPropertyForm(
                       paymentSchemes,
                       setPaymentSchemes,
                       ladderSections,
-                      setLadderSections
+                      setLadderSections,
+                      formData,
+                      setFormData
                     )
                   : currentStep === 5
                   ? currentStepEditTabMediaUpload(
@@ -384,7 +386,11 @@ export function handleEditPropertyForm(
                   {currentStep < totalSteps - 1 ? (
                     <Button
                       type="button"
-                      onClick={() => setCurrentStep((s) => s + 1)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCurrentStep((s) => s + 1);
+                      }}
                       // disabled={!isStepValid}
                       variant={isStepValid ? "primary" : "outline"}
                       className="disabled:opacity-50 disabled:cursor-not-allowed"
@@ -392,17 +398,18 @@ export function handleEditPropertyForm(
                       Next →
                     </Button>
                   ) : (
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      isLoading={isLoading}
-                      onClick={handleSubmitForm}
-                    >
-                      {formData.id ? "Update" : "Submit"}
-                    </Button>
+                    <form onSubmit={handleSubmitForm} className="inline">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        isLoading={isLoading}
+                      >
+                        {formData.id ? "Update" : "Submit"}
+                      </Button>
+                    </form>
                   )}
                 </div>
-              </form>
+              </div>
             </div>
           ),
         }))}

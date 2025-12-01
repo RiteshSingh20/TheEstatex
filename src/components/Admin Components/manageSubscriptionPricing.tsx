@@ -1,5 +1,5 @@
 import { setDoc, doc } from "firebase/firestore";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, CreditCard, Plus, Search, List } from "lucide-react";
 import toast from "react-hot-toast";
 import { PricingState, StationPricing } from "../../types/admin";
 import { db } from "../../utils/firebase";
@@ -15,7 +15,7 @@ export function manageSubscriptionPricing(currentPricing: { actualPrice?: { RR: 
     <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
       <div className="flex items-center space-x-3">
         <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-lg">₹</span>
+          <CreditCard className="h-5 w-5 text-white" />
         </div>
         <div>
           <h3 className="text-xl font-bold text-blue-900">
@@ -221,9 +221,10 @@ export function manageSubscriptionPricing(currentPricing: { actualPrice?: { RR: 
                       "Rental & Resale pricing updated successfully!"
                     );
                   } }
-                  className="w-full md:w-auto"
+                  className="w-full md:w-auto flex items-center gap-2"
                 >
-                  &#8377;&#8377; Save Rental & Resale Pricing
+                  <CreditCard className="h-4 w-4" />
+                  Save Rental & Resale Pricing
                 </Button>
               </div>
             ),
@@ -239,9 +240,7 @@ export function manageSubscriptionPricing(currentPricing: { actualPrice?: { RR: 
                     {/* Add New Station */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
                       <h5 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                        <span className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">
-                          +
-                        </span>
+                        <Plus className="h-5 w-5" />
                         Add New Station
                       </h5>
                       <div className="space-y-3">
@@ -337,9 +336,7 @@ export function manageSubscriptionPricing(currentPricing: { actualPrice?: { RR: 
                     {/* Quick Edit */}
                     <div className="bg-neutral-50 rounded-lg p-4 border">
                       <h5 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
-                        <span className="w-6 h-6 bg-neutral-600 rounded-full flex items-center justify-center text-white text-xs">
-                          ??
-                        </span>
+                        <Search className="h-5 w-5" />
                         Quick Edit Pricing
                       </h5>
                       <div className="relative mb-3">
@@ -588,9 +585,7 @@ export function manageSubscriptionPricing(currentPricing: { actualPrice?: { RR: 
                     <div className="bg-white rounded-lg border border-neutral-200">
                       <div className="p-4 border-b border-neutral-200">
                         <h5 className="font-semibold text-neutral-800 flex items-center gap-2">
-                          <span className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white text-xs">
-                            ??
-                          </span>
+                          <List className="h-5 w-5" />
                           All {getDynamicCostSheetStationCount()}{" "}
                           Stations
                         </h5>

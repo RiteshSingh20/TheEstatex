@@ -1,4 +1,4 @@
-import { toDate, format } from "date-fns";
+import { format } from "date-fns";
 import { User } from "firebase/auth";
 import { Eye, Check } from "lucide-react";
 import Button from "../../../../ui/Button";
@@ -206,7 +206,7 @@ export function handleRentalRejected(rejectedSearchTerms: { resale: string; rent
                       {(() => {
                         try {
                           if (!property.createdAt) return "-";
-                          const date = toDate(property.createdAt);
+                          const date = property.createdAt.toDate ? property.createdAt.toDate() : new Date(property.createdAt);
                           return isNaN(date.getTime())
                             ? "-"
                             : format(date, "dd/MM/yy");
@@ -239,7 +239,7 @@ export function handleRentalRejected(rejectedSearchTerms: { resale: string; rent
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
                       <div className="text-sm font-semibold text-neutral-900">
-                        ?{property.rent?.toLocaleString("en-IN")}
+                        ₹{property.rent?.toLocaleString("en-IN")}
                       </div>
                       <div className="text-xs text-neutral-500">
                         /month

@@ -26,7 +26,8 @@ export function handleApprovedProperties(
   },
   setShowPropertyDetails: any,
   getAvailableRentalTypes: () => string[],
-  getAvailableNewPropertyTypes: () => string[]
+  getAvailableNewPropertyTypes: () => string[],
+  getUserInfo: (userId: string) => any
 ) {
   return (
     <div>
@@ -64,7 +65,7 @@ export function handleApprovedProperties(
               approvedProperties.newProperties?.length || 0
             })`,
             content: (
-              handleNewApproved(approvedSearchTerms, setApprovedSearchTerms, approvedFilters, setApprovedFilters, getAvailableNewPropertyTypes, filteredApprovedProperties, setShowPropertyDetails)
+              handleNewApproved(approvedSearchTerms, setApprovedSearchTerms, approvedFilters, setApprovedFilters, getAvailableNewPropertyTypes, filteredApprovedProperties, setShowPropertyDetails, getUserInfo)
             ),
           },
         ]}

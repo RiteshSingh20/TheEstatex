@@ -247,7 +247,7 @@ export function handleNewEntryForm(
           disabled: !allowedSteps[index],
           content: (
             <div className="p-6">
-              <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+              <div className="space-y-6">
                 {currentStep === 0
                   ? currentStepTab0(
                       formData,
@@ -324,7 +324,9 @@ export function handleNewEntryForm(
                       paymentSchemes,
                       setPaymentSchemes,
                       ladderSections,
-                      setLadderSections
+                      setLadderSections,
+                      formData,
+                      setFormData
                     )
                   : currentStep === 5
                   ? currentStepTabMediaUpload(
@@ -359,7 +361,11 @@ export function handleNewEntryForm(
                   {currentStep < totalSteps - 1 ? (
                     <Button
                       type="button"
-                      onClick={() => setCurrentStep((s) => s + 1)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCurrentStep((s) => s + 1);
+                      }}
                       // disabled={!isStepValid}
                       variant={isStepValid ? "primary" : "outline"}
                       className="disabled:opacity-50 disabled:cursor-not-allowed"
@@ -367,17 +373,18 @@ export function handleNewEntryForm(
                       Next →
                     </Button>
                   ) : (
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      isLoading={isLoading}
-                      onClick={handleSubmitForm}
-                    >
-                      {formData.id ? "Update" : "Submit"}
-                    </Button>
+                    <form onSubmit={handleSubmitForm} className="inline">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        isLoading={isLoading}
+                      >
+                        {formData.id ? "Update" : "Submit"}
+                      </Button>
+                    </form>
                   )}
                 </div>
-              </form>
+              </div>
             </div>
           ),
         }))}

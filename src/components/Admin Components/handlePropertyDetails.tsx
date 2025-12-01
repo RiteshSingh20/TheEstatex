@@ -1,9 +1,9 @@
+import React from "react";
 import { format, toDate } from "date-fns";
-import { User } from "../../types";
 import { Timestamp } from "firebase/firestore";
-import { Edit, Check, X } from "lucide-react";
+import { Edit, Check, X, MapPin, Building, IndianRupee, Home, Calendar, User, Phone, Mail, ExternalLink, Image, Video, Users } from "lucide-react";
 import toast from "react-hot-toast";
-import CostSheetForm from "./CostSheetForm";
+import CostSheetForm from "../../components/Admin Components/CostSheetForm";
 import {
   updateRentalProperty,
   updateResaleProperty,
@@ -12,6 +12,12 @@ import { updatePropertyStatus } from "../../utils/localStorage";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import SearchableDropdown from "../ui/SearchableDropdown";
+import { Property } from "./helperFunctions";
+
+interface ShowPropertyDetails extends Property {
+  category?: string;
+  [key: string]: any;
+}
 
 // Property configuration constants
 const propertyTypes = [
@@ -48,40 +54,62 @@ const parkingOptions = [
 ];
 
 export function handlePropertyDetails(
-  setShowPropertyDetails,
+  setShowPropertyDetails: (property: ShowPropertyDetails | null) => void,
   cancelEditProperty: () => void,
   showPropertyDetails: ShowPropertyDetails,
   editPropertyMode: boolean,
-  setInventory,
-  user: User | null,
-  setEditPropertyMode,
-  setEditedProperty,
+  setInventory: any,
+  user: any | null,
+  setEditPropertyMode: (mode: boolean) => void,
+  setEditedProperty: (property: ShowPropertyDetails | null) => void,
   handleApproveNewProperty: (id: string) => Promise<void>,
-  setRejectingProperty,
-  setShowRejectModal,
-  Field,
-  getUserInfo: (userId: string) => User,
+  setRejectingProperty: any,
+  setShowRejectModal: (show: boolean) => void,
+  Field: any,
+  getUserInfo: (userId: string) => any,
   startEditProperty: () => void,
   handleApproveProperty: (
     docId: string,
     category: "resale" | "rental"
   ) => Promise<void>,
-  setActionLoading,
+  setActionLoading: (loading: boolean) => void,
   actionLoading: boolean,
-  handleSubmitRental,
-  errorsRental,
-  registerRental,
-  watchRental,
-  setValueRental,
-  handleSubmitResale,
-  errorsResale,
-  registerResale,
-  watchResale,
-  setValueResale,
+  handleSubmitRental: any,
+  errorsRental: any,
+  registerRental: any,
+  watchRental: any,
+  setValueRental: any,
+  handleSubmitResale: any,
+  errorsResale: any,
+  registerResale: any,
+  watchResale: any,
+  setValueResale: any,
   editedProperty: ShowPropertyDetails | null,
-  saveEditedProperty: () => Promise<void>
+  saveEditedProperty: () => Promise<void>,
+  mediaModal: {isOpen: boolean, title: string, files: string[], type: 'image' | 'video' | 'pdf'},
+  setMediaModal: React.Dispatch<React.SetStateAction<{isOpen: boolean, title: string, files: string[], type: 'image' | 'video' | 'pdf'}>>,
+  fullViewer: {isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'},
+  setFullViewer: React.Dispatch<React.SetStateAction<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>>
 ) {
+  const openMediaModal = (title: string, files: string[], type: 'image' | 'video' | 'pdf' = 'image') => {
+    setMediaModal({isOpen: true, title, files, type});
+  };
+
+  const openFullViewer = (files: string[], index: number, type: 'image' | 'video' | 'pdf') => {
+    setFullViewer({isOpen: true, files, currentIndex: index, type});
+  };
+
+  const navigateMedia = (direction: 'prev' | 'next') => {
+    setFullViewer(prev => ({
+      ...prev,
+      currentIndex: direction === 'prev' 
+        ? (prev.currentIndex - 1 + prev.files.length) % prev.files.length
+        : (prev.currentIndex + 1) % prev.files.length
+    }));
+  };
+
   return (
+    <>
     <div className="fixed inset-0 bg-black/30 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col relative">
         <button
@@ -91,7 +119,7 @@ export function handlePropertyDetails(
           }}
           className="absolute top-6 right-6 text-gray-500 hover:text-red-500 text-xl z-20 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-md"
         >
-          �
+          ✕
         </button>
 
         {showPropertyDetails &&
@@ -138,6 +166,21 @@ export function handlePropertyDetails(
                   <h3 className="text-xl font-semibold pr-8">
                     Property Details: {showPropertyDetails.projectName} by{" "}
                     {showPropertyDetails.developerName}
+                    {(() => {
+                      const getValidDate = (value: any) => {
+                        if (!value) return null;
+                        if (value?.seconds) return new Date(value.seconds * 1000);
+                        if (value instanceof Date) return value;
+                        const d = new Date(value);
+                        return isNaN(d.getTime()) ? null : d;
+                      };
+                      const createdDate = getValidDate(showPropertyDetails.createdAt);
+                      return createdDate ? (
+                        <span className="text-sm text-gray-500 font-normal ml-2">
+                          ({createdDate.toLocaleDateString('en-GB')})
+                        </span>
+                      ) : null;
+                    })()} 
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
                     Status:{" "}
@@ -249,495 +292,776 @@ export function handlePropertyDetails(
 
               {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* Section 1: Basic Details */}
-                <div>
-                  <h4 className="text-md font-semibold text-neutral-700 mb-2">
-                    Basic Details
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-neutral-200 p-4 rounded-md bg-neutral-50">
-                    <Field
-                      label="Update date"
-                      value={showPropertyDetails.dateUpdateCostSheet}
-                    />
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Location
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.station ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Developer Name
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.developerName ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Project Name
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.projectName ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Sub-Location
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.subLocation ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Landmark
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.landmark ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Pin Code
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.pinCode ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        District
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.district ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">State</div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.state ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Land Parcel
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.landParcel ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Total Towers
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.towers ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Total Storey
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.storey ?? "-")}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 2: Pricing Details */}
-                <div>
-                  <h4 className="text-md font-semibold text-neutral-700 mb-2">
-                    Pricing Details
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-neutral-200 p-4 rounded-md bg-neutral-50">
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Wing/Building No.
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.wingBuildingNo ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        BHK Type
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.flatType ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Saleable Area
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.saleableArea ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        RERA Carpet / Usable Carpet
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.reraCarpet ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Per Sq. ft. Rate
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.psfRate ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Agreement Value Rate
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.avRate ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Floor Rise Rate
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.floorRise ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Registration Fee/ Charge
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.registration ?? "-")}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 3: Other charges & Payment Plans */}
-                <div>
-                  <h4 className="text-md font-semibold text-neutral-700 mb-2">
-                    Other charges & Payment Plans
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-neutral-200 p-4 rounded-md bg-neutral-50">
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Fixed Component
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.fixedComponent ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Possession Charges
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.possessionCharges ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Parking Charges
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.parkingCharge ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Total Package
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.totalPackage ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm col-span-2">
-                      <div className="text-neutral-500 font-medium">
-                        Payment Schemes
-                      </div>
-                      <div className="text-neutral-800">
-                        {Array.isArray(showPropertyDetails.paymentScheme)
-                          ? showPropertyDetails.paymentScheme.join(", ")
-                          : "-"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 4: Amenities */}
-                <div>
-                  <h4 className="text-md font-semibold text-neutral-700 mb-2">
-                    Amenities
-                  </h4>
-                  <div className="grid grid-cols-1 gap-4 border border-neutral-200 p-4 rounded-md bg-neutral-50">
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium mb-2">
-                        Apartment Amenities
-                      </div>
-                      <div className="text-neutral-800">
-                        {Array.isArray(showPropertyDetails.apartmentAmenities)
-                          ? showPropertyDetails.apartmentAmenities.join(", ")
-                          : "-"}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium mb-2">
-                        Project Amenities
-                      </div>
-                      <div className="text-neutral-800">
-                        {Array.isArray(showPropertyDetails.projectAmenities)
-                          ? showPropertyDetails.projectAmenities.join(", ")
-                          : "-"}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium mb-2">
-                        Location Highlights
-                      </div>
-                      <div className="text-neutral-800">
-                        {Array.isArray(showPropertyDetails.locationHighlights)
-                          ? showPropertyDetails.locationHighlights.join(", ")
-                          : "-"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 5: Others */}
-                <div>
-                  <h4 className="text-md font-semibold text-neutral-700 mb-2">
-                    Others
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-neutral-200 p-4 rounded-md bg-neutral-50">
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Project Type
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.type ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Maha RERA Number
-                      </div>
-                      <div className="text-neutral-800">
-                        {showPropertyDetails.mahaReraNumber ? (
-                          showPropertyDetails.mahaReraLink ? (
-                            <a
-                              href={showPropertyDetails.mahaReraLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
-                            >
-                              {showPropertyDetails.mahaReraNumber}
-                            </a>
-                          ) : (
-                            showPropertyDetails.mahaReraNumber
-                          )
-                        ) : (
-                          "-"
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Possession
-                      </div>
-                      <div className="text-neutral-800">
-                        {`${showPropertyDetails.possessionMonth || "-"} ${
-                          showPropertyDetails.possessionYear || ""
-                        }`}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Is Cosmo?
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.isCosmo ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Availability
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.availibility ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Image URL
-                      </div>
-                      <div className="text-neutral-800">
-                        {showPropertyDetails.imageUrl ? (
-                          <a
-                            href={showPropertyDetails.imageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 underline"
-                          >
-                            View Images
-                          </a>
-                        ) : (
-                          "-"
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Video URL
-                      </div>
-                      <div className="text-neutral-800">
-                        {showPropertyDetails.videoUrl ? (
-                          <a
-                            href={showPropertyDetails.videoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 underline"
-                          >
-                            View Video
-                          </a>
-                        ) : (
-                          "-"
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Site Head Name
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.siteHeadName ?? "-")}
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-neutral-500 font-medium">
-                        Site Head Number
-                      </div>
-                      <div className="text-neutral-800">
-                        {String(showPropertyDetails.siteHeadNumber ?? "-")}
-                      </div>
-                    </div>
-                    {/* Sourcing Managers */}
-                    <div className="col-span-2">
-                      <div className="text-neutral-500 font-medium mb-2">
-                        Sourcing Managers
-                      </div>
-                      {showPropertyDetails.sourcingManagers &&
-                      Array.isArray(showPropertyDetails.sourcingManagers) &&
-                      showPropertyDetails.sourcingManagers.length > 0 ? (
-                        <div className="overflow-hidden rounded-lg border border-neutral-200">
-                          <table className="min-w-full divide-y divide-neutral-200">
-                            <thead className="bg-neutral-50">
-                              <tr>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                  #
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                  Name
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                  Contact
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-neutral-200">
-                              {showPropertyDetails.sourcingManagers.map(
-                                (manager: any, index: number) => (
-                                  <tr
-                                    key={index}
-                                    className="hover:bg-neutral-50"
-                                  >
-                                    <td className="px-3 py-2 text-sm font-medium text-neutral-900">
-                                      {index + 1}
-                                    </td>
-                                    <td className="px-3 py-2 text-sm text-neutral-800">
-                                      {manager.name || "-"}
-                                    </td>
-                                    <td className="px-3 py-2 text-sm text-neutral-800">
-                                      {manager.contact || "-"}
-                                    </td>
-                                  </tr>
-                                )
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        // Fallback to legacy single manager format
-                        <div className="overflow-hidden rounded-lg border border-neutral-200">
-                          <table className="min-w-full divide-y divide-neutral-200">
-                            <thead className="bg-neutral-50">
-                              <tr>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                  Name
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                  Contact
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white">
-                              <tr className="hover:bg-neutral-50">
-                                <td className="px-3 py-2 text-sm text-neutral-800">
-                                  {String(showPropertyDetails.smName ?? "-")}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-neutral-800">
-                                  {String(showPropertyDetails.smContact ?? "-")}
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Submitter Information */}
                 {(() => {
-                  const submitter = getUserInfo(
-                    showPropertyDetails.submittedBy
-                  );
-                  if (submitter) {
+                  // Helper function to format possession dates by RERA number
+                  const formatPossessionDates = (dateField: string) => {
+                    const typologies = showPropertyDetails.typologies;
+                    if (!typologies || !Array.isArray(typologies)) {
+                      return dateField === 'reraPossession' ? showPropertyDetails.reraPossession || "-" : "-";
+                    }
+                    
+                    const reraDateMap = new Map();
+                    typologies.forEach((t: any) => {
+                      const reraNumber = t.mahaReraNumber;
+                      const date = t[dateField];
+                      if (reraNumber && date) {
+                        try {
+                          const formattedDate = new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                          reraDateMap.set(reraNumber, formattedDate);
+                        } catch {}
+                      }
+                    });
+                    
+                    const uniqueDates = Array.from(reraDateMap.values());
+                    return uniqueDates.length > 0 ? uniqueDates.join(' | ') : (dateField === 'reraPossession' ? showPropertyDetails.reraPossession || "-" : "-");
+                  };
+
+                  // Helper function to format RERA numbers
+                  const formatReraNumbers = () => {
+                    const typologies = showPropertyDetails.typologies;
+                    if (!typologies || !Array.isArray(typologies)) {
+                      return showPropertyDetails.mahaReraNumber || "-";
+                    }
+                    
+                    const reraMap = new Map();
+                    typologies.forEach((t: any) => {
+                      if (t.mahaReraNumber) {
+                        reraMap.set(t.mahaReraNumber, t.mahaReraLink);
+                      }
+                    });
+                    
+                    if (reraMap.size === 0) return showPropertyDetails.mahaReraNumber || "-";
+                    
                     return (
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <h4 className="text-md font-semibold text-blue-800 mb-2">
-                          Submitted by
+                      <span>
+                        {Array.from(reraMap.entries()).map(([reraNumber, reraLink], index) => (
+                          <span key={reraNumber}>
+                            {index > 0 && " | "}
+                            {reraLink ? (
+                              <a href={reraLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                {reraNumber}
+                              </a>
+                            ) : (
+                              reraNumber
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    );
+                  };
+
+                  // Helper function to format project types
+                  const formatProjectTypes = () => {
+                    const typologies = showPropertyDetails.typologies;
+                    if (!typologies || !Array.isArray(typologies)) {
+                      return showPropertyDetails.type || "-";
+                    }
+                    
+                    const uniqueTypes = [...new Set(typologies.map((t: any) => t.type).filter(Boolean))];
+                    return uniqueTypes.length > 0 ? uniqueTypes.join(' | ') : (showPropertyDetails.type || "-");
+                  };
+
+                  // Helper function to format availability
+                  const formatAvailability = () => {
+                    const typologies = showPropertyDetails.typologies;
+                    if (!typologies || !Array.isArray(typologies)) {
+                      return showPropertyDetails.projectStatus || "-";
+                    }
+                    
+                    const uniqueAvailability = [...new Set(typologies.map((t: any) => t.availability).filter(Boolean))];
+                    return uniqueAvailability.length > 0 ? uniqueAvailability.join(' | ') : (showPropertyDetails.projectStatus || "-");
+                  };
+
+                  const typologies = showPropertyDetails.typologies;
+                  const groupedByWing = typologies ? typologies.reduce((acc: any, typology: any) => {
+                    const wingNumber = typology.wingBuildingNo || 'No Wing';
+                    if (!acc[wingNumber]) acc[wingNumber] = [];
+                    acc[wingNumber].push(typology);
+                    return acc;
+                  }, {}) : {};
+                  
+                  const wingNumbers = Object.keys(groupedByWing);
+                  let activeTab = wingNumbers[0] || '';
+                  const setActiveTab = (tab: string) => { activeTab = tab; };
+                  
+                  return (
+                    <>
+                      {/* Section 1: Basic Details */}
+                      <div>
+                        <h4 className="text-md font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          Basic Details
                         </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="text-sm">
-                            <div className="text-blue-600 font-medium">
-                              Full Name
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-neutral-200 p-4 rounded-md bg-neutral-50">
+                          <Field label="Update date" value={(() => {
+                            const getValidDate = (value: any) => {
+                              if (!value) return null;
+                              if (value?.seconds) return new Date(value.seconds * 1000);
+                              if (value instanceof Date) return value;
+                              const d = new Date(value);
+                              return isNaN(d.getTime()) ? null : d;
+                            };
+                            const updateDate = getValidDate(showPropertyDetails.dateUpdateCostSheet);
+                            return updateDate ? updateDate.toLocaleDateString('en-GB') : showPropertyDetails.dateUpdateCostSheet || "-";
+                          })()} />
+                          <Field label="Location" value={showPropertyDetails.location} />
+                          <Field label="Developer Name" value={showPropertyDetails.developerName} />
+                          <Field label="Project Name" value={showPropertyDetails.projectName} />
+                          <Field label="Sub-Location" value={showPropertyDetails.subLocation} />
+                          <Field label="Landmark" value={showPropertyDetails.landmark} />
+                          <Field label="Pin Code" value={showPropertyDetails.pinCode} />
+                          <Field label="District" value={showPropertyDetails.district} />
+                          <Field label="State" value={showPropertyDetails.state} />
+                          <Field label="Land Parcel" value={showPropertyDetails.landParcel} />
+                          <Field label="Total Towers" value={showPropertyDetails.towers} />
+                          <Field label="Total Storey" value={showPropertyDetails.storey} />
+                        </div>
+                      </div>
+
+                      {/* Section 2: Pricing Details */}
+                      <div>
+                        <h4 className="text-md font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                          <IndianRupee className="h-4 w-4" />
+                          Pricing Details
+                        </h4>
+                        <div className="border border-neutral-200 p-4 rounded-md bg-neutral-50">
+                          {typologies && Array.isArray(typologies) && typologies.length > 0 ? (
+                            <div className="col-span-2">
+                              {/* Tabs */}
+                              <div className="border-b border-gray-200 mb-4">
+                                <nav className="-mb-px flex space-x-8">
+                                  {wingNumbers.map((wingNumber) => (
+                                    <button
+                                      key={wingNumber}
+                                      onClick={() => setActiveTab(wingNumber)}
+                                      className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                                        activeTab === wingNumber
+                                          ? 'border-blue-500 text-blue-600'
+                                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                      }`}
+                                    >
+                                      {wingNumber.length > 15 ? `${wingNumber.substring(0, 15)}...` : wingNumber}
+                                    </button>
+                                  ))}
+                                </nav>
+                              </div>
+                              
+                              {/* Active Tab Content */}
+                              <div className="overflow-hidden rounded-lg border border-neutral-200">
+                                <table className="min-w-full divide-y divide-neutral-200">
+                                  <thead className="bg-neutral-50">
+                                    <tr>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        Typology
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase w-32">
+                                        Area (Sq.ft)
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        PSF Rate
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        AV Rate
+                                      </th>
+                                      <th className="px-2 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        Possession Charges
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        Total Package
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        Availability
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white divide-y divide-neutral-200">
+                                    {groupedByWing[activeTab]?.map((typology: any, index: number) => (
+                                      <tr key={index} className="hover:bg-neutral-50">
+                                        <td className="px-3 py-2 text-sm font-medium text-neutral-900">
+                                          {typology.typology || "-"}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800 w-32">
+                                          <div className="text-xs text-gray-500 whitespace-nowrap">Saleable: {typology.saleableArea || "-"}</div>
+                                          <div className="text-xs text-gray-500 whitespace-nowrap">RERA: {typology.reraCarpet || "-"}</div>
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800">
+                                          {typology.psfRate ? `₹${parseFloat(typology.psfRate).toLocaleString('en-IN')}` : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800">
+                                          {typology.avRate ? `₹${parseFloat(typology.avRate).toLocaleString('en-IN')}` : "-"}
+                                        </td>
+                                        <td className="px-2 py-2 text-sm text-neutral-800">
+                                          {typology.possessionCharges ? `₹${parseFloat(typology.possessionCharges).toLocaleString('en-IN')}` : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800">
+                                          {typology.totalPackage ? `₹${parseFloat(typology.totalPackage).toLocaleString('en-IN')}` : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800">
+                                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            typology.availability === 'Available' 
+                                              ? 'bg-green-100 text-green-800' 
+                                              : 'bg-red-100 text-red-800'
+                                          }`}>
+                                            {typology.availability || "-"}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
-                            <div className="text-blue-800">
-                              {submitter.fullName}
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <Field label="Wing/Building No." value={showPropertyDetails.wingBuildingNo} />
+                              <Field label="BHK Type" value={showPropertyDetails.flatType} />
+                              <Field label="Saleable Area" value={showPropertyDetails.saleableArea} />
+                              <Field label="RERA Carpet / Usable Carpet" value={showPropertyDetails.reraCarpet} />
+                              <Field label="Per Sq. ft. Rate" value={showPropertyDetails.psfRate} />
+                              <Field label="Agreement Value Rate" value={showPropertyDetails.avRate} />
+                              <Field label="Floor Rise Rate" value={showPropertyDetails.floorRise} />
+                              <Field label="Registration Fee/ Charge" value={showPropertyDetails.registration} />
                             </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Section 3: Other charges & Payment Plans */}
+                      <div>
+                        <h4 className="text-md font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                          <IndianRupee className="h-4 w-4" />
+                          Other charges & Payment Plans
+                        </h4>
+                        <div className="border border-neutral-200 p-4 rounded-md bg-neutral-50">
+                          {/* Payment Schemes Grid Layout */}
+                          <div className="col-span-2 mb-6">
+                            <h5 className="font-medium mb-3 text-neutral-700 flex items-center">
+                              <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                              Payment Scheme Details
+                            </h5>
+                            {showPropertyDetails.paymentSchemes && Array.isArray(showPropertyDetails.paymentSchemes) && showPropertyDetails.paymentSchemes.length > 0 ? (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-neutral-500 uppercase border-b pb-2">
+                                  <div className="col-span-3">Scheme Name</div>
+                                  <div className="col-span-4">Description</div>
+                                  <div className="col-span-5">Timeline</div>
+                                </div>
+                                {showPropertyDetails.paymentSchemes.map((scheme: any, index: number) => (
+                                  <div key={index} className="grid grid-cols-12 gap-4 py-3 border-b border-neutral-100 hover:bg-neutral-50">
+                                    <div className="col-span-3 text-sm font-medium text-neutral-900">
+                                      {scheme.schemeName || "-"}
+                                    </div>
+                                    <div className="col-span-4 text-sm text-neutral-800">
+                                      {scheme.description || "-"}
+                                    </div>
+                                    <div className="col-span-5 text-sm text-neutral-800">
+                                      {scheme.fromDate && scheme.toDate ? (
+                                        <span>{scheme.fromDate} <span className="text-neutral-500">to</span> {scheme.toDate}</span>
+                                      ) : (
+                                        <span>{scheme.fromDate || scheme.toDate || "-"}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-neutral-500 italic">
+                                No payment schemes available
+                              </div>
+                            )}
                           </div>
-                          <div className="text-sm">
-                            <div className="text-blue-600 font-medium">
-                              Email
-                            </div>
-                            <div className="text-blue-800">
-                              {submitter.email}
-                            </div>
+
+                          {/* Ladder Sections with Tabs */}
+                          <div className="col-span-2">
+                            {showPropertyDetails.ladderSections && Array.isArray(showPropertyDetails.ladderSections) && showPropertyDetails.ladderSections.length > 0 ? (
+                              (() => {
+                                const ladderSections = showPropertyDetails.ladderSections;
+                                let activeLadderTab = 0;
+                                let isLadderOpen = false;
+                                const setActiveLadderTab = (tab: number) => { activeLadderTab = tab; };
+                                const setIsLadderOpen = (open: boolean) => { isLadderOpen = open; };
+                                
+                                return (
+                                  <div>
+                                    <h5 className="font-medium mb-3 text-neutral-700 flex items-center cursor-pointer" onClick={() => setIsLadderOpen(!isLadderOpen)}>
+                                      <svg className={`w-4 h-4 mr-2 text-blue-600 transition-transform ${isLadderOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                      </svg>
+                                      Ladder Details
+                                    </h5>
+                                    
+                                    {isLadderOpen && (
+                                      <>
+                                        {/* Ladder Tabs */}
+                                        {ladderSections.length > 1 && (
+                                      <div className="border-b border-gray-200 mb-4">
+                                        <nav className="-mb-px flex space-x-8">
+                                          {ladderSections.map((section: any, index: number) => (
+                                            <button
+                                              key={index}
+                                              onClick={() => setActiveLadderTab(index)}
+                                              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                                                activeLadderTab === index
+                                                  ? 'border-blue-500 text-blue-600'
+                                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                              }`}
+                                            >
+                                              Ladder {index + 1}
+                                            </button>
+                                          ))}
+                                        </nav>
+                                      </div>
+                                        )}
+                                        
+                                        {/* Active Ladder Content */}
+                                        <div className="space-y-3">
+                                      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
+                                        <div className="flex items-center text-sm">
+                                          <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                          </svg>
+                                          <span className="font-medium text-blue-800">Period:</span>
+                                          <span className="ml-2 text-blue-700 font-medium">
+                                            {(() => {
+                                              const startDate = ladderSections[activeLadderTab]?.startDate;
+                                              const endDate = ladderSections[activeLadderTab]?.endDate;
+                                              const formatDate = (dateStr: string) => {
+                                                if (!dateStr) return "N/A";
+                                                const date = new Date(dateStr);
+                                                const day = date.getDate();
+                                                const month = date.toLocaleDateString('en-US', { month: 'short' });
+                                                const year = date.getFullYear().toString().slice(-2);
+                                                return `${day} ${month} ${year}`;
+                                              };
+                                              return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+                                            })()} 
+                                          </span>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-12 gap-4 text-xs font-medium text-neutral-500 uppercase border-b pb-2">
+                                        <div className="col-span-2">Units</div>
+                                        <div className="col-span-2">Ladder</div>
+                                        <div className="col-span-8">Additional Incentive</div>
+                                      </div>
+                                      
+                                      {ladderSections[activeLadderTab]?.rows && Array.isArray(ladderSections[activeLadderTab].rows) ? (
+                                        ladderSections[activeLadderTab].rows.map((row: any, rowIndex: number) => (
+                                          <div key={rowIndex} className="grid grid-cols-12 gap-4 py-3 border-b border-neutral-100 hover:bg-neutral-50">
+                                            <div className="col-span-2 text-sm font-medium text-neutral-900">
+                                              {row.units || "-"}
+                                            </div>
+                                            <div className="col-span-2 text-sm text-neutral-800">
+                                              {row.ladder || "-"}
+                                            </div>
+                                            <div className="col-span-8 text-sm text-neutral-800">
+                                              {row.additionalIncentive || "-"}
+                                            </div>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className="text-sm text-neutral-500 italic py-4">
+                                          No ladder data available for this section
+                                        </div>
+                                      )}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              })()
+                            ) : (
+                              <div>
+                                <h5 className="font-medium mb-3 text-neutral-700 flex items-center cursor-pointer">
+                                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                  Ladder Details
+                                </h5>
+                                <div className="text-sm text-neutral-500 italic">
+                                  No incentive ladder available
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    );
-                  }
-                  return null;
+
+                      {/* Section 4: Amenities */}
+                      <div>
+                        <h4 className="text-md font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                          <Home className="h-4 w-4" />
+                          Amenities
+                        </h4>
+                        <div className="border border-neutral-200 p-4 rounded-md bg-neutral-50">
+                          <div className="col-span-2">
+                            <h5 className="font-medium mb-2">Apartment Amenities</h5>
+                            <Field
+                              label=""
+                              value={
+                                Array.isArray(showPropertyDetails.apartmentAmenities)
+                                  ? showPropertyDetails.apartmentAmenities
+                                      .sort((a, b) => a.localeCompare(b))
+                                      .join(", ")
+                                  : "-"
+                              }
+                            />
+                          </div>
+
+                          <div className="col-span-2">
+                            <h5 className="font-medium mb-2">Project Amenities</h5>
+                            <Field
+                              label=""
+                              value={
+                                Array.isArray(showPropertyDetails.projectAmenities)
+                                  ? showPropertyDetails.projectAmenities
+                                      .sort((a, b) => a.localeCompare(b))
+                                      .join(", ")
+                                  : "-"
+                              }
+                            />
+                          </div>
+
+                          <div className="col-span-2">
+                            <h5 className="font-medium mb-2">Location Highlights</h5>
+                            <Field
+                              label=""
+                              value={
+                                Array.isArray(showPropertyDetails.locationHighlights)
+                                  ? showPropertyDetails.locationHighlights
+                                      .sort((a, b) => a.localeCompare(b))
+                                      .join(", ")
+                                  : "-"
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section 5: Others */}
+                      <div>
+                        <h4 className="text-md font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          Others
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-neutral-200 p-4 rounded-md bg-neutral-50">
+                          <Field label="Project Type" value={formatProjectTypes()} />
+                          <div>
+                            <div className="text-sm text-neutral-500 mb-1">Maha RERA Number</div>
+                            <div className="text-sm text-neutral-900">{formatReraNumbers()}</div>
+                          </div>
+                          <Field
+                            label="Developer Possession"
+                            value={formatPossessionDates('developerPossession')}
+                          />
+                          <Field
+                            label="Rera Possession"
+                            value={formatPossessionDates('reraPossession')}
+                          />
+                          <Field label="Is Cosmo?" value={showPropertyDetails.isCosmo} />
+                          <Field label="Availability" value={formatAvailability()} />
+                          
+                          {/* Media Files Section */}
+                          <div className="col-span-2">
+                            <h5 className="font-medium mb-3">Media Files</h5>
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* Brochure */}
+                              <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium text-gray-900">Brochure (1)</span>
+                                  {showPropertyDetails.mediaFiles?.brochure ? (
+                                    <button onClick={() => openMediaModal('Brochure', [showPropertyDetails.mediaFiles.brochure], 'pdf')} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                      View
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs text-gray-500">Not Available</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Elevation Images */}
+                              <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium text-gray-900">Elevation Images ({showPropertyDetails.mediaFiles?.elevationImages?.length || 0})</span>
+                                  {showPropertyDetails.mediaFiles?.elevationImages?.length > 0 ? (
+                                    <button onClick={() => openMediaModal('Elevation Images', showPropertyDetails.mediaFiles.elevationImages, 'image')} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                      View
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs text-gray-500">Not Available</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Amenities Images */}
+                              <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium text-gray-900">Amenities Images ({showPropertyDetails.mediaFiles?.amenitiesImages?.length || 0})</span>
+                                  {showPropertyDetails.mediaFiles?.amenitiesImages?.length > 0 ? (
+                                    <button onClick={() => openMediaModal('Amenities Images', showPropertyDetails.mediaFiles.amenitiesImages, 'image')} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                      View
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs text-gray-500">Not Available</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Floor Plan Images */}
+                              <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium text-gray-900">Floor Plan Images ({showPropertyDetails.mediaFiles?.floorPlanImages?.length || 0})</span>
+                                  {showPropertyDetails.mediaFiles?.floorPlanImages?.length > 0 ? (
+                                    <button onClick={() => window.open(showPropertyDetails.mediaFiles.floorPlanImages[0], '_blank')} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                      View
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs text-gray-500">Not Available</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Project Walkthrough */}
+                              {showPropertyDetails.mediaFiles?.projectWalkthrough?.length > 0 && (
+                                <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-gray-900">Project Walkthrough ({showPropertyDetails.mediaFiles.projectWalkthrough.length})</span>
+                                    <button onClick={() => openMediaModal('Project Walkthrough', showPropertyDetails.mediaFiles.projectWalkthrough, 'video')} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M15 14h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      View
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Typology Images */}
+                              <div className="border border-gray-200 rounded-lg p-3 bg-white col-span-2">
+                                <h6 className="text-sm font-medium text-gray-900 mb-3">Typology Images</h6>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {showPropertyDetails.mediaFiles?.typologyImages && Object.keys(showPropertyDetails.mediaFiles.typologyImages).length > 0 ? (
+                                    Object.entries(showPropertyDetails.mediaFiles.typologyImages).map(([typology, images]: [string, any]) => (
+                                      <div key={typology} className="flex justify-between items-center py-1.5 px-2 bg-gray-50 rounded">
+                                        <span className="text-xs font-medium text-gray-700">{typology} ({images?.length || 0})</span>
+                                        {images?.length > 0 ? (
+                                          <button onClick={() => openMediaModal(`${typology} Images`, images, 'image')} className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            View
+                                          </button>
+                                        ) : (
+                                          <span className="text-xs text-gray-500">N/A</span>
+                                        )}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <span className="text-xs text-gray-500">Not Available</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Typology Videos */}
+                              <div className="border border-gray-200 rounded-lg p-3 bg-white col-span-2">
+                                <h6 className="text-sm font-medium text-gray-900 mb-3">Typology Videos</h6>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {showPropertyDetails.mediaFiles?.typologyVideos && Object.keys(showPropertyDetails.mediaFiles.typologyVideos).length > 0 ? (
+                                    Object.entries(showPropertyDetails.mediaFiles.typologyVideos).map(([typology, video]: [string, any]) => (
+                                      <div key={typology} className="flex justify-between items-center py-1.5 px-2 bg-gray-50 rounded">
+                                        <span className="text-xs font-medium text-gray-700">{typology}</span>
+                                        {video ? (
+                                          <button onClick={() => openMediaModal(`${typology} Video`, [video], 'video')} className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M15 14h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            View
+                                          </button>
+                                        ) : (
+                                          <span className="text-xs text-gray-500">N/A</span>
+                                        )}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <span className="text-xs text-gray-500">Not Available</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Site Heads */}
+                          <div className="col-span-2">
+                            <h5 className="font-medium mb-3">Site Heads</h5>
+                            {showPropertyDetails.siteHeads &&
+                            Array.isArray(showPropertyDetails.siteHeads) &&
+                            showPropertyDetails.siteHeads.length > 0 ? (
+                              <div className="overflow-hidden rounded-lg border border-neutral-200">
+                                <table className="min-w-full divide-y divide-neutral-200">
+                                  <thead className="bg-neutral-50">
+                                    <tr>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                                        #
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                                        Name
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                                        Contact
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white divide-y divide-neutral-200">
+                                    {showPropertyDetails.siteHeads.map(
+                                      (siteHead: any, index: number) => (
+                                        <tr key={index} className="hover:bg-neutral-50">
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-neutral-900">
+                                            {index + 1}
+                                          </td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
+                                            {siteHead.name || "-"}
+                                          </td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
+                                            {siteHead.contact || "-"}
+                                          </td>
+                                        </tr>
+                                      )
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-neutral-500 italic">
+                                No site heads available
+                              </div>
+                            )}
+                          </div>
+                          {/* Sourcing Managers */}
+                          <div className="col-span-2">
+                            <h5 className="font-medium mb-3">Sourcing Managers</h5>
+                            {showPropertyDetails.sourcingManagers &&
+                            Array.isArray(showPropertyDetails.sourcingManagers) &&
+                            showPropertyDetails.sourcingManagers.length > 0 ? (
+                              <div className="overflow-hidden rounded-lg border border-neutral-200">
+                                <table className="min-w-full divide-y divide-neutral-200">
+                                  <thead className="bg-neutral-50">
+                                    <tr>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                                        #
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                                        Name
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                                        Contact
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white divide-y divide-neutral-200">
+                                    {showPropertyDetails.sourcingManagers.map(
+                                      (manager: any, index: number) => (
+                                        <tr key={index} className="hover:bg-neutral-50">
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-neutral-900">
+                                            {index + 1}
+                                          </td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
+                                            {manager.name || "-"}
+                                          </td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
+                                            {manager.contact || "-"}
+                                          </td>
+                                        </tr>
+                                      )
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              // Fallback to legacy single manager format
+                              <div className="overflow-hidden rounded-lg border border-neutral-200">
+                                <table className="min-w-full divide-y divide-neutral-200">
+                                  <thead className="bg-neutral-50">
+                                    <tr>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                                        Name
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                                        Contact
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white">
+                                    <tr className="hover:bg-neutral-50">
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
+                                        {showPropertyDetails.smName || "-"}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
+                                        {showPropertyDetails.smContact || "-"}
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Submitter Information */}
+                      {(() => {
+                        const submitter = getUserInfo(
+                          showPropertyDetails.submittedBy
+                        );
+                        if (submitter) {
+                          return (
+                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                              <h4 className="text-md font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                Submitted by
+                              </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="text-sm">
+                                  <div className="text-blue-600 font-medium">
+                                    Full Name
+                                  </div>
+                                  <div className="text-blue-800">
+                                    {submitter.fullName}
+                                  </div>
+                                </div>
+                                <div className="text-sm">
+                                  <div className="text-blue-600 font-medium">
+                                    Email
+                                  </div>
+                                  <div className="text-blue-800">
+                                    {submitter.email}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </>
+                  );
                 })()}
               </div>
             </>
@@ -2083,5 +2407,90 @@ export function handlePropertyDetails(
         ) : null}
       </div>
     </div>
+
+    {/* Media Modal */}
+    {mediaModal.isOpen && (
+      <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] flex flex-col">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg font-semibold">{mediaModal.title}</h3>
+            <button onClick={() => setMediaModal({isOpen: false, title: '', files: [], type: 'image'})} className="text-gray-500 hover:text-gray-700">
+              ✕
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3">
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+              {mediaModal.files.map((file, index) => (
+                <div key={index} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openFullViewer(mediaModal.files, index, mediaModal.type)}>
+                  {mediaModal.type === 'pdf' ? (
+                    <div className="aspect-square bg-red-50 flex items-center justify-center relative border-2 border-red-200">
+                      <div className="text-center">
+                        <svg className="w-12 h-12 text-red-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-xs text-red-600 font-medium">PDF</p>
+                      </div>
+                    </div>
+                  ) : mediaModal.type === 'video' ? (
+                    <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                      <video src={file} className="w-full h-full object-cover" muted />
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                  ) : (
+                    <img src={file} alt={`Media ${index + 1}`} className="w-full aspect-square object-cover" />
+                  )}
+                  <div className="p-1">
+                    <p className="text-xs text-gray-600 truncate">{mediaModal.type === 'pdf' ? 'PDF' : mediaModal.type === 'video' ? 'Video' : 'Image'} {index + 1}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Full Size Media Viewer */}
+    {fullViewer.isOpen && (
+      <div className="fixed inset-0 bg-black/90 flex justify-center items-center z-[9999]">
+        <div className="relative w-full h-full flex items-center justify-center">
+          <button onClick={() => setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'})} className="absolute top-4 right-4 text-white hover:text-gray-300 text-2xl z-10">
+            ✕
+          </button>
+          
+          {fullViewer.files.length > 1 && (
+            <>
+              <button onClick={() => navigateMedia('prev')} className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 text-3xl z-10">
+                ‹
+              </button>
+              <button onClick={() => navigateMedia('next')} className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 text-3xl z-10">
+                ›
+              </button>
+            </>
+          )}
+          
+          <div className="w-full h-full flex items-center justify-center p-4">
+            {fullViewer.type === 'pdf' ? (
+              <iframe src={fullViewer.files[fullViewer.currentIndex]} className="w-[90vw] h-[90vh] bg-white rounded" />
+            ) : fullViewer.type === 'video' ? (
+              <video controls className="max-w-[90vw] max-h-[90vh]" src={fullViewer.files[fullViewer.currentIndex]} />
+            ) : (
+              <img src={fullViewer.files[fullViewer.currentIndex]} alt="Full size media" className="max-w-[90vw] max-h-[90vh] object-contain" />
+            )}
+          </div>
+          
+          {fullViewer.files.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded">
+              {fullViewer.currentIndex + 1} / {fullViewer.files.length}
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }

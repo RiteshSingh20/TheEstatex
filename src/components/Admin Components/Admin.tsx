@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import toast from "react-hot-toast";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
@@ -51,6 +51,7 @@ import { manageStampDuty } from "./manageStampDuty";
 import { manageUsersTab } from "./manageUsersTab";
 import { renderPropertyApprovalTabs } from "./PropertyApprovalTabs/renderPropertyApprovalTabs";
 import { displaySubscriptionInfo } from "./displaySubscriptionInfo";
+import { NewPropertyModal } from "../NewPropertyTables/NewPropertyModal";
 import {
   Property,
   SubscriptionDisplayProps,
@@ -1942,6 +1943,7 @@ const Admin = () => {
           setPendingNewPropertyReraRange,
           getUserInfo as any,
           handleApproveNewProperty,
+          setShowNewPropertyModal,
           approvedProperties,
           approvedSearchTerms,
           setApprovedSearchTerms,
@@ -2059,6 +2061,42 @@ const Admin = () => {
   const [editPropertyMode, setEditPropertyMode] = useState(false);
   const [editedProperty, setEditedProperty] =
     useState<ShowPropertyDetails | null>(null);
+
+  // New Property Modal state
+  const [showNewPropertyModal, setShowNewPropertyModal] = useState<any>(null);
+
+  // Media modal states for property details
+  const [mediaModal, setMediaModal] = useState<{isOpen: boolean, title: string, files: string[], type: 'image' | 'video' | 'pdf'}>({isOpen: false, title: '', files: [], type: 'image'});
+  const [fullViewer, setFullViewer] = useState<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+
+  // Keyboard navigation for full viewer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!fullViewer.isOpen) return;
+      
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setFullViewer(prev => ({
+          ...prev,
+          currentIndex: (prev.currentIndex - 1 + prev.files.length) % prev.files.length
+        }));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setFullViewer(prev => ({
+          ...prev,
+          currentIndex: (prev.currentIndex + 1) % prev.files.length
+        }));
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+      }
+    };
+
+    if (fullViewer.isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [fullViewer.isOpen]);
 
   // Helper to start editing
   const startEditProperty = () => {
@@ -2216,7 +2254,11 @@ const Admin = () => {
           watchResale,
           setValueResale,
           editedProperty,
-          saveEditedProperty
+          saveEditedProperty,
+          mediaModal,
+          setMediaModal,
+          fullViewer,
+          setFullViewer
         )}
 
       {/* Property Rejection Modal */}
@@ -2231,6 +2273,26 @@ const Admin = () => {
           rejectingProperty,
           handleRejectProperty
         )}
+
+      {/* New Property Modal */}
+      {showNewPropertyModal && (
+        <NewPropertyModal
+          Section={({ title, children }: { title: string; children: React.ReactNode }) => (
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold mb-4 text-neutral-800 border-b border-neutral-200 pb-2">
+                {title}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {children}
+              </div>
+            </div>
+          )}
+          Field={Field}
+          selectedSheet={showNewPropertyModal}
+          user={user}
+          onClose={() => setShowNewPropertyModal(null)}
+        />
+      )}
     </div>
   );
 };

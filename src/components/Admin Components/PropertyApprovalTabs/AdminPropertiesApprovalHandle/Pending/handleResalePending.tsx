@@ -1,4 +1,4 @@
-import { toDate, format } from "date-fns";
+import { format } from "date-fns";
 import { Eye, Check, X } from "lucide-react";
 import Button from "../../../../ui/Button";
 import { Property } from "../../../helperFunctions";
@@ -208,10 +208,10 @@ export function handleResalePending(
                 case "date-desc":
                   try {
                     const dateB = b.createdAt
-                      ? toDate(b.createdAt)
+                      ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt))
                       : new Date(0);
                     const dateA = a.createdAt
-                      ? toDate(a.createdAt)
+                      ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt))
                       : new Date(0);
                     return dateB.getTime() - dateA.getTime();
                   } catch {
@@ -220,10 +220,10 @@ export function handleResalePending(
                 case "date-asc":
                   try {
                     const dateA = a.createdAt
-                      ? toDate(a.createdAt)
+                      ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt))
                       : new Date(0);
                     const dateB = b.createdAt
-                      ? toDate(b.createdAt)
+                      ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt))
                       : new Date(0);
                     return dateA.getTime() - dateB.getTime();
                   } catch {
@@ -286,7 +286,7 @@ export function handleResalePending(
                         {(() => {
                           try {
                             if (!property.createdAt) return "-";
-                            const date = toDate(property.createdAt);
+                            const date = property.createdAt.toDate ? property.createdAt.toDate() : new Date(property.createdAt);
                             return isNaN(date.getTime())
                               ? "-"
                               : format(date, "dd/MM/yy");

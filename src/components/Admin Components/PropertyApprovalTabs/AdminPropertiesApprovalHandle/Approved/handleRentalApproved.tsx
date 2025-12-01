@@ -1,4 +1,4 @@
-import { toDate, format } from "date-fns";
+import { format } from "date-fns";
 import { Eye } from "lucide-react";
 import Button from "../../../../ui/Button";
 import { Property } from "../../../helperFunctions";
@@ -229,7 +229,7 @@ export function handleRentalApproved(
                         {(() => {
                           try {
                             if (!property.createdAt) return "-";
-                            const date = toDate(property.createdAt);
+                            const date = property.createdAt.toDate ? property.createdAt.toDate() : new Date(property.createdAt);
                             return isNaN(date.getTime())
                               ? "-"
                               : format(date, "dd/MM/yy");
@@ -262,7 +262,7 @@ export function handleRentalApproved(
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap border-r border-neutral-100">
                         <div className="text-sm font-semibold text-green-600">
-                          ?{property.rent?.toLocaleString("en-IN")}
+                          ₹{property.rent?.toLocaleString("en-IN")}
                         </div>
                         <div className="text-xs text-neutral-500">/month</div>
                       </td>

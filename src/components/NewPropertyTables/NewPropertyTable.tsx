@@ -434,94 +434,18 @@ export function handleNewPropertyTable(
 
       {/* Detail Viewer */}
       {selectedSheet && (
-        <div className="fixed inset-0 bg-black/30 flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] flex flex-col relative">
-            <button
-              onClick={() => setSelectedSheet(null)}
-              className="absolute top-6 right-6 text-gray-500 hover:text-red-500 text-xl z-20 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-md"
-            >
-              ✕
-            </button>
-
-            {/* Sticky Header */}
-            <div className="sticky top-0 bg-white rounded-t-lg border-b border-gray-200 p-6 pr-10 z-10">
-              <div className="mb-3">
-                <h3 className="text-xl font-semibold pr-8">
-                  {sanitizeInput(selectedSheet.projectName || "")} by{" "}
-                  {sanitizeInput(selectedSheet.developerName || "")}
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Status:{" "}
-                  {selectedSheet.isApproved
-                    ? "Approved"
-                    : selectedSheet.isRejected
-                    ? "Rejected"
-                    : "Pending"}
-                  {user?.role === "admin" && (
-                    <span className="ml-2 text-xs bg-blue-100 px-2 py-1 rounded">
-                      Admin View
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div className="flex gap-2 flex-wrap pr-8">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    // Use preloaded data if available
-                    if (preloadedStateData) {
-                      setSelectedStateCode(preloadedStateData.stateCode);
-                      setCities(preloadedStateData.cities);
-                    }
-                    setEditingProperty(selectedSheet);
-                    setSelectedSheet(null);
-                  }}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
-                {(user?.role === "admin" || user?.role === "manager") &&
-                  selectedSheet.isApproved && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          await updateCostSheet(selectedSheet.id, {
-                            isApproved: false,
-                            approvalStatus: "pending",
-                            unapprovedBy: user.id,
-                            unapprovedAt: new Date().toISOString(),
-                          });
-                          setCostSheets((prev) =>
-                            prev.map((sheet) =>
-                              (sheet as any).id === selectedSheet.id
-                                ? {
-                                    ...sheet,
-                                    isApproved: false,
-                                    approvalStatus: "pending",
-                                  }
-                                : sheet
-                            )
-                          );
-                          setSelectedSheet(null);
-                          toast.success("Property unapproved!");
-                        } catch (error) {
-                          toast.error("Failed to unapprove property");
-                        }
-                      }}
-                    >
-                      Unapprove
-                    </Button>
-                  )}
-              </div>
-            </div>
-
-            {/* Scrollable Content */}
-            <NewPropertyModal Section={Section} Field={Field} selectedSheet={selectedSheet} />
-          </div>
-        </div>
+        <NewPropertyModal 
+          Section={Section} 
+          Field={Field} 
+          selectedSheet={selectedSheet}
+          user={user}
+          preloadedStateData={preloadedStateData}
+          setSelectedStateCode={setSelectedStateCode}
+          setCities={setCities}
+          setEditingProperty={setEditingProperty}
+          setSelectedSheet={setSelectedSheet}
+          setCostSheets={setCostSheets}
+        />
       )}
     </Card>
   );

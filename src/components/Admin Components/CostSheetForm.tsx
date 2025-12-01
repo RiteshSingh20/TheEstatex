@@ -998,7 +998,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     }
 
     // Upload media files to Firebase Storage and get URLs
-
+    // Preserve existing media when no new files are uploaded
     const cleanMediaFiles = {
       brochure: mediaFilesCopy.brochure
         ? await uploadFile(
@@ -1007,40 +1007,41 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
               mediaFilesCopy.brochure.name
             )}`
           )
-        : null,
+        : existingMedia.brochure || null,
       elevationImages:
         mediaFilesCopy.elevationImages?.length > 0
           ? await uploadFiles(
               mediaFilesCopy.elevationImages,
               `${basePath}/elevation`
             )
-          : [],
+          : existingMedia.elevationImages || [],
       amenitiesImages:
         mediaFilesCopy.amenitiesImages?.length > 0
           ? await uploadFiles(
               mediaFilesCopy.amenitiesImages,
               `${basePath}/amenities`
             )
-          : [],
+          : existingMedia.amenitiesImages || [],
       floorPlanImages:
         mediaFilesCopy.floorPlanImages?.length > 0
           ? await uploadFiles(
               mediaFilesCopy.floorPlanImages,
               `${basePath}/floorPlans`
             )
-          : [],
+          : existingMedia.floorPlanImages || [],
       projectWalkthrough:
         mediaFilesCopy.projectWalkthrough?.length > 0
           ? await uploadFiles(
               mediaFilesCopy.projectWalkthrough,
               `${basePath}/walkthrough`
             )
-          : [],
+          : existingMedia.projectWalkthrough || [],
       typologyImages: {},
       typologyVideos: {},
     };
 
-    // Upload typology images
+    // Upload typology images - preserve existing if no new files
+    cleanMediaFiles.typologyImages = { ...existingMedia.typologyImages };
     for (const [typology, files] of Object.entries(
       mediaFilesCopy.typologyImages || {}
     )) {
@@ -1053,7 +1054,8 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       }
     }
 
-    // Upload typology videos
+    // Upload typology videos - preserve existing if no new files
+    cleanMediaFiles.typologyVideos = { ...existingMedia.typologyVideos };
     for (const [typology, file] of Object.entries(
       mediaFilesCopy.typologyVideos || {}
     )) {

@@ -34,8 +34,8 @@ export function currentStepTab4(
       }[]
     >
   >,
-  taggingValid: string,
-  setTaggingValid: React.Dispatch<React.SetStateAction<string>>
+  formData: any,
+  setFormData: React.Dispatch<React.SetStateAction<any>>
 ): React.ReactNode {
   
   // Enhanced scheme name change handler
@@ -82,8 +82,8 @@ export function currentStepTab4(
               <span className="text-sm text-gray-700">Tagging Valid For</span>
               <input
                 type="number"
-                value={taggingValid}
-                onChange={(e) => setTaggingValid(e.target.value)}
+                value={formData.taggingValid || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, taggingValid: e.target.value }))}
                 onWheel={(e) => e.currentTarget.blur()}
                 className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 placeholder="Enter value"

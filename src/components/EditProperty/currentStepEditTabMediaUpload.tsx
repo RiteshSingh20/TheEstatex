@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, useMemo } from "react";
 
 interface Contact {
   name: string;
@@ -82,6 +82,153 @@ export function currentStepEditTabMediaUpload(
 ): React.ReactNode {
   return (
     <div className="space-y-4">
+      {/* Contact Information Section */}
+      {(siteHeads && setSiteHeads && sourcingManagers && setSourcingManagers) && (
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Site Head Section */}
+            <div className="border relative">
+              <div className="flex items-center p-2">
+                <span className="text-blue-600 mr-1">▶</span>
+                <h3 className="font-medium">Site Head</h3>
+              </div>
+              <div className="bg-neutral-100 p-1 border-t">
+                <div className="grid grid-cols-2 gap-2 text-sm font-medium">
+                  <div>Name</div>
+                  <div>Phone</div>
+                </div>
+              </div>
+              <div className="bg-white pb-8">
+                {(siteHeads.length > 0 ? siteHeads : [{ name: "", phone: "" }]).map((head, index) => (
+                  <div key={index} className={`p-1 ${index > 0 ? "border-t" : ""}`}>
+                    <div className="grid grid-cols-2 gap-2 items-center">
+                      <input
+                        type="text"
+                        value={head.name}
+                        onChange={(e) => {
+                          const newHeads = siteHeads.length > 0 ? [...siteHeads] : [{ name: "", phone: "" }];
+                          newHeads[index].name = e.target.value;
+                          setSiteHeads(newHeads);
+                        }}
+                        className="border px-1 py-1 text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={head.phone || head.contact || ""}
+                        onChange={(e) => {
+                          const value = e.target.value
+                            .replace(/[^0-9]/g, "")
+                            .slice(0, 10);
+                          const newHeads = siteHeads.length > 0 ? [...siteHeads] : [{ name: "", phone: "" }];
+                          newHeads[index].phone = value;
+                          newHeads[index].contact = value;
+                          setSiteHeads(newHeads);
+                        }}
+                        className="border px-1 py-1 text-sm"
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <div className="absolute bottom-2 right-2 flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSiteHeads((prev) => [...prev, { name: "", phone: "" }])
+                    }
+                    className="w-5 h-5 bg-green-500 text-white text-xs font-bold rounded"
+                  >
+                    +
+                  </button>
+                  {siteHeads.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setSiteHeads((prev) => prev.slice(0, -1))}
+                      className="w-5 h-5 bg-red-500 text-white text-xs font-bold rounded"
+                    >
+                      -
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Sourcing Managers Section */}
+            <div className="relative border">
+              <div className="flex items-center p-2">
+                <span className="text-blue-600 mr-1">▶</span>
+                <h3 className="font-medium">Sourcing Managers</h3>
+              </div>
+              <div className="bg-neutral-100 p-1 border-t">
+                <div className="grid grid-cols-2 gap-2 text-sm font-medium">
+                  <div>Name</div>
+                  <div>Phone</div>
+                </div>
+              </div>
+              <div className="bg-white pb-10">
+                {(sourcingManagers.length > 0 ? sourcingManagers : [{ name: "", phone: "" }]).map((manager, index) => (
+                  <div key={index} className={`p-1 ${index > 0 ? "border-t" : ""}`}>
+                    <div className="grid grid-cols-2 gap-2 items-center">
+                      <input
+                        type="text"
+                        value={manager.name}
+                        onChange={(e) => {
+                          const newManagers = sourcingManagers.length > 0 ? [...sourcingManagers] : [{ name: "", phone: "" }];
+                          newManagers[index].name = e.target.value;
+                          setSourcingManagers(newManagers);
+                        }}
+                        className="border px-1 py-1 text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={manager.phone || manager.contact || ""}
+                        onChange={(e) => {
+                          const value = e.target.value
+                            .replace(/[^0-9]/g, "")
+                            .slice(0, 10);
+                          const newManagers = sourcingManagers.length > 0 ? [...sourcingManagers] : [{ name: "", phone: "" }];
+                          newManagers[index].phone = value;
+                          newManagers[index].contact = value;
+                          setSourcingManagers(newManagers);
+                        }}
+                        className="border px-1 py-1 text-sm"
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="absolute bottom-2 right-2 flex gap-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSourcingManagers((prev) => [
+                      ...prev,
+                      { name: "", phone: "" },
+                    ])
+                  }
+                  className="w-6 h-6 bg-green-500 text-white text-sm font-bold rounded"
+                >
+                  +
+                </button>
+                {sourcingManagers.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSourcingManagers((prev) => prev.slice(0, prev.length - 1))
+                    }
+                    className="w-6 h-6 bg-red-500 text-white text-sm font-bold rounded"
+                  >
+                    −
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="relative border">
         <div className="flex items-center p-2">
           <span className="text-blue-600 mr-1">▶</span>
@@ -152,18 +299,13 @@ export function currentStepEditTabMediaUpload(
                               className="w-20 h-24 object-cover rounded border"
                             />
                           ) : existingMedia.brochure ? (
-                            <div className="w-20 h-24 bg-blue-100 rounded border flex items-center justify-center">
-                              <svg
-                                className="w-8 h-8 text-blue-600"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
+                            <div className="w-20 h-24 relative overflow-hidden bg-white rounded border">
+                              <iframe src={`${existingMedia.brochure}#toolbar=0&navpanes=0&scrollbar=0`} className="w-full h-full border-0 transform scale-[0.2] origin-top-left pointer-events-none" style={{width: '500%', height: '500%'}} />
+                              <div className="absolute bottom-1 right-1 pointer-events-none">
+                                <svg className="w-3 h-3 text-red-600 bg-white/90 rounded p-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                                </svg>
+                              </div>
                             </div>
                           ) : (
                             <div className="w-20 h-24 bg-red-100 rounded border flex items-center justify-center">
@@ -291,38 +433,18 @@ export function currentStepEditTabMediaUpload(
                           </div>
                         ))}
                         {mediaFiles.elevationImages.slice(0, 10).map((file, index) => {
-                          const imageUrl = typeof file === 'string' ? file : URL.createObjectURL(file);
                           return (
-                            <div key={`new-${index}`} className="relative">
-                              <img
-                                src={imageUrl}
-                                alt={`Elevation ${index + 1}`}
-                                className="w-full h-14 object-cover rounded aspect-square"
-                                onLoad={() => {
-                                  if (typeof file !== 'string') {
-                                    URL.revokeObjectURL(imageUrl);
-                                  }
-                                }}
-                                onError={(e) => {
-                                  console.error("Image failed to load:", e);
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setMediaFiles((prev) => ({
-                                    ...prev,
-                                    elevationImages: prev.elevationImages.filter((_, i) => i !== index),
-                                  }));
-                                }}
-                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
-                              >
-                                ×
-                              </button>
-                            </div>
+                            <FilePreview
+                              key={`new-${index}`}
+                              file={file}
+                              alt={`Elevation ${index + 1}`}
+                              onRemove={() => {
+                                setMediaFiles((prev) => ({
+                                  ...prev,
+                                  elevationImages: prev.elevationImages.filter((_, i) => i !== index),
+                                }));
+                              }}
+                            />
                           );
                         })}
                       </div>
@@ -415,38 +537,18 @@ export function currentStepEditTabMediaUpload(
                           </div>
                         ))}
                         {mediaFiles.amenitiesImages.slice(0, 10).map((file, index) => {
-                          const imageUrl = typeof file === 'string' ? file : URL.createObjectURL(file);
                           return (
-                            <div key={`new-${index}`} className="relative">
-                              <img
-                                src={imageUrl}
-                                alt={`Amenity ${index + 1}`}
-                                className="w-full h-14 object-cover rounded aspect-square"
-                                onLoad={() => {
-                                  if (typeof file !== 'string') {
-                                    URL.revokeObjectURL(imageUrl);
-                                  }
-                                }}
-                                onError={(e) => {
-                                  console.error("Image failed to load:", e);
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setMediaFiles((prev) => ({
-                                    ...prev,
-                                    amenitiesImages: prev.amenitiesImages.filter((_, i) => i !== index),
-                                  }));
-                                }}
-                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
-                              >
-                                ×
-                              </button>
-                            </div>
+                            <FilePreview
+                              key={`new-${index}`}
+                              file={file}
+                              alt={`Amenity ${index + 1}`}
+                              onRemove={() => {
+                                setMediaFiles((prev) => ({
+                                  ...prev,
+                                  amenitiesImages: prev.amenitiesImages.filter((_, i) => i !== index),
+                                }));
+                              }}
+                            />
                           );
                         })}
                       </div>
@@ -541,38 +643,18 @@ export function currentStepEditTabMediaUpload(
                           </div>
                         ))}
                         {mediaFiles.floorPlanImages.slice(0, 10).map((file, index) => {
-                          const imageUrl = typeof file === 'string' ? file : URL.createObjectURL(file);
                           return (
-                            <div key={`new-${index}`} className="relative">
-                              <img
-                                src={imageUrl}
-                                alt={`Floor plan ${index + 1}`}
-                                className="w-full h-14 object-cover rounded aspect-square"
-                                onLoad={() => {
-                                  if (typeof file !== 'string') {
-                                    URL.revokeObjectURL(imageUrl);
-                                  }
-                                }}
-                                onError={(e) => {
-                                  console.error("Image failed to load:", e);
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setMediaFiles((prev) => ({
-                                    ...prev,
-                                    floorPlanImages: prev.floorPlanImages.filter((_, i) => i !== index),
-                                  }));
-                                }}
-                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
-                              >
-                                ×
-                              </button>
-                            </div>
+                            <FilePreview
+                              key={`new-${index}`}
+                              file={file}
+                              alt={`Floor plan ${index + 1}`}
+                              onRemove={() => {
+                                setMediaFiles((prev) => ({
+                                  ...prev,
+                                  floorPlanImages: prev.floorPlanImages.filter((_, i) => i !== index),
+                                }));
+                              }}
+                            />
                           );
                         })}
                       </div>
@@ -672,43 +754,17 @@ export function currentStepEditTabMediaUpload(
                           </div>
                         ))}
                         {mediaFiles.projectWalkthrough.map((file, index) => {
-                          const videoUrl = typeof file === 'string' ? file : URL.createObjectURL(file);
                           return (
-                            <div key={`new-${index}`} className="relative">
-                              <video
-                                src={videoUrl}
-                                className="w-24 h-24 object-cover rounded border aspect-square"
-                                controls={false}
-                                onLoadedData={() => {
-                                  if (typeof file !== 'string') {
-                                    URL.revokeObjectURL(videoUrl);
-                                  }
-                                }}
-                              />
-                              <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center">
-                                <svg
-                                  className="w-6 h-6 text-white"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                                </svg>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setMediaFiles((prev) => ({
-                                    ...prev,
-                                    projectWalkthrough: prev.projectWalkthrough.filter((_, i) => i !== index),
-                                  }));
-                                }}
-                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
-                              >
-                                ×
-                              </button>
-                            </div>
+                            <VideoPreview
+                              key={`new-${index}`}
+                              file={file}
+                              onRemove={() => {
+                                setMediaFiles((prev) => ({
+                                  ...prev,
+                                  projectWalkthrough: prev.projectWalkthrough.filter((_, i) => i !== index),
+                                }));
+                              }}
+                            />
                           );
                         })}
                       </div>
@@ -846,37 +902,21 @@ export function currentStepEditTabMediaUpload(
                                       </div>
                                     ))}
                                     {(mediaFiles.typologyImages[typology] || []).slice(0, 8).map((file, index) => {
-                                      const imageUrl = typeof file === 'string' ? file : URL.createObjectURL(file);
                                       return (
-                                        <div key={`new-${index}`} className="relative">
-                                          <img
-                                            src={imageUrl}
-                                            alt={`${typology} ${index + 1}`}
-                                            className="w-full h-12 object-cover rounded aspect-square"
-                                            onLoad={() => {
-                                              if (typeof file !== 'string') {
-                                                URL.revokeObjectURL(imageUrl);
-                                              }
-                                            }}
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.preventDefault();
-                                              e.stopPropagation();
-                                              setMediaFiles((prev) => ({
-                                                ...prev,
-                                                typologyImages: {
-                                                  ...prev.typologyImages,
-                                                  [typology]: (prev.typologyImages[typology] || []).filter((_, i) => i !== index),
-                                                },
-                                              }));
-                                            }}
-                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 text-xs flex items-center justify-center hover:bg-red-600"
-                                          >
-                                            ×
-                                          </button>
-                                        </div>
+                                        <TypologyFilePreview
+                                          key={`new-${index}`}
+                                          file={file}
+                                          alt={`${typology} ${index + 1}`}
+                                          onRemove={() => {
+                                            setMediaFiles((prev) => ({
+                                              ...prev,
+                                              typologyImages: {
+                                                ...prev.typologyImages,
+                                                [typology]: (prev.typologyImages[typology] || []).filter((_, i) => i !== index),
+                                              },
+                                            }));
+                                          }}
+                                        />
                                       );
                                     })}
                                   </div>
@@ -985,54 +1025,28 @@ export function currentStepEditTabMediaUpload(
                               <div className="h-full p-2">
                                 {(existingMedia.typologyVideos[typology] || mediaFiles.typologyVideos[typology]) ? (
                                   <div className="flex items-center justify-center h-full">
-                                    <div className="relative">
-                                      <video
-                                        src={existingMedia.typologyVideos[typology] || (typeof mediaFiles.typologyVideos[typology] === 'string' ? mediaFiles.typologyVideos[typology] : URL.createObjectURL(mediaFiles.typologyVideos[typology]!))}
-                                        className="w-16 h-16 object-cover rounded border aspect-square"
-                                        controls={false}
-                                        onLoadedData={(e) => {
-                                          if (typeof mediaFiles.typologyVideos[typology] !== 'string' && mediaFiles.typologyVideos[typology]) {
-                                            URL.revokeObjectURL((e.target as HTMLVideoElement).src);
-                                          }
-                                        }}
-                                      />
-                                      <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center">
-                                        <svg
-                                          className="w-4 h-4 text-white"
-                                          fill="currentColor"
-                                          viewBox="0 0 20 20"
-                                        >
-                                          <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                                        </svg>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          if (existingMedia.typologyVideos[typology]) {
-                                            setExistingMedia((prev) => ({
-                                              ...prev,
-                                              typologyVideos: {
-                                                ...prev.typologyVideos,
-                                                [typology]: null,
-                                              },
-                                            }));
-                                          } else {
-                                            setMediaFiles((prev) => ({
-                                              ...prev,
-                                              typologyVideos: {
-                                                ...prev.typologyVideos,
-                                                [typology]: null,
-                                              },
-                                            }));
-                                          }
-                                        }}
-                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 text-xs flex items-center justify-center hover:bg-red-600"
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
+                                    <TypologyVideoPreview
+                                      file={existingMedia.typologyVideos[typology] || mediaFiles.typologyVideos[typology]!}
+                                      onRemove={() => {
+                                        if (existingMedia.typologyVideos[typology]) {
+                                          setExistingMedia((prev) => ({
+                                            ...prev,
+                                            typologyVideos: {
+                                              ...prev.typologyVideos,
+                                              [typology]: null,
+                                            },
+                                          }));
+                                        } else {
+                                          setMediaFiles((prev) => ({
+                                            ...prev,
+                                            typologyVideos: {
+                                              ...prev.typologyVideos,
+                                              [typology]: null,
+                                            },
+                                          }));
+                                        }
+                                      }}
+                                    />
                                   </div>
                                 ) : (
                                   <div className="h-full flex items-center justify-center">
@@ -1054,6 +1068,192 @@ export function currentStepEditTabMediaUpload(
           </div>
         </div>
       </div>
+      
+
     </div>
   );
 }
+
+// Helper component for file preview with proper blob URL management
+const FilePreview: React.FC<{
+  file: File | string;
+  alt: string;
+  onRemove: () => void;
+}> = ({ file, alt, onRemove }) => {
+  const [imageUrl, setImageUrl] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof file === 'string') {
+      setImageUrl(file);
+    } else {
+      const url = URL.createObjectURL(file);
+      setImageUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file]);
+
+  return (
+    <div className="relative">
+      <img
+        src={imageUrl}
+        alt={alt}
+        className="w-full h-14 object-cover rounded aspect-square"
+        onError={(e) => {
+          console.error("Image failed to load:", e);
+          e.currentTarget.style.display = "none";
+        }}
+      />
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+      >
+        ×
+      </button>
+    </div>
+  );
+};
+
+// Helper component for video preview with proper blob URL management
+const VideoPreview: React.FC<{
+  file: File | string;
+  onRemove: () => void;
+}> = ({ file, onRemove }) => {
+  const [videoUrl, setVideoUrl] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof file === 'string') {
+      setVideoUrl(file);
+    } else {
+      const url = URL.createObjectURL(file);
+      setVideoUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file]);
+
+  return (
+    <div className="relative">
+      <video
+        src={videoUrl}
+        className="w-24 h-24 object-cover rounded border aspect-square"
+        controls={false}
+      />
+      <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center">
+        <svg
+          className="w-6 h-6 text-white"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+        </svg>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+      >
+        ×
+      </button>
+    </div>
+  );
+};
+
+// Specialized component for typology file preview with smaller dimensions
+const TypologyFilePreview: React.FC<{
+  file: File | string;
+  alt: string;
+  onRemove: () => void;
+}> = ({ file, alt, onRemove }) => {
+  const [imageUrl, setImageUrl] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof file === 'string') {
+      setImageUrl(file);
+    } else {
+      const url = URL.createObjectURL(file);
+      setImageUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file]);
+
+  return (
+    <div className="relative">
+      <img
+        src={imageUrl}
+        alt={alt}
+        className="w-full h-12 object-cover rounded aspect-square"
+        onError={(e) => {
+          console.error("Image failed to load:", e);
+          e.currentTarget.style.display = "none";
+        }}
+      />
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 text-xs flex items-center justify-center hover:bg-red-600"
+      >
+        ×
+      </button>
+    </div>
+  );
+};
+
+// Specialized component for typology video preview with smaller dimensions
+const TypologyVideoPreview: React.FC<{
+  file: File | string;
+  onRemove: () => void;
+}> = ({ file, onRemove }) => {
+  const [videoUrl, setVideoUrl] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof file === 'string') {
+      setVideoUrl(file);
+    } else {
+      const url = URL.createObjectURL(file);
+      setVideoUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file]);
+
+  return (
+    <div className="relative">
+      <video
+        src={videoUrl}
+        className="w-16 h-16 object-cover rounded border aspect-square"
+        controls={false}
+      />
+      <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center">
+        <svg
+          className="w-4 h-4 text-white"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+        </svg>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 text-xs flex items-center justify-center hover:bg-red-600"
+      >
+        ×
+      </button>
+    </div>
+  );
+};
