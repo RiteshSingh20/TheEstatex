@@ -180,8 +180,23 @@ export function NewPropertyModal({
     <div className="fixed inset-0 bg-black/30 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] flex flex-col relative">
         <button
-          onClick={() => onClose ? onClose() : setSelectedSheet?.(null)}
-          className="absolute top-6 right-6 text-gray-500 hover:text-red-500 text-xl z-20 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-md"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Close button clicked');
+            console.log('onClose function:', onClose);
+            console.log('setSelectedSheet function:', setSelectedSheet);
+            if (onClose) {
+              console.log('Calling onClose()');
+              onClose();
+            } else if (setSelectedSheet) {
+              console.log('Calling setSelectedSheet(null)');
+              setSelectedSheet(null);
+            } else {
+              console.log('No close function available');
+            }
+          }}
+          className="absolute top-4 right-4 text-gray-500 hover:text-red-500 text-xl z-50 bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
         >
           ✕
         </button>

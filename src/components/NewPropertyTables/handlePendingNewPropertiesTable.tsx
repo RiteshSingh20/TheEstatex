@@ -96,6 +96,12 @@ export function handlePendingNewPropertiesTable(searchTerm: string, setSearchTer
                                 Sub Location
                             </th>
                             <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
+                                Brochure
+                            </th>
+                            <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
+                                Video
+                            </th>
+                            <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
                                 Status
                             </th>
                             <th className="px-5 py-3 text-left font-semibold text-neutral-700 tracking-wide whitespace-nowrap">
@@ -152,6 +158,47 @@ export function handlePendingNewPropertiesTable(searchTerm: string, setSearchTer
                                 </td>
                                 <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
                                     {item.subLocation || "-"}
+                                </td>
+                                <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
+                                    {item.mediaFiles?.brochure ? (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                window.open(item.mediaFiles.brochure, '_blank');
+                                            }}
+                                            className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 transition-colors"
+                                        >
+                                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                                            </svg>
+                                            PDF
+                                        </button>
+                                    ) : (
+                                        <span className="text-gray-400">-</span>
+                                    )}
+                                </td>
+                                <td className="px-5 py-3 whitespace-nowrap text-neutral-700">
+                                    {item.mediaFiles?.projectWalkthrough?.length > 0 ? (
+                                        <div className="flex gap-1 overflow-x-auto max-w-[120px]">
+                                            {item.mediaFiles.projectWalkthrough.map((video: string, index: number) => (
+                                                <button
+                                                    key={index}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        window.open(video, '_blank');
+                                                    }}
+                                                    className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 transition-colors flex-shrink-0"
+                                                >
+                                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M8 5v14l11-7z" />
+                                                    </svg>
+                                                    {index + 1}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-400">-</span>
+                                    )}
                                 </td>
                                 <td className="px-5 py-3 whitespace-nowrap">
                                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Building,
@@ -34,6 +34,7 @@ import { PropertyCategory } from "../types";
 import { CostSheet } from "./Compare";
 import toast from "react-hot-toast";
 import ProjectDetailsModal from "../components/ProjectDetailsModal";
+import { NewPropertyModal } from "../components/NewPropertyTables/NewPropertyModal";
 
 const formatPriceDisplay = (value: string): string => {
   const num = parseInt(value.replace(/[^0-9]/g, ''));
@@ -194,28 +195,34 @@ const Dashboard = () => {
     station: "",
     minBudget: "",
     maxBudget: "",
+    minCarpetArea: "",
+    maxCarpetArea: "",
     subLocation: [] as string[],
     possession: "",
     lookingForCosmo: undefined as boolean | undefined,
-    GalleryorTerrace: undefined as string | undefined,
+    BalconyorTerrace: undefined as string | undefined,
     parking: undefined as boolean | undefined,
     amenities: [] as string[],
     petFriendly: undefined as boolean | undefined,
     furnishing: undefined as string | undefined,
+    ocRed: undefined as string | undefined,
   });
   const [appliedFilters, setAppliedFilters] = useState({
     bhkType: "",
     station: "",
     minBudget: "",
     maxBudget: "",
+    minCarpetArea: "",
+    maxCarpetArea: "",
     subLocation: [] as string[],
     possession: "",
     lookingForCosmo: undefined as boolean | undefined,
-    GalleryorTerrace: undefined as string | undefined,
+    BalconyorTerrace: undefined as string | undefined,
     parking: undefined as boolean | undefined,
     amenities: [] as string[],
     petFriendly: undefined as boolean | undefined,
     furnishing: undefined as string | undefined,
+    ocRed: undefined as string | undefined,
   });
   const [showFilters, setShowFilters] = useState(true);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -248,8 +255,151 @@ const Dashboard = () => {
   const [isFiltering, setIsFiltering] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewText, setPreviewText] = useState("");
+  const [mediaModal, setMediaModal] = useState<{isOpen: boolean, title: string, files: string[], type: 'image' | 'video' | 'pdf'}>({isOpen: false, title: '', files: [], type: 'image'});
+  const [fullViewer, setFullViewer] = useState<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>({isOpen: false, files: [], currentIndex: 0, type: 'image'});
 
   const navigate = useNavigate();
+
+  const openMediaModal = (title: string, files: string[], type: 'image' | 'video' | 'pdf' = 'image') => {
+    setMediaModal({isOpen: true, title, files, type});
+  };
+
+  const getMediaSections = (mediaFiles: any) => {
+    const sections = [];
+    
+    if (mediaFiles?.elevationImages?.length > 0) {
+      sections.push({ name: 'Elevation Images', files: mediaFiles.elevationImages, type: 'image' });
+    }
+    if (mediaFiles?.floorPlanImages?.length > 0) {
+      sections.push({ name: 'Floor Plan Images', files: mediaFiles.floorPlanImages, type: 'image' });
+    }
+    if (mediaFiles?.amenitiesImages?.length > 0) {
+      sections.push({ name: 'Amenities Images', files: mediaFiles.amenitiesImages, type: 'image' });
+    }
+    if (mediaFiles?.typologyImages) {
+      Object.entries(mediaFiles.typologyImages).forEach(([typology, images]: [string, any]) => {
+        if (Array.isArray(images) && images.length > 0) {
+          sections.push({ name: `${typology} Images`, files: images, type: 'image' });
+        }
+      });
+    }
+    if (mediaFiles?.projectWalkthrough?.length > 0) {
+      sections.push({ name: 'Project Walkthrough', files: mediaFiles.projectWalkthrough, type: 'video' });
+    }
+    if (mediaFiles?.typologyVideos) {
+      Object.entries(mediaFiles.typologyVideos).forEach(([typology, video]: [string, any]) => {
+        if (video) {
+          sections.push({ name: `${typology} Video`, files: [video], type: 'video' });
+        }
+      });
+    }
+    
+    return sections;
+  };
+
+  const getFileName = (url: string): string => {
+    try {
+      // For Firebase storage URLs, extract the original filename
+      if (url.includes('firebase') || url.includes('googleapis.com')) {
+        // Look for the filename in the URL path after the last %2F (encoded /)
+        const decodedUrl = decodeURIComponent(url);
+        const pathMatch = decodedUrl.match(/\/([^/]+)\?/);
+        if (pathMatch && pathMatch[1]) {
+          // If it contains a path like costSheets/123456/filename.jpg, get just the filename
+          const parts = pathMatch[1].split('/');
+          const filename = parts[parts.length - 1];
+          // Skip database-generated names and folder paths
+          if (filename && !filename.match(/^\d+$/) && filename.includes('.')) {
+            return filename;
+          }
+        }
+        
+        // Alternative: look for filename in the token or alt parameter
+        const altMatch = url.match(/[?&]alt=([^&]+)/);
+        if (altMatch) {
+          const altValue = decodeURIComponent(altMatch[1]);
+          if (altValue !== 'media' && altValue.includes('.')) {
+            return altValue;
+          }
+        }
+      }
+      
+      // Fallback: extract from URL path
+      const urlParts = url.split('/');
+      const filename = urlParts[urlParts.length - 1].split('?')[0];
+      const decodedFilename = decodeURIComponent(filename);
+      
+      // Return filename if it looks like a real file (has extension)
+      if (decodedFilename && decodedFilename.includes('.') && !decodedFilename.match(/^\d+$/)) {
+        return decodedFilename;
+      }
+      
+      // Default fallback
+      return 'Media File';
+    } catch {
+      return 'Media File';
+    }
+  };
+
+  const openFullViewer = (files: string[], index: number, type: 'image' | 'video' | 'pdf') => {
+    setFullViewer({isOpen: true, files, currentIndex: index, type});
+  };
+
+  const navigateMedia = (direction: 'prev' | 'next') => {
+    setFullViewer(prev => ({
+      ...prev,
+      currentIndex: direction === 'prev' 
+        ? (prev.currentIndex - 1 + prev.files.length) % prev.files.length
+        : (prev.currentIndex + 1) % prev.files.length
+    }));
+  };
+
+  const handleBrochureClick = (sheet: CostSheet) => {
+    if (sheet.mediaFiles?.brochure) {
+      openFullViewer([sheet.mediaFiles.brochure], 0, 'pdf');
+    }
+  };
+
+  const handleVideoClick = (sheet: CostSheet) => {
+    const mediaSections = getMediaSections(sheet.mediaFiles);
+    const videoSections = mediaSections.filter(section => section.type === 'video');
+    if (videoSections.length > 0) {
+      setSelectedProjectData(sheet);
+      openMediaModal('Videos', [], 'video');
+    }
+  };
+
+  const handleImageClick = (sheet: CostSheet) => {
+    const mediaSections = getMediaSections(sheet.mediaFiles);
+    const imageSections = mediaSections.filter(section => section.type === 'image');
+    if (imageSections.length > 0) {
+      setSelectedProjectData(sheet);
+      openMediaModal('Images', [], 'image');
+    }
+  };
+
+  // Keyboard navigation for full viewer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!fullViewer.isOpen) return;
+      
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateMedia('prev');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateMedia('next');
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+      }
+    };
+
+    if (fullViewer.isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [fullViewer.isOpen]);
 
   // State declarations that need to be available for useMemo hooks
   const [rrStationNames, setRRStationNames] = useState<string[]>([]);
@@ -969,11 +1119,27 @@ const Dashboard = () => {
         }
       }
 
-      // Gallery/Terrace filter
-      if (appliedFilters.GalleryorTerrace !== undefined) {
-        const terraceGalleryValue =
+      // Balcony/Terrace filter
+      if (appliedFilters.BalconyorTerrace !== undefined) {
+        const terraceBalconyValue =
           property.terraceGallery || (property.terrace ? "Terrace" : "");
-        if (terraceGalleryValue !== appliedFilters.GalleryorTerrace) {
+        if (terraceBalconyValue !== appliedFilters.BalconyorTerrace) {
+          return false;
+        }
+      }
+
+      // Carpet Area filter - use carpetArea for Resale/Rental
+      if (appliedFilters.minCarpetArea && Number(property.carpetArea || 0) < Number(appliedFilters.minCarpetArea)) {
+        return false;
+      }
+      if (appliedFilters.maxCarpetArea && Number(property.carpetArea || 0) > Number(appliedFilters.maxCarpetArea)) {
+        return false;
+      }
+
+      // OC/Red filter (for resale only)
+      if (appliedFilters.ocRed !== undefined && propertyCategory === "Resale") {
+        const ocStatus = property.ocAvailable === "Yes" || property.ocAvailable === true ? "OC" : "Red";
+        if (ocStatus !== appliedFilters.ocRed) {
           return false;
         }
       }
@@ -1138,6 +1304,15 @@ const Dashboard = () => {
         }
       }
 
+      // Carpet Area filter for New properties - use reraCarpet field from various data structures
+      const reraCarpetValue = sheet.reraCarpet || sheet.typologies?.[0]?.reraCarpet || sheet.subTabData?.[0]?.pricingConfigs?.[0]?.reraCarpet || 0;
+      if (appliedFilters.minCarpetArea && Number(reraCarpetValue) < Number(appliedFilters.minCarpetArea)) {
+        return false;
+      }
+      if (appliedFilters.maxCarpetArea && Number(reraCarpetValue) > Number(appliedFilters.maxCarpetArea)) {
+        return false;
+      }
+
       return true;
     });
   }, [costSheets, appliedFilters, locationFilterType]);
@@ -1265,6 +1440,16 @@ const Dashboard = () => {
             matchesPetFriendly = isPetFriendly === currentFilters.petFriendly;
           }
 
+          // 9) Carpet Area filter for New properties - use reraCarpet field from various data structures
+          let matchesCarpetArea = true;
+          const reraCarpetValue = sheet.reraCarpet || sheet.typologies?.[0]?.reraCarpet || sheet.subTabData?.[0]?.pricingConfigs?.[0]?.reraCarpet || 0;
+          if (currentFilters.minCarpetArea && Number(reraCarpetValue) < Number(currentFilters.minCarpetArea)) {
+            matchesCarpetArea = false;
+          }
+          if (currentFilters.maxCarpetArea && Number(reraCarpetValue) > Number(currentFilters.maxCarpetArea)) {
+            matchesCarpetArea = false;
+          }
+
           return (
             isSubscribedStation &&
             matchesBHK &&
@@ -1274,7 +1459,8 @@ const Dashboard = () => {
             matchesCosmo &&
             matchesAmenities &&
             matchesBudget &&
-            matchesPetFriendly
+            matchesPetFriendly &&
+            matchesCarpetArea
           );
         });
 
@@ -1446,6 +1632,7 @@ const Dashboard = () => {
     if (stationsLoaded) {
       fetchAvailableStations();
     }
+    // Keep filters open when switching property categories
   }, [propertyCategory]);
 
   // Close dropdown when clicking outside
@@ -1462,8 +1649,8 @@ const Dashboard = () => {
       if (!target.closest(".sublocation-dropdown")) {
         setShowSubLocationDropdown(false);
       }
-      // Close sidebar when clicking outside
-      if (showFilters && !target.closest(".sidebar-container")) {
+      // Close sidebar when clicking outside (but not on property category buttons)
+      if (showFilters && !target.closest(".sidebar-container") && !target.closest("[data-property-category]")) {
         setShowFilters(false);
       }
     };
@@ -1482,20 +1669,63 @@ const Dashboard = () => {
     return () => document.removeEventListener("keydown", handleEscKey);
   }, [openPropertyModal]);
 
+  // Global keyboard handler for sublocation dropdown
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (showSubLocationDropdown && (e.key === 'Tab' || e.key === 'Escape')) {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+        }
+        setShowSubLocationDropdown(false);
+        setSelectedSubLocationIndex(-1);
+        setSubLocationSearchTerm("");
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showSubLocationDropdown]);
+
+  // Keyboard navigation for full viewer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!fullViewer.isOpen) return;
+      
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateMedia('prev');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateMedia('next');
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+      }
+    };
+
+    if (fullViewer.isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [fullViewer.isOpen]);
+
   const resetFilters = () => {
     const emptyFilters = {
       bhkType: "",
       station: "",
       minBudget: "",
       maxBudget: "",
+      minCarpetArea: "",
+      maxCarpetArea: "",
       subLocation: [],
       possession: "",
-      GalleryorTerrace: undefined,
+      BalconyorTerrace: undefined,
       lookingForCosmo: undefined,
       parking: undefined,
       amenities: [],
       petFriendly: undefined,
       furnishing: undefined,
+      ocRed: undefined,
     };
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
@@ -1700,7 +1930,7 @@ const Dashboard = () => {
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               Property Category
             </label>
-            <div className="flex border border-neutral-300 rounded-md overflow-hidden w-full max-w-xs">
+            <div className="flex border border-neutral-300 rounded-md overflow-hidden w-full max-w-xs" data-property-category>
               <button
                 className={`flex-1 py-2 ${
                   propertyCategory === "Resale"
@@ -1708,6 +1938,7 @@ const Dashboard = () => {
                     : "bg-white text-neutral-700"
                 }`}
                 onClick={() => setPropertyCategory("Resale")}
+                data-property-category
               >
                 Resale
               </button>
@@ -1718,6 +1949,7 @@ const Dashboard = () => {
                     : "bg-white text-neutral-700"
                 }`}
                 onClick={() => setPropertyCategory("Rental")}
+                data-property-category
               >
                 Rental
               </button>
@@ -1728,6 +1960,7 @@ const Dashboard = () => {
                     : "bg-white text-neutral-700"
                 }`}
                 onClick={() => setPropertyCategory("New")}
+                data-property-category
               >
                 New
               </button>
@@ -2105,43 +2338,51 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <Select
-                      id="receiverPrefix"
-                      label="Prefix"
-                      options={[
-                        { value: "Mr", label: "Mr" },
-                        { value: "Mrs", label: "Mrs" },
-                        { value: "Ms", label: "Ms" },
-                        { value: "Dr", label: "Dr" },
-                        { value: "Prof", label: "Prof" },
-                      ]}
-                      value={receiverPrefix}
-                      onChange={(e) => setReceiverPrefix(e.target.value)}
-                      // error={errors.receiverPrefix?.message}
-                    />
+                    <div className="mb-2">
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">Prefix</label>
+                      <select
+                        id="receiverPrefix"
+                        value={receiverPrefix}
+                        onChange={(e) => setReceiverPrefix(e.target.value)}
+                        className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-xs focus:outline-none focus:ring-1"
+                      >
+                        <option value="">Select prefix</option>
+                        <option value="Mr">Mr</option>
+                        <option value="Mrs">Mrs</option>
+                        <option value="Ms">Ms</option>
+                        <option value="Dr">Dr</option>
+                        <option value="Prof">Prof</option>
+                      </select>
+                    </div>
 
-                    <Input
-                      id="receiverName"
-                      label="Client Name"
-                      placeholder="Enter client name"
-                      value={receiverName}
-                      onChange={(e) => {
-                        setReceiverName(e.target.value);
-                        if (nameError) setNameError("");
-                      }}
-                      error={nameError}
-                    />
-                    <Input
-                      id="receiverWhatsApp"
-                      label="Client WhatsApp Number"
-                      placeholder="Enter client WhatsApp number"
-                      value={receiverWhatsApp}
-                      onChange={(e) => {
-                        setReceiverWhatsApp(e.target.value);
-                        if (whatsAppError) setWhatsAppError("");
-                      }}
-                      error={whatsAppError}
-                    />
+                    <div className="mb-2">
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">Client Name</label>
+                      <input
+                        id="receiverName"
+                        placeholder="Enter client name"
+                        value={receiverName}
+                        onChange={(e) => {
+                          setReceiverName(e.target.value);
+                          if (nameError) setNameError("");
+                        }}
+                        className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                      />
+                      {nameError && <div className="text-xs text-red-600 mt-1">{nameError}</div>}
+                    </div>
+                    <div className="mb-2">
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">Client WhatsApp Number</label>
+                      <input
+                        id="receiverWhatsApp"
+                        placeholder="Enter client WhatsApp number"
+                        value={receiverWhatsApp}
+                        onChange={(e) => {
+                          setReceiverWhatsApp(e.target.value);
+                          if (whatsAppError) setWhatsAppError("");
+                        }}
+                        className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                      />
+                      {whatsAppError && <div className="text-xs text-red-600 mt-1">{whatsAppError}</div>}
+                    </div>
                     {/* <Button
                   variant="primary"
                   fullWidth
@@ -2151,13 +2392,13 @@ const Dashboard = () => {
                   Send on WhatsApp
                 </Button> */}
                     <div className="location-dropdown">
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
                         Location
                       </label>
                       <div className="relative">
                         <input
                           type="text"
-                          className="w-full border border-neutral-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
                           placeholder="Search location..."
                           value={filters.station || locationSearchTerm}
                           onChange={(e) => {
@@ -2216,6 +2457,9 @@ const Dashboard = () => {
                                 setSelectedLocationIndex(-1);
                               }
                             } else if (e.key === "Escape") {
+                              setShowLocationDropdown(false);
+                              setSelectedLocationIndex(-1);
+                            } else if (e.key === "Tab") {
                               setShowLocationDropdown(false);
                               setSelectedLocationIndex(-1);
                             } else if (
@@ -2286,104 +2530,202 @@ const Dashboard = () => {
                       </div>
                     </div>
                     {filterConfig.showPropertyType && (
-                      <Select
-                        id="bhkType"
-                        label="Property Type"
-                        options={filterConfig.propertyTypeOptions}
-                        value={filters.bhkType}
-                        onChange={(e) =>
-                          handleFilterChange("bhkType", e.target.value)
-                        }
-                      />
+                      <div className="mb-2">
+                        <label className="block text-xs font-medium text-neutral-700 mb-1">Property Type</label>
+                        <select
+                          id="bhkType"
+                          value={filters.bhkType}
+                          onChange={(e) => handleFilterChange("bhkType", e.target.value)}
+                          className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-xs focus:outline-none focus:ring-1"
+                        >
+                          <option value="">Select property type</option>
+                          {filterConfig.propertyTypeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
                     {filterConfig.showArea && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          id="minArea"
-                          label="Min. Area"
-                          value={filters.minBudget}
-                          onChange={(e) =>
-                            handleFilterChange("minBudget", e.target.value)
-                          }
-                        />
-                        <Input
-                          id="maxArea"
-                          label="Max. Area"
-                          value={filters.maxBudget}
-                          onChange={(e) =>
-                            handleFilterChange("maxBudget", e.target.value)
-                          }
-                        />
+                      <div className="flex gap-1">
+                        <div className="w-[120px]">
+                          <div className="mb-2">
+                            <label className="block text-xs font-medium text-neutral-700 mb-1">Min. Area</label>
+                            <input
+                              id="minArea"
+                              placeholder="Min. Area"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={filters.minBudget}
+                              onChange={(e) => handleFilterChange("minBudget", e.target.value)}
+                              className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="w-[120px]">
+                          <div className="mb-2">
+                            <label className="block text-xs font-medium text-neutral-700 mb-1">Max. Area</label>
+                            <input
+                              id="maxArea"
+                              placeholder="Max. Area"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={filters.maxBudget}
+                              onChange={(e) => handleFilterChange("maxBudget", e.target.value)}
+                              className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                            />
+                          </div>
+                        </div>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Input
-                          id="minBudget"
-                          label={`Min. ${filterConfig.budgetLabel}`}
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={filters.minBudget}
-                          onChange={(e) =>
-                            handleFilterChange("minBudget", e.target.value)
-                          }
-                          onKeyDown={(e) => {
-                            if (
-                              !/[0-9]/.test(e.key) &&
-                              ![
-                                "Backspace",
-                                "Delete",
-                                "Tab",
-                                "Enter",
-                                "ArrowLeft",
-                                "ArrowRight",
-                              ].includes(e.key)
-                            ) {
-                              e.preventDefault();
+                    <div className="flex gap-1">
+                      <div className="w-[120px]">
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium text-neutral-700 mb-1">Min. Budget</label>
+                          <input
+                            id="minBudget"
+                            placeholder="Min. Budget"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={filters.minBudget}
+                            onChange={(e) =>
+                              handleFilterChange("minBudget", e.target.value)
                             }
-                          }}
-                        />
-                        {filters.minBudget && (
-                          <div className="text-right text-xs text-gray-600 font-bold -mt-3">
-                            {formatPriceDisplay(filters.minBudget)}
-                          </div>
-                        )}
+                            onKeyDown={(e) => {
+                              if (
+                                !/[0-9]/.test(e.key) &&
+                                ![
+                                  "Backspace",
+                                  "Delete",
+                                  "Tab",
+                                  "Enter",
+                                  "ArrowLeft",
+                                  "ArrowRight",
+                                ].includes(e.key)
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                            className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                          />
+                          {filters.minBudget && (
+                            <div className="text-right text-xs text-gray-600 font-bold -mt-1">
+                              {formatPriceDisplay(filters.minBudget)}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <Input
-                          id="maxBudget"
-                          label={`Max. ${filterConfig.budgetLabel}`}
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={filters.maxBudget}
-                          onChange={(e) =>
-                            handleFilterChange("maxBudget", e.target.value)
-                          }
-                          onKeyDown={(e) => {
-                            if (
-                              !/[0-9]/.test(e.key) &&
-                              ![
-                                "Backspace",
-                                "Delete",
-                                "Tab",
-                                "Enter",
-                                "ArrowLeft",
-                                "ArrowRight",
-                              ].includes(e.key)
-                            ) {
-                              e.preventDefault();
+                      <div className="w-[120px]">
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium text-neutral-700 mb-1">Max. Budget</label>
+                          <input
+                            id="maxBudget"
+                            placeholder="Max. Budget"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={filters.maxBudget}
+                            onChange={(e) =>
+                              handleFilterChange("maxBudget", e.target.value)
                             }
-                          }}
-                        />
-                        {filters.maxBudget && (
-                          <div className="text-right text-xs text-gray-600 font-bold -mt-3">
-                            {formatPriceDisplay(filters.maxBudget)}
-                          </div>
-                        )}
+                            onKeyDown={(e) => {
+                              if (
+                                !/[0-9]/.test(e.key) &&
+                                ![
+                                  "Backspace",
+                                  "Delete",
+                                  "Tab",
+                                  "Enter",
+                                  "ArrowLeft",
+                                  "ArrowRight",
+                                ].includes(e.key)
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                            className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                          />
+                          {filters.maxBudget && (
+                            <div className="text-right text-xs text-gray-600 font-bold -mt-1">
+                              {formatPriceDisplay(filters.maxBudget)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    {/* Carpet Area Filter - Only for Resale and New */}
+                    {propertyCategory !== "Rental" && (
+                      <div className="flex gap-1">
+                        <div className="w-[120px]">
+                          <div className="mb-2">
+                            <label className="block text-xs font-medium text-neutral-700 mb-1">Min. Carpet</label>
+                            <input
+                              id="minCarpetArea"
+                              placeholder="Area (sq ft)"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={filters.minCarpetArea}
+                              onChange={(e) =>
+                                handleFilterChange("minCarpetArea", e.target.value)
+                              }
+                              onKeyDown={(e) => {
+                                if (
+                                  !/[0-9]/.test(e.key) &&
+                                  ![
+                                    "Backspace",
+                                    "Delete",
+                                    "Tab",
+                                    "Enter",
+                                    "ArrowLeft",
+                                    "ArrowRight",
+                                  ].includes(e.key)
+                                ) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="w-[120px]">
+                          <div className="mb-2">
+                            <label className="block text-xs font-medium text-neutral-700 mb-1">Max. Carpet</label>
+                            <input
+                              id="maxCarpetArea"
+                              placeholder="Area (sq ft)"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={filters.maxCarpetArea}
+                              onChange={(e) =>
+                                handleFilterChange("maxCarpetArea", e.target.value)
+                              }
+                              onKeyDown={(e) => {
+                                if (
+                                  !/[0-9]/.test(e.key) &&
+                                  ![
+                                    "Backspace",
+                                    "Delete",
+                                    "Tab",
+                                    "Enter",
+                                    "ArrowLeft",
+                                    "ArrowRight",
+                                  ].includes(e.key)
+                                ) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="sublocation-dropdown">
                       <div className="mb-2">
                         <div className="flex items-center space-x-4 mb-2">
@@ -2399,7 +2741,7 @@ const Dashboard = () => {
                               }}
                               className="mr-1"
                             />
-                            <span className="text-sm font-medium text-neutral-700">
+                            <span className="text-xs font-medium text-neutral-700">
                               Sub Location
                             </span>
                           </label>
@@ -2415,7 +2757,7 @@ const Dashboard = () => {
                               }}
                               className="mr-1"
                             />
-                            <span className="text-sm font-medium text-neutral-700">
+                            <span className="text-xs font-medium text-neutral-700">
                               Building/Society
                             </span>
                           </label>
@@ -2453,7 +2795,7 @@ const Dashboard = () => {
                       <div className="relative">
                         <input
                           type="text"
-                          className="w-full border border-neutral-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
                           placeholder={`Search ${
                             locationFilterType === "subLocation"
                               ? "sub location"
@@ -2516,6 +2858,19 @@ const Dashboard = () => {
                             } else if (e.key === "Escape") {
                               setShowSubLocationDropdown(false);
                               setSelectedSubLocationIndex(-1);
+                            } else if (e.key === "Tab") {
+                              e.preventDefault();
+                              setShowSubLocationDropdown(false);
+                              setSelectedSubLocationIndex(-1);
+                              setSubLocationSearchTerm("");
+                              // Move focus to next field
+                              setTimeout(() => {
+                                const currentElement = e.target as HTMLElement;
+                                const nextElement = currentElement.parentElement?.parentElement?.nextElementSibling?.querySelector('input, select, button') as HTMLElement;
+                                if (nextElement) {
+                                  nextElement.focus();
+                                }
+                              }, 0);
                             }
                           }}
                         />
@@ -2589,99 +2944,98 @@ const Dashboard = () => {
                       </div>
                     </div>
                     {filterConfig.showPossession && (
-                      <Select
-                        id="possession"
-                        label="Possession by"
-                        options={possessionOptions}
-                        value={filters.possession}
-                        onChange={(e) =>
-                          handleFilterChange("possession", e.target.value)
-                        }
-                      />
+                      <div className="mb-2">
+                        <label className="block text-xs font-medium text-neutral-700 mb-1">Possession by</label>
+                        <select
+                          id="possession"
+                          value={filters.possession}
+                          onChange={(e) => handleFilterChange("possession", e.target.value)}
+                          className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                        >
+                          <option value="">Select possession</option>
+                          {possessionOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
                     {filterConfig.showCosmo && (
-                      <div>
-                        <p className="block text-sm font-medium text-neutral-700 mb-1">
-                          Looking for Cosmo?
-                        </p>
-                        <div className="flex space-x-4">
-                          <div
-                            className={`px-3 py-2 border rounded-md cursor-pointer ${
-                              filters.lookingForCosmo === true
-                                ? "bg-primary text-white border-primary"
-                                : "border-neutral-300"
-                            }`}
-                            onClick={() =>
-                              handleFilterChange(
-                                "lookingForCosmo",
-                                filters.lookingForCosmo === true
-                                  ? undefined
-                                  : true
-                              )
-                            }
-                          >
-                            Yes
-                          </div>
-                          <div
-                            className={`px-3 py-2 border rounded-md cursor-pointer ${
-                              filters.lookingForCosmo === false
-                                ? "bg-primary text-white border-primary"
-                                : "border-neutral-300"
-                            }`}
-                            onClick={() =>
-                              handleFilterChange(
-                                "lookingForCosmo",
-                                filters.lookingForCosmo === false
-                                  ? undefined
-                                  : false
-                              )
-                            }
-                          >
-                            No
+                      <div className="border border-neutral-200 rounded-lg p-2">
+                        <div className="flex items-center space-x-4">
+                          <span className="text-xs font-medium text-neutral-700 w-[86px]">Cosmo:</span>
+                          <div className="flex items-center space-x-3">
+                            <label className="flex items-center space-x-1">
+                              <input
+                                type="radio"
+                                name="lookingForCosmo"
+                                checked={filters.lookingForCosmo === true}
+                                onClick={() =>
+                                  handleFilterChange(
+                                    "lookingForCosmo",
+                                    filters.lookingForCosmo === true ? undefined : true
+                                  )
+                                }
+                                className="text-primary focus:ring-primary"
+                              />
+                              <span className="text-xs">Yes</span>
+                            </label>
+                            <label className="flex items-center space-x-1">
+                              <input
+                                type="radio"
+                                name="lookingForCosmo"
+                                checked={filters.lookingForCosmo === false}
+                                onClick={() =>
+                                  handleFilterChange(
+                                    "lookingForCosmo",
+                                    filters.lookingForCosmo === false ? undefined : false
+                                  )
+                                }
+                                className="text-primary focus:ring-primary"
+                              />
+                              <span className="text-xs">No</span>
+                            </label>
                           </div>
                         </div>
                       </div>
                     )}
 
                     {filterConfig.showGalleryTerrace && (
-                      <div>
-                        <p className="block text-sm font-medium text-neutral-700 mb-1">
-                          Gallery / Terrace?
-                        </p>
-                        <div className="flex space-x-4">
-                          <div
-                            className={`px-3 py-2 border rounded-md cursor-pointer ${
-                              filters.GalleryorTerrace === "Gallery"
-                                ? "bg-primary text-white border-primary"
-                                : "border-neutral-300"
-                            }`}
-                            onClick={() =>
-                              handleFilterChange(
-                                "GalleryorTerrace",
-                                filters.GalleryorTerrace === "Gallery"
-                                  ? undefined
-                                  : "Gallery"
-                              )
-                            }
-                          >
-                            Gallery
-                          </div>
-                          <div
-                            className={`px-3 py-2 border rounded-md cursor-pointer ${
-                              filters.GalleryorTerrace === "Terrace"
-                                ? "bg-primary text-white border-primary"
-                                : "border-neutral-300"
-                            }`}
-                            onClick={() =>
-                              handleFilterChange(
-                                "GalleryorTerrace",
-                                filters.GalleryorTerrace === "Terrace"
-                                  ? undefined
-                                  : "Terrace"
-                              )
-                            }
-                          >
-                            Terrace
+                      <div className="border border-neutral-200 rounded-lg p-2">
+                        <div className="flex items-center space-x-4">
+                          <span className="text-xs font-medium text-neutral-700 w-[84px]">BA / TA:</span>
+                          <div className="flex items-center space-x-3">
+                            <label className="flex items-center space-x-1">
+                              <input
+                                type="radio"
+                                name="balconyTerrace"
+                                checked={filters.BalconyorTerrace === "Balcony"}
+                                onClick={() =>
+                                  handleFilterChange(
+                                    "BalconyorTerrace",
+                                    filters.BalconyorTerrace === "Balcony" ? undefined : "Balcony"
+                                  )
+                                }
+                                className="text-primary focus:ring-primary"
+                              />
+                              <span className="text-xs">Balcony</span>
+                            </label>
+                            <label className="flex items-center space-x-1">
+                              <input
+                                type="radio"
+                                name="balconyTerrace"
+                                checked={filters.BalconyorTerrace === "Terrace"}
+                                onClick={() =>
+                                  handleFilterChange(
+                                    "BalconyorTerrace",
+                                    filters.BalconyorTerrace === "Terrace" ? undefined : "Terrace"
+                                  )
+                                }
+                                className="text-primary focus:ring-primary"
+                              />
+                              <span className="text-xs">Terrace</span>
+                            </label>
                           </div>
                         </div>
                       </div>
@@ -2692,7 +3046,7 @@ const Dashboard = () => {
                       onClick={() =>
                         setShowAdvancedFilters(!showAdvancedFilters)
                       }
-                      className="text-sm text-primary hover:text-primary-dark font-medium"
+                      className="text-xs text-primary hover:text-primary-dark font-medium"
                     >
                       {showAdvancedFilters
                         ? "- Hide Advanced Filters"
@@ -2702,136 +3056,163 @@ const Dashboard = () => {
                     {showAdvancedFilters && (
                       <>
                         {propertyCategory !== "New" && (
-                          <div>
-                            <p className="block text-sm font-medium text-neutral-700 mb-1">
-                              Furnishing
-                            </p>
-                            <div className="flex space-x-4">
-                              <div
-                                className={`px-3 py-2 border rounded-md cursor-pointer text-sm ${
-                                  filters.furnishing === "Fully Furnished"
-                                    ? "bg-primary text-white border-primary"
-                                    : "border-neutral-300"
-                                }`}
-                                onClick={() =>
-                                  handleFilterChange(
-                                    "furnishing",
-                                    filters.furnishing === "Fully Furnished"
-                                      ? undefined
-                                      : "Fully Furnished"
-                                  )
-                                }
-                              >
-                                Fully Furnished
-                              </div>
-                              <div
-                                className={`px-3 py-2 border rounded-md cursor-pointer text-sm ${
-                                  filters.furnishing === "Semi-Furnished"
-                                    ? "bg-primary text-white border-primary"
-                                    : "border-neutral-300"
-                                }`}
-                                onClick={() =>
-                                  handleFilterChange(
-                                    "furnishing",
-                                    filters.furnishing === "Semi-Furnished"
-                                      ? undefined
-                                      : "Semi-Furnished"
-                                  )
-                                }
-                              >
-                                Semi-Furnished
+                          <div className="border border-neutral-200 rounded-lg p-2">
+                            <div className="flex items-center space-x-4">
+                              <span className="text-xs font-medium text-neutral-700 w-[86px]">Furnishing:</span>
+                              <div className="flex items-center space-x-3">
+                                <label className="flex items-center space-x-1">
+                                  <input
+                                    type="radio"
+                                    name="furnishing"
+                                    checked={filters.furnishing === "Fully Furnished"}
+                                    onClick={() =>
+                                      handleFilterChange(
+                                        "furnishing",
+                                        filters.furnishing === "Fully Furnished" ? undefined : "Fully Furnished"
+                                      )
+                                    }
+                                    className="text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs">Fully</span>
+                                </label>
+                                <label className="flex items-center space-x-1">
+                                  <input
+                                    type="radio"
+                                    name="furnishing"
+                                    checked={filters.furnishing === "Semi-Furnished"}
+                                    onClick={() =>
+                                      handleFilterChange(
+                                        "furnishing",
+                                        filters.furnishing === "Semi-Furnished" ? undefined : "Semi-Furnished"
+                                      )
+                                    }
+                                    className="text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs">Semi</span>
+                                </label>
                               </div>
                             </div>
                           </div>
                         )}
                         {propertyCategory !== "New" && (
-                          <div>
-                            <p className="block text-sm font-medium text-neutral-700 mb-1">
-                              Parking
-                            </p>
-                            <div className="flex space-x-4">
-                              <div
-                                className={`px-3 py-2 border rounded-md cursor-pointer ${
-                                  filters.parking === true
-                                    ? "bg-primary text-white border-primary"
-                                    : "border-neutral-300"
-                                }`}
-                                onClick={() =>
-                                  handleFilterChange(
-                                    "parking",
-                                    filters.parking === true
-                                      ? undefined
-                                      : true
-                                  )
-                                }
-                              >
-                                Yes
+                          <div className="border border-neutral-200 rounded-lg p-2">
+                            <div className="flex items-center space-x-4">
+                              <span className="text-xs font-medium text-neutral-700 w-[86px]">Parking:</span>
+                              <div className="flex items-center space-x-3">
+                                <label className="flex items-center space-x-1">
+                                  <input
+                                    type="radio"
+                                    name="parking"
+                                    checked={filters.parking === true}
+                                    onClick={() =>
+                                      handleFilterChange(
+                                        "parking",
+                                        filters.parking === true ? undefined : true
+                                      )
+                                    }
+                                    className="text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs">Yes</span>
+                                </label>
+                                <label className="flex items-center space-x-1">
+                                  <input
+                                    type="radio"
+                                    name="parking"
+                                    checked={filters.parking === false}
+                                    onClick={() =>
+                                      handleFilterChange(
+                                        "parking",
+                                        filters.parking === false ? undefined : false
+                                      )
+                                    }
+                                    className="text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs">No</span>
+                                </label>
                               </div>
-                              <div
-                                className={`px-3 py-2 border rounded-md cursor-pointer ${
-                                  filters.parking === false
-                                    ? "bg-primary text-white border-primary"
-                                    : "border-neutral-300"
-                                }`}
-                                onClick={() =>
-                                  handleFilterChange(
-                                    "parking",
-                                    filters.parking === false
-                                      ? undefined
-                                      : false
-                                  )
-                                }
-                              >
-                                No
+                            </div>
+                          </div>
+                        )}
+                        {propertyCategory !== "New" && (
+                          <div className="border border-neutral-200 rounded-lg p-2">
+                            <div className="flex items-center space-x-4">
+                              <span className="text-xs font-medium text-neutral-700 w-[88px]">OC Received:</span>
+                              <div className="flex items-center space-x-3">
+                                <label className="flex items-center space-x-1">
+                                  <input
+                                    type="radio"
+                                    name="ocReceived"
+                                    checked={filters.ocRed === "OC"}
+                                    onClick={() =>
+                                      handleFilterChange(
+                                        "ocRed",
+                                        filters.ocRed === "OC" ? undefined : "OC"
+                                      )
+                                    }
+                                    className="text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs">Yes</span>
+                                </label>
+                                <label className="flex items-center space-x-1">
+                                  <input
+                                    type="radio"
+                                    name="ocReceived"
+                                    checked={filters.ocRed === "Red"}
+                                    onClick={() =>
+                                      handleFilterChange(
+                                        "ocRed",
+                                        filters.ocRed === "Red" ? undefined : "Red"
+                                      )
+                                    }
+                                    className="text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs">No</span>
+                                </label>
                               </div>
                             </div>
                           </div>
                         )}
                         {propertyCategory === "Rental" && (
-                          <div>
-                            <p className="block text-sm font-medium text-neutral-700 mb-1">
-                              Pet friendly
-                            </p>
-                            <div className="flex space-x-4">
-                              <div
-                                className={`px-3 py-2 border rounded-md cursor-pointer ${
-                                  filters.petFriendly === true
-                                    ? "bg-primary text-white border-primary"
-                                    : "border-neutral-300"
-                                }`}
-                                onClick={() =>
-                                  handleFilterChange(
-                                    "petFriendly",
-                                    filters.petFriendly === true
-                                      ? undefined
-                                      : true
-                                  )
-                                }
-                              >
-                                Yes
-                              </div>
-                              <div
-                                className={`px-3 py-2 border rounded-md cursor-pointer ${
-                                  filters.petFriendly === false
-                                    ? "bg-primary text-white border-primary"
-                                    : "border-neutral-300"
-                                }`}
-                                onClick={() =>
-                                  handleFilterChange(
-                                    "petFriendly",
-                                    filters.petFriendly === false
-                                      ? undefined
-                                      : false
-                                  )
-                                }
-                              >
-                                No
+                          <div className="border border-neutral-200 rounded-lg p-3">
+                            <div className="flex items-center space-x-4">
+                              <span className="text-xs font-medium text-neutral-700 w-[86px]">Pet friendly:</span>
+                              <div className="flex items-center space-x-3">
+                                <label className="flex items-center space-x-1">
+                                  <input
+                                    type="radio"
+                                    name="petFriendly"
+                                    checked={filters.petFriendly === true}
+                                    onClick={() =>
+                                      handleFilterChange(
+                                        "petFriendly",
+                                        filters.petFriendly === true ? undefined : true
+                                      )
+                                    }
+                                    className="text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs">Yes</span>
+                                </label>
+                                <label className="flex items-center space-x-1">
+                                  <input
+                                    type="radio"
+                                    name="petFriendly"
+                                    checked={filters.petFriendly === false}
+                                    onClick={() =>
+                                      handleFilterChange(
+                                        "petFriendly",
+                                        filters.petFriendly === false ? undefined : false
+                                      )
+                                    }
+                                    className="text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-xs">No</span>
+                                </label>
                               </div>
                             </div>
                           </div>
                         )}
                         <div>
-                          <p className="block text-sm font-medium text-neutral-700 mb-1">
+                          <p className="block text-xs font-medium text-neutral-700 mb-1">
                             Amenities
                           </p>
                           <div className="space-y-2">
@@ -2841,7 +3222,7 @@ const Dashboard = () => {
                               "Club House",
                               "Kid's Play Area",
                               "Modular Kitchen",
-                              ...(propertyCategory !== "New" ? ["Gas Pipeline"] : []),
+                              ...(propertyCategory !== "New" ? ["Gas Pipeline", "Security"] : []),
                             ].map((amenity) => (
                               <label
                                 key={amenity}
@@ -2864,11 +3245,12 @@ const Dashboard = () => {
                                   }}
                                   className="rounded border-neutral-300"
                                 />
-                                <span className="text-sm">{amenity}</span>
+                                <span className="text-xs">{amenity}</span>
                               </label>
                             ))}
                           </div>
                         </div>
+
                       </>
                     )}
                     <Button
@@ -3096,9 +3478,18 @@ const Dashboard = () => {
                           }, {} as Record<string, (typeof filteredCostSheets)[0]>)
                         )
                           .sort((a, b) => {
-                            const packageA = a.totalPackage || a.typologies?.[0]?.totalPackage || 0;
-                            const packageB = b.totalPackage || b.typologies?.[0]?.totalPackage || 0;
-                            return packageA - packageB;
+                            // Get price from pricingConfigs first, then fallback to typologies
+                            const getPriceForSort = (sheet: any) => {
+                              if (sheet.pricingConfigs && sheet.pricingConfigs.length > 0) {
+                                const firstConfig = sheet.pricingConfigs[0];
+                                if (firstConfig.totalPackage) {
+                                  const cleanPrice = firstConfig.totalPackage.toString().replace(/[₹,]/g, '');
+                                  return Number(cleanPrice) || 0;
+                                }
+                              }
+                              return sheet.totalPackage || sheet.typologies?.[0]?.totalPackage || 0;
+                            };
+                            return getPriceForSort(a) - getPriceForSort(b);
                           })
                           .map((sheet, idx) => {
                             // Handle both data structures for display
@@ -3133,56 +3524,80 @@ const Dashboard = () => {
                                 {subLocation}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-neutral-900">
-                                ₹{" "}
-                                {totalPackage
-                                  ? Number(totalPackage).toLocaleString(
-                                      "en-IN"
-                                    )
-                                  : "N/A"}
+                                {(() => {
+                                  // First priority: subTabData total package
+                                  if (sheet.subTabData && sheet.subTabData[0] && sheet.subTabData[0].pricingConfigs && sheet.subTabData[0].pricingConfigs.length > 0) {
+                                    const firstConfig = sheet.subTabData[0].pricingConfigs[0];
+                                    if (firstConfig.totalPackage) {
+                                      const cleanPrice = firstConfig.totalPackage.toString().replace(/[₹,]/g, '');
+                                      const numPrice = Number(cleanPrice);
+                                      return numPrice ? `₹${numPrice.toLocaleString("en-IN")}` : firstConfig.totalPackage;
+                                    }
+                                  }
+                                  // Second priority: pricingConfigs
+                                  if (sheet.pricingConfigs && sheet.pricingConfigs.length > 0) {
+                                    const firstConfig = sheet.pricingConfigs[0];
+                                    if (firstConfig.totalPackage) {
+                                      const cleanPrice = firstConfig.totalPackage.toString().replace(/[₹,]/g, '');
+                                      const numPrice = Number(cleanPrice);
+                                      return numPrice ? `₹${numPrice.toLocaleString("en-IN")}` : firstConfig.totalPackage;
+                                    }
+                                  }
+                                  // Fallback: typologies
+                                  const totalPackage = sheet.totalPackage || sheet.typologies?.[0]?.totalPackage;
+                                  return totalPackage ? `₹${Number(totalPackage).toLocaleString("en-IN")}` : "N/A";
+                                })()}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {possession || "N/A"}
+                                {(() => {
+                                  if (possession === "Ready to Move" || possession?.toLowerCase() === "ready to move") {
+                                    return "Ready to Move";
+                                  }
+                                  if (possession && possession.includes('-')) {
+                                    try {
+                                      const date = new Date(possession);
+                                      if (!isNaN(date.getTime())) {
+                                        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                                      }
+                                    } catch {}
+                                  }
+                                  return possession || "Ready to Move";
+                                })()}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {sheet.brochureUrl ? (
-                                  <a
-                                    href={sheet.brochureUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline"
+                                {sheet.mediaFiles?.brochure ? (
+                                  <button
+                                    onClick={() => openMediaModal('Brochure', [sheet.mediaFiles.brochure], 'pdf')}
+                                    className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-none p-0"
                                   >
                                     Available
-                                  </a>
+                                  </button>
                                 ) : (
-                                  "–"
+                                  <span className="text-xs text-gray-500">-</span>
                                 )}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {sheet.imageUrl ? (
-                                  <a
-                                    href={sheet.imageUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline"
+                                {getMediaSections(sheet.mediaFiles).filter(section => section.type === 'image').length > 0 ? (
+                                  <button
+                                    onClick={() => handleImageClick(sheet)}
+                                    className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-none p-0"
                                   >
                                     Available
-                                  </a>
+                                  </button>
                                 ) : (
-                                  "–"
+                                  <span className="text-xs text-gray-500">-</span>
                                 )}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {sheet.videoUrl ? (
-                                  <a
-                                    href={sheet.videoUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline"
+                                {getMediaSections(sheet.mediaFiles).filter(section => section.type === 'video').length > 0 ? (
+                                  <button
+                                    onClick={() => handleVideoClick(sheet)}
+                                    className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-none p-0"
                                   >
                                     Available
-                                  </a>
+                                  </button>
                                 ) : (
-                                  "–"
+                                  <span className="text-xs text-gray-500">-</span>
                                 )}
                               </td>
                             </tr>
@@ -3531,11 +3946,27 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      <ProjectDetailsModal
-        open={openProjectModal}
-        onClose={() => setOpenProjectModal(false)}
-        data={selectedProjectData}
-      />
+      {selectedProjectData && (
+        <NewPropertyModal
+          Section={({ title, children }: { title: string; children: React.ReactNode }) => (
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">{title}</h4>
+              <div className="grid grid-cols-2 gap-4">{children}</div>
+            </div>
+          )}
+          Field={({ label, value }: { label: string; value: any }) => (
+            <div>
+              {label && <div className="text-sm text-neutral-500 mb-1">{label}</div>}
+              <div className="text-sm font-medium text-neutral-900">
+                {Array.isArray(value) ? value.join(", ") : (value || "-")}
+              </div>
+            </div>
+          )}
+          selectedSheet={selectedProjectData}
+          user={user}
+          onClose={() => setSelectedProjectData(null)}
+        />
+      )}
       {openPropertyModal && selectedPropertyData && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -3741,6 +4172,126 @@ const Dashboard = () => {
                 Send to WhatsApp
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Media Modal */}
+      {mediaModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
+              <h3 className="text-lg font-semibold">{mediaModal.title}</h3>
+              <button onClick={() => setMediaModal({isOpen: false, title: '', files: [], type: 'image'})} className="text-gray-500 hover:text-gray-700">
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4" style={{maxHeight: 'calc(90vh - 80px)'}}>
+              {(() => {
+                // Get the selected sheet from the current context
+                const currentSheet = selectedProjectData || filteredNewProperties.find(sheet => 
+                  sheet.mediaFiles?.brochure || 
+                  sheet.mediaFiles?.elevationImages?.length > 0 || 
+                  sheet.mediaFiles?.projectWalkthrough?.length > 0
+                );
+                
+                if (!currentSheet?.mediaFiles) {
+                  return <div className="text-center text-gray-500 py-8">No media files available</div>;
+                }
+                
+                const mediaSections = getMediaSections(currentSheet.mediaFiles);
+                const filteredSections = mediaModal.type === 'image' 
+                  ? mediaSections.filter(section => section.type === 'image')
+                  : mediaModal.type === 'video'
+                  ? mediaSections.filter(section => section.type === 'video')
+                  : mediaSections;
+                
+                return (
+                  <div className="space-y-6">
+                    {filteredSections.map((section, sectionIndex) => (
+                      <div key={sectionIndex}>
+                        <h4 className="text-md font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">
+                          {section.name}
+                        </h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                          {section.files.map((file, index) => {
+                            const isPdf = file.toLowerCase().includes('.pdf') || file.includes('pdf');
+                            const isVideo = file.toLowerCase().includes('.mp4') || file.toLowerCase().includes('.mov') || file.includes('video');
+                            
+                            return (
+                              <div key={index} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openFullViewer(section.files, index, isPdf ? 'pdf' : isVideo ? 'video' : 'image')}>
+                                {isPdf ? (
+                                  <div className="aspect-square relative overflow-hidden bg-white">
+                                    <iframe src={`${file}#toolbar=0&navpanes=0&scrollbar=0`} className="w-full h-full border-0 transform scale-[0.2] origin-top-left pointer-events-none" style={{width: '500%', height: '500%'}} />
+                                    <div className="absolute bottom-1 right-1 pointer-events-none">
+                                      <svg className="w-4 h-4 text-red-600 bg-white/90 rounded p-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                ) : isVideo ? (
+                                  <div className="aspect-square relative overflow-hidden">
+                                    <video src={file} className="w-full h-full object-cover" muted />
+                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                      <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <img src={file} alt={`${section.name} ${index + 1}`} className="w-full aspect-square object-cover" />
+                                )}
+                                <div className="p-1">
+                                  <p className="text-xs text-gray-600 truncate" title={getFileName(file)}>{getFileName(file)}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Size Media Viewer */}
+      {fullViewer.isOpen && (
+        <div className="fixed inset-0 bg-black/90 flex justify-center items-center z-[9999]">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <button onClick={() => setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'})} className="absolute top-4 right-4 text-white hover:text-gray-300 text-2xl z-10">
+              ✕
+            </button>
+            
+            {fullViewer.files.length > 1 && (
+              <>
+                <button onClick={() => navigateMedia('prev')} className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 text-3xl z-10">
+                  ‹
+                </button>
+                <button onClick={() => navigateMedia('next')} className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 text-3xl z-10">
+                  ›
+                </button>
+              </>
+            )}
+            
+            <div className="w-full h-full flex items-center justify-center p-4">
+              {fullViewer.type === 'pdf' ? (
+                <iframe src={fullViewer.files[fullViewer.currentIndex]} className="w-[90vw] h-[90vh] bg-white rounded" />
+              ) : fullViewer.type === 'video' ? (
+                <video controls className="max-w-[90vw] max-h-[90vh]" src={fullViewer.files[fullViewer.currentIndex]} />
+              ) : (
+                <img src={fullViewer.files[fullViewer.currentIndex]} alt="Full size media" className="max-w-[90vw] max-h-[90vh] object-contain" />
+              )}
+            </div>
+            
+            {fullViewer.files.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded">
+                {fullViewer.currentIndex + 1} / {fullViewer.files.length}
+              </div>
+            )}
           </div>
         </div>
       )}
