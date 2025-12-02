@@ -6,6 +6,8 @@ import { StampDutyRate } from "../CompareModal";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 import Tabs from "../ui/Tabs";
+import AmenityModal from "../AmenityModal";
+import { costSheetFields } from "../../pages/costSheetFields";
 import { currentStepEditTabMediaUpload } from "./currentStepEditTabMediaUpload";
 import { currentStepEditTab5 } from "./currentStepEditTab5";
 import { currentStepEditTab4 } from "./currentStepEditTab4";
@@ -175,6 +177,8 @@ export function handleEditPropertyForm(
   setAddingAmenityFor: React.Dispatch<React.SetStateAction<string | null>>,
   setCurrentAmenityField: React.Dispatch<React.SetStateAction<string>>,
   setShowAmenityModal: React.Dispatch<React.SetStateAction<boolean>>,
+  showAmenityModal: boolean,
+  currentAmenityField: string,
   calculateTotalPackage: () => string,
   numberFields: string[],
   siteHeads: { name: string; contact: string }[],
@@ -254,7 +258,9 @@ export function handleEditPropertyForm(
         <Button
           size="sm"
           variant="outline"
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             if (setEditingProperty) {
               setEditingProperty(null);
             }
@@ -474,6 +480,29 @@ export function handleEditPropertyForm(
           </div>
         </div>
       )}
+      
+      {/* AmenityModal */}
+      <AmenityModal
+        isOpen={showAmenityModal}
+        onClose={() => {
+          setShowAmenityModal(false);
+          setCurrentAmenityField("");
+        }}
+        fieldId={currentAmenityField}
+        fieldLabel={
+          costSheetFields.find((f) => f.id === currentAmenityField)?.label || ""
+        }
+        customAmenityInput={customAmenityInput[currentAmenityField] || ""}
+        setCustomAmenityInput={(value: string) =>
+          setCustomAmenityInput((prev) => ({
+            ...prev,
+            [currentAmenityField]: value,
+          }))
+        }
+        setFormData={setFormData}
+        setExpandedAmenities={setExpandedAmenities}
+        setCustomAmenities={setCustomAmenities}
+      />
     </div>
   );
 }

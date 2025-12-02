@@ -175,6 +175,11 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     setPdfThumbnail(null);
     setSelectedStateCode("");
     setCities([]);
+    // Clear modal states
+    setShowAmenityModal(false);
+    setCurrentAmenityField("");
+    setCustomAmenityInput({});
+    setAddingAmenityFor(null);
   };
   const [selectedSheet, setSelectedSheet] = useState<CostSheet | null>(null);
   const [preloadedStateData, setPreloadedStateData] = useState<{
@@ -1381,6 +1386,8 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       setAddingAmenityFor,
       setCurrentAmenityField,
       setShowAmenityModal,
+      showAmenityModal,
+      currentAmenityField,
       calculateTotalPackage,
       numberFields,
       siteHeads,
@@ -1469,6 +1476,8 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
               setAddingAmenityFor,
               setCurrentAmenityField,
               setShowAmenityModal,
+              showAmenityModal,
+              currentAmenityField,
               calculateTotalPackage,
               numberFields,
               siteHeads,

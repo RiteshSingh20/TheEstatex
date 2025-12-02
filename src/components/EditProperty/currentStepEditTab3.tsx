@@ -460,7 +460,7 @@ export function currentStepEditTab3(
                 </label>
 
                 <div className="border rounded bg-white p-2">
-                  {/* Amenity selection grid with Show More inside last default item */}
+                  {/* Default Amenities */}
                   <div
                     className={`grid gap-2 max-h-[200px] overflow-y-auto p-2 ${
                       field.id === "locationHighlights"
@@ -468,13 +468,9 @@ export function currentStepEditTab3(
                         : "grid-cols-5"
                     }`}
                   >
-                    {[
-                      ...(field.options || []),
-                      ...(showCustom ? customOpts : []),
-                    ]
+                    {(field.options || [])
                       .sort((a, b) => a.localeCompare(b))
                       .map((opt, idx) => {
-                        const isCustom = customOpts.includes(opt);
                         const isChecked = selected.includes(opt);
 
                         return (
@@ -546,6 +542,94 @@ export function currentStepEditTab3(
                       })}
                   </div>
 
+                  {/* Custom Amenities with Divider */}
+                  {showCustom && customOpts.length > 0 && (
+                    <>
+                      <div className="border-t border-gray-300 my-3"></div>
+                      <div className="text-xs font-medium text-gray-600 mb-2 px-2">Custom Amenities</div>
+                      <div
+                        className={`grid gap-2 max-h-[200px] overflow-y-auto p-2 ${
+                          field.id === "locationHighlights"
+                            ? "grid-cols-2 md:grid-cols-4"
+                            : "grid-cols-5"
+                        }`}
+                      >
+                        {customOpts
+                          .sort((a, b) => a.localeCompare(b))
+                          .map((opt, idx) => {
+                            const isChecked = selected.includes(opt);
+
+                            return (
+                              <div
+                                key={opt}
+                                className="flex flex-col text-sm space-y-1"
+                              >
+                                <label className="flex items-start space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const next = e.target.checked
+                                        ? [...selected, opt]
+                                        : selected.filter((v) => v !== opt);
+
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        [field.id]: next,
+                                      }));
+                                    }}
+                                  />
+                                  <div className="flex-1">
+                                    <span className="break-words">{opt}</span>
+                                    {field.id === "locationHighlights" &&
+                                      selected.includes(opt) && (
+                                        <input
+                                          type="text"
+                                          placeholder="e.g.km/min"
+                                          value={
+                                            formData?.locationHighlightTimes?.[
+                                              opt
+                                            ] || ""
+                                          }
+                                          onChange={(e) =>
+                                            setFormData((prev) => ({
+                                              ...prev,
+                                              locationHighlightTimes: {
+                                                ...(prev.locationHighlightTimes ||
+                                                  {}),
+                                                [opt]: e.target.value,
+                                              },
+                                            }))
+                                          }
+                                          onKeyDown={(e) => {
+                                            // Allow numbers and common characters for time/distance input
+                                            const allowedKeys = [
+                                              'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+                                              'ArrowLeft', 'ArrowRight', 'Home', 'End'
+                                            ];
+                                            
+                                            if (allowedKeys.includes(e.key)) {
+                                              return; // Allow these keys
+                                            }
+                                            
+                                            // Allow numbers, letters, space, and common punctuation for time/distance
+                                            if (!/[0-9a-zA-Z\s\-\.\,\:]/.test(e.key)) {
+                                              e.preventDefault();
+                                            }
+                                          }
+                                        }
+                                          className="ml-2 border px-2 py-1 rounded w-[80px] text-xs appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        />
+                                      )}
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </>
+                  )}
+
                   {/* Show More/Less button */}
                   {customOpts.length > 0 && !showCustom && (
                     <button
@@ -583,7 +667,7 @@ export function currentStepEditTab3(
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-
+                        
                         setCurrentAmenityField(field.id);
                         setShowAmenityModal(true);
                       }}
