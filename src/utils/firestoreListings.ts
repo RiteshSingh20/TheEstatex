@@ -384,7 +384,21 @@ export const addCostSheet = async (data: any) => {
 export const getCostSheets = async (): Promise<any[]> => {
   const costSheetCollection = collection(db, "TestingCostSheets");
   const querySnapshot = await getDocs(costSheetCollection);
-  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return querySnapshot.docs.map((doc) => {
+    const data = doc.data();
+    
+
+    
+    // Ensure all fields are properly retrieved - preserve original values
+    return {
+      id: doc.id,
+      ...data,
+      // Preserve original boolean values without conversion
+      psfIncludesFixedComponent: data.psfIncludesFixedComponent,
+      psfIncludesParking: data.psfIncludesParking,
+      isApproved: data.isApproved,
+    };
+  });
 };
 
 export const updateCostSheet = async (id: string, data: any) => {
