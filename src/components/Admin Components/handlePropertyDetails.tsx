@@ -108,10 +108,14 @@ export function handlePropertyDetails(
     }));
   };
 
+
+
   return (
     <>
     <div className="fixed inset-0 bg-black/30 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col relative">
+      <div className={`bg-white rounded-lg shadow-lg w-full max-h-[95vh] flex flex-col relative ${
+        editPropertyMode ? 'max-w-7xl' : 'max-w-4xl'
+      }`}>
         <button
           onClick={() => {
             setShowPropertyDetails(null);
@@ -368,21 +372,151 @@ export function handlePropertyDetails(
                       return showPropertyDetails.projectStatus || "-";
                     }
                     
+                    // Check if any typology has availability as "Available"
+                    const hasAvailable = typologies.some((t: any) => t.availability === 'Available');
+                    if (hasAvailable) {
+                      return "Available";
+                    }
+                    
                     const uniqueAvailability = [...new Set(typologies.map((t: any) => t.availability).filter(Boolean))];
                     return uniqueAvailability.length > 0 ? uniqueAvailability.join(' | ') : (showPropertyDetails.projectStatus || "-");
                   };
 
                   const typologies = showPropertyDetails.typologies;
                   const groupedByWing = typologies ? typologies.reduce((acc: any, typology: any) => {
-                    const wingNumber = typology.wingBuildingNo || 'No Wing';
+                    const wingNumber = typology.wingBuildingNo || typology.mahaReraNumber || 'No Wing';
                     if (!acc[wingNumber]) acc[wingNumber] = [];
                     acc[wingNumber].push(typology);
                     return acc;
                   }, {}) : {};
                   
                   const wingNumbers = Object.keys(groupedByWing);
-                  let activeTab = wingNumbers[0] || '';
-                  const setActiveTab = (tab: string) => { activeTab = tab; };
+                  
+                  // Create a simple component for the pricing section with tabs
+                  const PricingSection = () => {
+                    const [activeTab, setActiveTab] = React.useState(wingNumbers[0] || '');
+                    
+                    React.useEffect(() => {
+                      if (wingNumbers.length > 0 && !wingNumbers.includes(activeTab)) {
+                        setActiveTab(wingNumbers[0]);
+                      }
+                    }, [wingNumbers, activeTab]);
+                    
+                    return (
+                      <div className="col-span-2">
+                        {/* Tabs */}
+                        <div className="border-b border-gray-200 mb-4">
+                          <nav className="-mb-px flex space-x-8">
+                            {wingNumbers.map((wingNumber) => (
+                              <button
+                                key={wingNumber}
+                                onClick={() => setActiveTab(wingNumber)}
+                                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                                  activeTab === wingNumber
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                              >
+                                {wingNumber.length > 15 ? `${wingNumber.substring(0, 15)}...` : wingNumber}
+                              </button>
+                            ))}
+                          </nav>
+                        </div>
+                        
+                        {/* Active Tab Content */}
+                        <div className="overflow-hidden rounded-lg border border-neutral-200">
+                          <table className="min-w-full divide-y divide-neutral-200">
+                            <thead className="bg-neutral-50">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                  Typology
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase w-32">
+                                  Area (Sq.ft)
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                  PSF Rate
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                  AV Rate
+                                </th>
+                                <th className="px-2 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                  Possession Charges
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                  Total Package
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                  Availability
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-neutral-200">
+                              {groupedByWing[activeTab]?.map((typology: any, index: number) => (
+                                <tr key={index} className="hover:bg-neutral-50">
+                                  <td className="px-3 py-2 text-sm font-medium text-neutral-900">
+                                    {typology.typology || "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-neutral-800 w-32">
+                                    <div className="text-xs text-gray-500 whitespace-nowrap">Saleable: {typology.saleableArea || "-"}</div>
+                                    <div className="text-xs text-gray-500 whitespace-nowrap">RERA: {typology.reraCarpet || "-"}</div>
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-neutral-800">
+                                    {typology.psfRate ? `₹${parseFloat(typology.psfRate).toLocaleString('en-IN')}` : "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-neutral-800">
+                                    {typology.avRate ? `₹${parseFloat(typology.avRate).toLocaleString('en-IN')}` : "-"}
+                                  </td>
+                                  <td className="px-2 py-2 text-sm text-neutral-800">
+                                    {typology.possessionCharges ? `₹${parseFloat(typology.possessionCharges).toLocaleString('en-IN')}` : "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-neutral-800">
+                                    {typology.totalPackage ? `₹${parseFloat(typology.totalPackage).toLocaleString('en-IN')}` : "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-neutral-800">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      typology.availability === 'Available' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : 'bg-red-100 text-red-800'
+                                    }`}>
+                                      {typology.availability || "-"}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        
+                        {/* Flats per Floor field below the table */}
+                        <div className="mt-4 p-3 bg-blue-50 rounded border">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-neutral-700">Flats per Floor:</span>
+                            <span className="text-sm text-neutral-800">
+                            {(() => {
+                              // Check if new format (subTabData) exists
+                              if (showPropertyDetails.subTabData) {
+                                const subTabData = showPropertyDetails.subTabData;
+                                // Find the flatsPerFloor for the current active tab
+                                const activeTabData = Object.entries(subTabData).find(([_, tabData]: [string, any]) => {
+                                  const wingName = tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
+                                  return wingName === activeTab;
+                                });
+                                
+                                if (activeTabData && activeTabData[1]?.flatsPerFloor) {
+                                  return activeTabData[1].flatsPerFloor;
+                                }
+                              }
+                              
+                              // Fallback to old format
+                              return showPropertyDetails.flatsPerFloor || "Not specified";
+                            })()} 
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  };
                   
                   return (
                     <>
@@ -426,91 +560,7 @@ export function handlePropertyDetails(
                         </h4>
                         <div className="border border-neutral-200 p-4 rounded-md bg-neutral-50">
                           {typologies && Array.isArray(typologies) && typologies.length > 0 ? (
-                            <div className="col-span-2">
-                              {/* Tabs */}
-                              <div className="border-b border-gray-200 mb-4">
-                                <nav className="-mb-px flex space-x-8">
-                                  {wingNumbers.map((wingNumber) => (
-                                    <button
-                                      key={wingNumber}
-                                      onClick={() => setActiveTab(wingNumber)}
-                                      className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                                        activeTab === wingNumber
-                                          ? 'border-blue-500 text-blue-600'
-                                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                      }`}
-                                    >
-                                      {wingNumber.length > 15 ? `${wingNumber.substring(0, 15)}...` : wingNumber}
-                                    </button>
-                                  ))}
-                                </nav>
-                              </div>
-                              
-                              {/* Active Tab Content */}
-                              <div className="overflow-hidden rounded-lg border border-neutral-200">
-                                <table className="min-w-full divide-y divide-neutral-200">
-                                  <thead className="bg-neutral-50">
-                                    <tr>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                        Typology
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase w-32">
-                                        Area (Sq.ft)
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                        PSF Rate
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                        AV Rate
-                                      </th>
-                                      <th className="px-2 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                        Possession Charges
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                        Total Package
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
-                                        Availability
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="bg-white divide-y divide-neutral-200">
-                                    {groupedByWing[activeTab]?.map((typology: any, index: number) => (
-                                      <tr key={index} className="hover:bg-neutral-50">
-                                        <td className="px-3 py-2 text-sm font-medium text-neutral-900">
-                                          {typology.typology || "-"}
-                                        </td>
-                                        <td className="px-3 py-2 text-sm text-neutral-800 w-32">
-                                          <div className="text-xs text-gray-500 whitespace-nowrap">Saleable: {typology.saleableArea || "-"}</div>
-                                          <div className="text-xs text-gray-500 whitespace-nowrap">RERA: {typology.reraCarpet || "-"}</div>
-                                        </td>
-                                        <td className="px-3 py-2 text-sm text-neutral-800">
-                                          {typology.psfRate ? `₹${parseFloat(typology.psfRate).toLocaleString('en-IN')}` : "-"}
-                                        </td>
-                                        <td className="px-3 py-2 text-sm text-neutral-800">
-                                          {typology.avRate ? `₹${parseFloat(typology.avRate).toLocaleString('en-IN')}` : "-"}
-                                        </td>
-                                        <td className="px-2 py-2 text-sm text-neutral-800">
-                                          {typology.possessionCharges ? `₹${parseFloat(typology.possessionCharges).toLocaleString('en-IN')}` : "-"}
-                                        </td>
-                                        <td className="px-3 py-2 text-sm text-neutral-800">
-                                          {typology.totalPackage ? `₹${parseFloat(typology.totalPackage).toLocaleString('en-IN')}` : "-"}
-                                        </td>
-                                        <td className="px-3 py-2 text-sm text-neutral-800">
-                                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                            typology.availability === 'Available' 
-                                              ? 'bg-green-100 text-green-800' 
-                                              : 'bg-red-100 text-red-800'
-                                          }`}>
-                                            {typology.availability || "-"}
-                                          </span>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
+                            <PricingSection />
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <Field label="Wing/Building No." value={showPropertyDetails.wingBuildingNo} />
@@ -542,29 +592,41 @@ export function handlePropertyDetails(
                               Payment Scheme Details
                             </h5>
                             {showPropertyDetails.paymentSchemes && Array.isArray(showPropertyDetails.paymentSchemes) && showPropertyDetails.paymentSchemes.length > 0 ? (
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-neutral-500 uppercase border-b pb-2">
-                                  <div className="col-span-3">Scheme Name</div>
-                                  <div className="col-span-4">Description</div>
-                                  <div className="col-span-5">Timeline</div>
-                                </div>
-                                {showPropertyDetails.paymentSchemes.map((scheme: any, index: number) => (
-                                  <div key={index} className="grid grid-cols-12 gap-4 py-3 border-b border-neutral-100 hover:bg-neutral-50">
-                                    <div className="col-span-3 text-sm font-medium text-neutral-900">
-                                      {scheme.schemeName || "-"}
-                                    </div>
-                                    <div className="col-span-4 text-sm text-neutral-800">
-                                      {scheme.description || "-"}
-                                    </div>
-                                    <div className="col-span-5 text-sm text-neutral-800">
-                                      {scheme.fromDate && scheme.toDate ? (
-                                        <span>{scheme.fromDate} <span className="text-neutral-500">to</span> {scheme.toDate}</span>
-                                      ) : (
-                                        <span>{scheme.fromDate || scheme.toDate || "-"}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
+                              <div className="overflow-hidden rounded-lg border border-neutral-200">
+                                <table className="min-w-full divide-y divide-neutral-200">
+                                  <thead className="bg-neutral-50">
+                                    <tr>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        Scheme Name
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        Description
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                        Timeline
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white divide-y divide-neutral-200">
+                                    {showPropertyDetails.paymentSchemes.map((scheme: any, index: number) => (
+                                      <tr key={index} className="hover:bg-neutral-50">
+                                        <td className="px-3 py-2 text-sm font-medium text-neutral-900">
+                                          {scheme.schemeName || "-"}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800">
+                                          {scheme.description || "-"}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-neutral-800">
+                                          {scheme.fromDate && scheme.toDate ? (
+                                            <span>{scheme.fromDate} <span className="text-neutral-500">to</span> {scheme.toDate}</span>
+                                          ) : (
+                                            <span>{scheme.fromDate || scheme.toDate || "-"}</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             ) : (
                               <div className="text-sm text-neutral-500 italic">
@@ -578,97 +640,101 @@ export function handlePropertyDetails(
                             {showPropertyDetails.ladderSections && Array.isArray(showPropertyDetails.ladderSections) && showPropertyDetails.ladderSections.length > 0 ? (
                               (() => {
                                 const ladderSections = showPropertyDetails.ladderSections;
-                                let activeLadderTab = 0;
-                                let isLadderOpen = false;
-                                const setActiveLadderTab = (tab: number) => { activeLadderTab = tab; };
-                                const setIsLadderOpen = (open: boolean) => { isLadderOpen = open; };
                                 
                                 return (
                                   <div>
-                                    <h5 className="font-medium mb-3 text-neutral-700 flex items-center cursor-pointer" onClick={() => setIsLadderOpen(!isLadderOpen)}>
-                                      <svg className={`w-4 h-4 mr-2 text-blue-600 transition-transform ${isLadderOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <h5 className="font-medium mb-3 text-neutral-700 flex items-center cursor-pointer" onClick={(e) => {
+                                      const content = e.currentTarget.nextElementSibling as HTMLElement;
+                                      const icon = e.currentTarget.querySelector('svg');
+                                      if (content && icon) {
+                                        if (content.style.display === 'none') {
+                                          content.style.display = 'block';
+                                          icon.style.transform = 'rotate(90deg)';
+                                        } else {
+                                          content.style.display = 'none';
+                                          icon.style.transform = 'rotate(0deg)';
+                                        }
+                                      }
+                                    }}>
+                                      <svg className="w-4 h-4 mr-2 text-blue-600 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                       </svg>
                                       Ladder Details
                                     </h5>
                                     
-                                    {isLadderOpen && (
-                                      <>
-                                        {/* Ladder Tabs */}
-                                        {ladderSections.length > 1 && (
-                                      <div className="border-b border-gray-200 mb-4">
-                                        <nav className="-mb-px flex space-x-8">
-                                          {ladderSections.map((section: any, index: number) => (
-                                            <button
-                                              key={index}
-                                              onClick={() => setActiveLadderTab(index)}
-                                              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                                                activeLadderTab === index
-                                                  ? 'border-blue-500 text-blue-600'
-                                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                              }`}
-                                            >
-                                              Ladder {index + 1}
-                                            </button>
+                                    <div style={{display: 'none'}}>
+                                        {/* All Ladder Sections */}
+                                        <div className="space-y-6">
+                                          {ladderSections.map((section: any, sectionIndex: number) => (
+                                            <div key={sectionIndex} className="space-y-3">
+                                              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                                                <div className="flex items-center text-sm">
+                                                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z" />
+                                                  </svg>
+                                                  <span className="font-medium text-blue-800">Ladder {sectionIndex + 1} Period:</span>
+                                                  <span className="ml-2 text-blue-700 font-medium">
+                                                    {(() => {
+                                                      const startDate = section?.startDate;
+                                                      const endDate = section?.endDate;
+                                                      const formatDate = (dateStr: string) => {
+                                                        if (!dateStr) return "N/A";
+                                                        const date = new Date(dateStr);
+                                                        const day = date.getDate();
+                                                        const month = date.toLocaleDateString('en-US', { month: 'short' });
+                                                        const year = date.getFullYear().toString().slice(-2);
+                                                        return `${day} ${month} ${year}`;
+                                                      };
+                                                      return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+                                                    })()} 
+                                                  </span>
+                                                </div>
+                                              </div>
+                                              
+                                              <div className="overflow-hidden rounded-lg border border-neutral-200">
+                                                <table className="min-w-full divide-y divide-neutral-200">
+                                                  <thead className="bg-neutral-50">
+                                                    <tr>
+                                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                                        Units
+                                                      </th>
+                                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                                        Ladder
+                                                      </th>
+                                                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                                                        Additional Incentive
+                                                      </th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody className="bg-white divide-y divide-neutral-200">
+                                                    {section?.rows && Array.isArray(section.rows) ? (
+                                                      section.rows.map((row: any, rowIndex: number) => (
+                                                        <tr key={rowIndex} className="hover:bg-neutral-50">
+                                                          <td className="px-3 py-2 text-sm font-medium text-neutral-900">
+                                                            {row.units || "-"}
+                                                          </td>
+                                                          <td className="px-3 py-2 text-sm text-neutral-800">
+                                                            {row.ladder || "-"}
+                                                          </td>
+                                                          <td className="px-3 py-2 text-sm text-neutral-800">
+                                                            {row.additionalIncentive || "-"}
+                                                          </td>
+                                                        </tr>
+                                                      ))
+                                                    ) : (
+                                                      <tr>
+                                                        <td colSpan={3} className="px-3 py-4 text-sm text-neutral-500 italic text-center">
+                                                          No ladder data available for this section
+                                                        </td>
+                                                      </tr>
+                                                    )}
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            </div>
                                           ))}
-                                        </nav>
-                                      </div>
-                                        )}
-                                        
-                                        {/* Active Ladder Content */}
-                                        <div className="space-y-3">
-                                      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
-                                        <div className="flex items-center text-sm">
-                                          <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                          </svg>
-                                          <span className="font-medium text-blue-800">Period:</span>
-                                          <span className="ml-2 text-blue-700 font-medium">
-                                            {(() => {
-                                              const startDate = ladderSections[activeLadderTab]?.startDate;
-                                              const endDate = ladderSections[activeLadderTab]?.endDate;
-                                              const formatDate = (dateStr: string) => {
-                                                if (!dateStr) return "N/A";
-                                                const date = new Date(dateStr);
-                                                const day = date.getDate();
-                                                const month = date.toLocaleDateString('en-US', { month: 'short' });
-                                                const year = date.getFullYear().toString().slice(-2);
-                                                return `${day} ${month} ${year}`;
-                                              };
-                                              return `${formatDate(startDate)} to ${formatDate(endDate)}`;
-                                            })()} 
-                                          </span>
                                         </div>
-                                      </div>
-                                      
-                                      <div className="grid grid-cols-12 gap-4 text-xs font-medium text-neutral-500 uppercase border-b pb-2">
-                                        <div className="col-span-2">Units</div>
-                                        <div className="col-span-2">Ladder</div>
-                                        <div className="col-span-8">Additional Incentive</div>
-                                      </div>
-                                      
-                                      {ladderSections[activeLadderTab]?.rows && Array.isArray(ladderSections[activeLadderTab].rows) ? (
-                                        ladderSections[activeLadderTab].rows.map((row: any, rowIndex: number) => (
-                                          <div key={rowIndex} className="grid grid-cols-12 gap-4 py-3 border-b border-neutral-100 hover:bg-neutral-50">
-                                            <div className="col-span-2 text-sm font-medium text-neutral-900">
-                                              {row.units || "-"}
-                                            </div>
-                                            <div className="col-span-2 text-sm text-neutral-800">
-                                              {row.ladder || "-"}
-                                            </div>
-                                            <div className="col-span-8 text-sm text-neutral-800">
-                                              {row.additionalIncentive || "-"}
-                                            </div>
-                                          </div>
-                                        ))
-                                      ) : (
-                                        <div className="text-sm text-neutral-500 italic py-4">
-                                          No ladder data available for this section
-                                        </div>
-                                      )}
-                                        </div>
-                                      </>
-                                    )}
+                                    </div>
                                   </div>
                                 );
                               })()

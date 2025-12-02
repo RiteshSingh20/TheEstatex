@@ -3,82 +3,26 @@ import { FormDataType } from "../../pages/CostSheetFormProps";
 import { StampDutyRate } from "../CompareModal";
 import { calculatePricingTotal } from "../../lib/propertyFormLogic";
 import { calculateBaseAmountWithFixedComponent } from "../../lib/fixedComponentLogic";
+import { interceptFormSubmission } from "../../utils/totalPackageCalculator";
+import { wrapFormSubmission } from "../../utils/formSubmissionHook";
 
-// Enhanced calculation function with EXACT SAME LOGIC as HTML file
+// Import and use the universal calculator
+import { calculateUniversalTotalPackage } from "../../utils/totalPackageCalculator";
+
+// Enhanced calculation function - now uses universal calculator
 const calculateTotalPackageEnhanced = (
-  config: {
-    typology: string;
-    saleableArea: string;
-    reraCarpet: string;
-    psfRate: string;
-    avRate: string;
-    fixedComponent: string;
-    possessionCharges: string;
-    totalPackage: string;
-    negotiationScope: string;
-    availability: string;
-    unitPlan: null;
-  },
+  config: any,
   tabData: any,
   formData: FormDataType,
   parseIndianCurrency: (value: string) => string,
   formatIndianCurrency: (value: string | number) => string
-): string => {
-  const saleableArea = parseFloat(config.saleableArea) || 0;
-  const psfRate = parseFloat(parseIndianCurrency(config.psfRate || "")) || 0;
-  const avRate = parseFloat(parseIndianCurrency(config.avRate || "")) || 0;
-  const fixedComponent = parseFloat(parseIndianCurrency(config.fixedComponent || "")) || 0;
-  const possessionCharges = parseFloat(parseIndianCurrency(config.possessionCharges || "")) || 0;
-  const legalCharges = parseFloat(parseIndianCurrency(formData.registration || "")) || 0;
-
-  if (saleableArea && avRate) {
-    const includesFixedComponent = tabData?.psfIncludesFixedComponent || false;
-    const projectStatus = tabData?.projectStatus || "";
-    const typology = config.typology || "";
-    
-    // 1. Base Amount calculation - EXACT SAME AS HTML
-    let baseAmount;
-    if (includesFixedComponent) {
-      // When checkbox is checked: baseAmount = (area * rate) - fixedComponent
-      baseAmount = (saleableArea * avRate) - fixedComponent;
-    } else {
-      // When checkbox is unchecked: baseAmount = area * rate
-      baseAmount = saleableArea * avRate;
-    }
-    
-    // 2. Stamp Duty (7% of base amount) - EXACT SAME AS HTML
-    const stampDuty = baseAmount * 0.07;
-    
-    // 3. GST calculation based on project status - EXACT SAME AS HTML
-    let gst = 0;
-    if (projectStatus !== 'OC Received') {
-      const gstRate = baseAmount > 4500000 ? 0.05 : 0.01;
-      gst = baseAmount * gstRate;
-    }
-    
-    // 4. Registration Fee calculation - EXACT SAME AS HTML
-    const isJodi = typology.toLowerCase().includes('jodi');
-    let registrationFee = 0;
-    if (baseAmount > 0) {
-      if (baseAmount < 3000000) {
-        registrationFee = Math.max(100, baseAmount * 0.01);
-        if (isJodi) registrationFee *= 2;
-      } else {
-        registrationFee = isJodi ? 60000 : 30000;
-      }
-    }
-    
-    // 8. Per Sq Ft Difference - EXACT SAME AS HTML
-    const perSqFtDifference = saleableArea * (psfRate - avRate);
-    
-    // Final Total Calculation - EXACT SAME AS HTML
-    // Fixed Component is always added back to the total regardless of checkbox state
-    const total = baseAmount + gst + stampDuty + registrationFee + possessionCharges + fixedComponent + perSqFtDifference + legalCharges;
-    
-    return formatIndianCurrency(Math.round(total));
-  }
-  return "";
+): number => {
+  return calculateUniversalTotalPackage(config, tabData, formData, parseIndianCurrency, formatIndianCurrency);
 };
+
+// Initialize universal totalPackage interceptor and form submission wrapper
+interceptFormSubmission();
+wrapFormSubmission();
 
 export function currentStepTab1(
   subTabs: { id: number; name: string }[],
@@ -93,6 +37,7 @@ export function currentStepTab1(
       reraPossession: string;
       mahaReraNumber: string;
       mahaReraLink: string;
+      flatsPerFloor: string;
       psfIncludesParking?: boolean;
       psfIncludesFixedComponent?: boolean;
       numberOfParkingIncluded?: string;
@@ -122,6 +67,7 @@ export function currentStepTab1(
         reraPossession: string;
         mahaReraNumber: string;
         mahaReraLink: string;
+        flatsPerFloor: string;
         psfIncludesParking?: boolean;
         psfIncludesFixedComponent?: boolean;
         numberOfParkingIncluded?: string;
@@ -168,7 +114,7 @@ export function currentStepTab1(
     },
     tabId: number,
     includesFixedComponentOverride?: boolean
-  ): string => {
+  ): number => {
     return calculateTotalPackageEnhanced(
       config,
       typeof includesFixedComponentOverride === 'boolean'
@@ -197,13 +143,15 @@ export function currentStepTab1(
       // Recalculate total package when relevant fields change (include typology) - Enhanced with HTML logic
       if (['saleableArea', 'psfRate', 'avRate', 'fixedComponent', 'possessionCharges', 'typology'].includes(field)) {
         const updatedConfig = newConfigs[configIndex];
-        newConfigs[configIndex].totalPackage = calculateTotalPackageEnhanced(
+        const calculatedTotal = calculateTotalPackageEnhanced(
           updatedConfig,
           prev[tabId],
           formData,
           parseIndianCurrency,
           formatIndianCurrency
         );
+        // Ensure totalPackage is always stored as formatted currency
+        newConfigs[configIndex].totalPackage = calculatedTotal;
       }
 
       return {
@@ -290,7 +238,7 @@ export function currentStepTab1(
 
                 {/* Header Row */}
                 <div className="bg-neutral-100 p-2 rounded-t border">
-                  <div className="grid grid-cols-7 gap-4 text-sm font-medium text-neutral-700">
+                  <div className="grid grid-cols-8 gap-4 text-sm font-medium text-neutral-700">
                     <div>Bldg No./Phase</div>
                     <div>Project Type</div>
                     <div>Project Status</div>
@@ -298,12 +246,13 @@ export function currentStepTab1(
                     <div>RERA Number</div>
                     <div>RERA Possession</div>
                     <div>RERA URL</div>
+                    <div>Flats per Floor *</div>
                   </div>
                 </div>
 
                 {/* Data Row */}
                 <div className="bg-white border-x border-b rounded-b p-2">
-                  <div className="grid grid-cols-7 gap-4">
+                  <div className="grid grid-cols-8 gap-4">
                     <div>
                       <input
                         type="text"
@@ -559,6 +508,24 @@ export function currentStepTab1(
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={subTabData[tab.id]?.flatsPerFloor || ""}
+                        onChange={(e) => {
+                          const filtered = e.target.value.replace(/[^0-9]/g, "");
+                          setSubTabData((prev) => ({
+                            ...prev,
+                            [tab.id]: {
+                              ...prev[tab.id],
+                              flatsPerFloor: filtered,
+                            },
+                          }));
+                        }}
+                        className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -577,7 +544,9 @@ export function currentStepTab1(
                   <div 
                     className="grid gap-1 text-xs font-medium text-neutral-700 text-center"
                     style={{
-                      gridTemplateColumns: "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
+                      gridTemplateColumns: (subTabData[tab.id]?.pricingConfigs?.length || 0) > 1 
+                        ? "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr 0.3fr"
+                        : "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
                     }}
                   >
                     <div>Typology</div>
@@ -597,6 +566,7 @@ export function currentStepTab1(
                       <br />
                       Plan
                     </div>
+                    {(subTabData[tab.id]?.pricingConfigs?.length || 0) > 1 && <div>Remove</div>}
                   </div>
                 </div>
 
@@ -613,7 +583,9 @@ export function currentStepTab1(
                         <div 
                           className="grid gap-1"
                           style={{
-                            gridTemplateColumns: "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
+                            gridTemplateColumns: (subTabData[tab.id]?.pricingConfigs?.length || 0) > 1 
+                              ? "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr 0.3fr"
+                              : "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
                           }}
                         >
                           <div>
@@ -743,7 +715,7 @@ export function currentStepTab1(
                           <div>
                             <input
                               type="text"
-                              value={config.totalPackage}
+                              value={formatIndianCurrency(calculateTotalPackage(config, tab.id))}
                               readOnly
                               maxLength={15}
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm bg-neutral-100"
@@ -904,6 +876,30 @@ export function currentStepTab1(
                                 >
                                   <path d="M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z" />
                                 </svg>
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex justify-center items-center">
+                            {(subTabData[tab.id]?.pricingConfigs?.length || 0) > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSubTabData((prev) => {
+                                    const currentConfigs = prev[tab.id]?.pricingConfigs || [];
+                                    const newConfigs = currentConfigs.filter((_, i) => i !== index);
+                                    return {
+                                      ...prev,
+                                      [tab.id]: {
+                                        ...prev[tab.id],
+                                        pricingConfigs: newConfigs,
+                                      },
+                                    };
+                                  });
+                                }}
+                                className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                title="Remove this row"
+                              >
+                                ×
                               </button>
                             )}
                           </div>
@@ -1149,6 +1145,7 @@ export function currentStepTab1(
                 reraPossession: "",
                 mahaReraNumber: "",
                 mahaReraLink: "",
+                flatsPerFloor: "",
                 psfIncludesParking: false,
                 psfIncludesFixedComponent: false,
                 numberOfParkingIncluded: "",

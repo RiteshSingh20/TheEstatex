@@ -112,6 +112,12 @@ export function NewPropertyModal({
       return selectedSheet.projectStatus || "-";
     }
     
+    // Check if any typology has availability as "Available"
+    const hasAvailable = typologies.some((t: any) => t.availability === 'Available');
+    if (hasAvailable) {
+      return "Available";
+    }
+    
     const uniqueAvailability = [...new Set(typologies.map((t: any) => t.availability).filter(Boolean))];
     return uniqueAvailability.length > 0 ? uniqueAvailability.join(' | ') : (selectedSheet.projectStatus || "-");
   };
@@ -119,7 +125,7 @@ export function NewPropertyModal({
   // Group typologies by wingBuildingNo for tab functionality
   const typologies = (selectedSheet as any).typologies;
   const groupedByWing = typologies ? typologies.reduce((acc: any, typology: any) => {
-    const wingNumber = typology.wingBuildingNo || 'No Wing';
+    const wingNumber = typology.wingBuildingNo || typology.mahaReraNumber || 'No Wing';
     if (!acc[wingNumber]) acc[wingNumber] = [];
     acc[wingNumber].push(typology);
     return acc;
@@ -412,6 +418,33 @@ export function NewPropertyModal({
                     </tbody>
                   </table>
                 </div>
+                
+                {/* Flats per Floor field below the table */}
+                <div className="mt-4 p-3 bg-blue-50 rounded border">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-neutral-700">Flats per Floor:</span>
+                    <span className="text-sm text-neutral-800">
+                    {(() => {
+                      // Check if new format (subTabData) exists
+                      if ((selectedSheet as any).subTabData) {
+                        const subTabData = (selectedSheet as any).subTabData;
+                        // Find the flatsPerFloor for the current active tab
+                        const activeTabData = Object.entries(subTabData).find(([_, tabData]: [string, any]) => {
+                          const wingName = tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
+                          return wingName === activeTab;
+                        });
+                        
+                        if (activeTabData && activeTabData[1]?.flatsPerFloor) {
+                          return activeTabData[1].flatsPerFloor;
+                        }
+                      }
+                      
+                      // Fallback to old format
+                      return selectedSheet.flatsPerFloor || "Not specified";
+                    })()} 
+                    </span>
+                  </div>
+                </div>
               </div>
             ) : (
               // Old format: Show individual fields
@@ -446,29 +479,41 @@ export function NewPropertyModal({
             Payment Scheme Details
           </h5>
           {(selectedSheet as any).paymentSchemes && Array.isArray((selectedSheet as any).paymentSchemes) && (selectedSheet as any).paymentSchemes.length > 0 ? (
-            <div className="space-y-3">
-              <div className="grid grid-cols-12 gap-4 text-xs font-medium text-neutral-500 uppercase border-b pb-2">
-                <div className="col-span-3">Scheme Name</div>
-                <div className="col-span-4">Description</div>
-                <div className="col-span-5">Timeline</div>
-              </div>
-              {(selectedSheet as any).paymentSchemes.map((scheme: any, index: number) => (
-                <div key={index} className="grid grid-cols-12 gap-4 py-3 border-b border-neutral-100 hover:bg-neutral-50">
-                  <div className="col-span-3 text-sm font-medium text-neutral-900">
-                    {scheme.schemeName || "-"}
-                  </div>
-                  <div className="col-span-4 text-sm text-neutral-800">
-                    {scheme.description || "-"}
-                  </div>
-                  <div className="col-span-5 text-sm text-neutral-800">
-                    {scheme.fromDate && scheme.toDate ? (
-                      <span>{scheme.fromDate} <span className="text-neutral-500">to</span> {scheme.toDate}</span>
-                    ) : (
-                      <span>{scheme.fromDate || scheme.toDate || "-"}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-hidden rounded-lg border border-neutral-200">
+              <table className="min-w-full divide-y divide-neutral-200">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                      Scheme Name
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                      Description
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                      Timeline
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-neutral-200">
+                  {(selectedSheet as any).paymentSchemes.map((scheme: any, index: number) => (
+                    <tr key={index} className="hover:bg-neutral-50">
+                      <td className="px-3 py-2 text-sm font-medium text-neutral-900">
+                        {scheme.schemeName || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-neutral-800">
+                        {scheme.description || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-neutral-800">
+                        {scheme.fromDate && scheme.toDate ? (
+                          <span>{scheme.fromDate} <span className="text-neutral-500">to</span> {scheme.toDate}</span>
+                        ) : (
+                          <span>{scheme.fromDate || scheme.toDate || "-"}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="text-sm text-neutral-500 italic">
@@ -543,31 +588,46 @@ export function NewPropertyModal({
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-12 gap-4 text-xs font-medium text-neutral-500 uppercase border-b pb-2">
-                      <div className="col-span-2">Units</div>
-                      <div className="col-span-2">Ladder</div>
-                      <div className="col-span-8">Additional Incentive</div>
+                    <div className="overflow-hidden rounded-lg border border-neutral-200">
+                      <table className="min-w-full divide-y divide-neutral-200">
+                        <thead className="bg-neutral-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                              Units
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                              Ladder
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">
+                              Additional Incentive
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-neutral-200">
+                          {ladderSections[activeLadderTab]?.rows && Array.isArray(ladderSections[activeLadderTab].rows) ? (
+                            ladderSections[activeLadderTab].rows.map((row: any, rowIndex: number) => (
+                              <tr key={rowIndex} className="hover:bg-neutral-50">
+                                <td className="px-3 py-2 text-sm font-medium text-neutral-900">
+                                  {row.units || "-"}
+                                </td>
+                                <td className="px-3 py-2 text-sm text-neutral-800">
+                                  {row.ladder || "-"}
+                                </td>
+                                <td className="px-3 py-2 text-sm text-neutral-800">
+                                  {row.additionalIncentive || "-"}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={3} className="px-3 py-4 text-sm text-neutral-500 italic text-center">
+                                No ladder data available for this section
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                    
-                    {ladderSections[activeLadderTab]?.rows && Array.isArray(ladderSections[activeLadderTab].rows) ? (
-                      ladderSections[activeLadderTab].rows.map((row: any, rowIndex: number) => (
-                        <div key={rowIndex} className="grid grid-cols-12 gap-4 py-3 border-b border-neutral-100 hover:bg-neutral-50">
-                          <div className="col-span-2 text-sm font-medium text-neutral-900">
-                            {row.units || "-"}
-                          </div>
-                          <div className="col-span-2 text-sm text-neutral-800">
-                            {row.ladder || "-"}
-                          </div>
-                          <div className="col-span-8 text-sm text-neutral-800">
-                            {row.additionalIncentive || "-"}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-neutral-500 italic py-4">
-                        No ladder data available for this section
-                      </div>
-                    )}
                       </div>
                     </>
                   )}

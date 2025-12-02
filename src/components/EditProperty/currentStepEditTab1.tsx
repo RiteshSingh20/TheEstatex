@@ -4,85 +4,21 @@ import { StampDutyRate } from "../CompareModal";
 
 import { calculatePricingTotal } from "../../lib/propertyFormLogic";
 import { calculateBaseAmountWithFixedComponent } from "../../lib/fixedComponentLogic";
+import { interceptFormSubmission, fixTotalPackageInData } from "../../utils/totalPackageCalculator";
+import { wrapFormSubmission } from "../../utils/formSubmissionHook";
 
-// Enhanced calculation function with EXACT SAME LOGIC as HTML file
+// Import and use the universal calculator
+import { calculateUniversalTotalPackage } from "../../utils/totalPackageCalculator";
+
+// Enhanced calculation function - now uses universal calculator
 const calculateTotalPackageEnhanced = (
-  config: {
-    typology: string;
-    saleableArea: string;
-    reraCarpet: string;
-    psfRate: string;
-    avRate: string;
-    fixedComponent: string;
-    possessionCharges: string;
-    totalPackage: string;
-    negotiationScope: string;
-    availability: string;
-    unitPlan: null;
-  },
-  tabData: {
-    projectStatus?: string;
-    psfIncludesFixedComponent?: boolean;
-    type?: string;
-  },
+  config: any,
+  tabData: any,
   formData: FormDataType,
   parseIndianCurrency: (value: string) => string,
   formatIndianCurrency: (value: string | number) => string
-): string => {
-  const saleableArea = parseFloat(config.saleableArea) || 0;
-  const psfRate = parseFloat(parseIndianCurrency(config.psfRate || "")) || 0;
-  const avRate = parseFloat(parseIndianCurrency(config.avRate || "")) || 0;
-  const fixedComponent = parseFloat(parseIndianCurrency(config.fixedComponent || "")) || 0;
-  const possessionCharges = parseFloat(parseIndianCurrency(config.possessionCharges || "")) || 0;
-  const legalCharges = parseFloat(parseIndianCurrency(formData.registration || "")) || 0;
-
-  if (saleableArea && avRate) {
-    const includesFixedComponent = tabData?.psfIncludesFixedComponent || false;
-    const projectStatus = tabData?.projectStatus || "";
-    const typology = config.typology || "";
-    
-    // 1. Base Amount calculation - EXACT SAME AS HTML
-    let baseAmount;
-    if (includesFixedComponent) {
-      // When checkbox is checked: baseAmount = (area * rate) - fixedComponent
-      baseAmount = (saleableArea * avRate) - fixedComponent;
-    } else {
-      // When checkbox is unchecked: baseAmount = area * rate
-      baseAmount = saleableArea * avRate;
-    }
-    
-    // 2. Stamp Duty (7% of base amount) - EXACT SAME AS HTML
-    const stampDuty = baseAmount * 0.07;
-    
-    // 3. GST calculation based on project status - EXACT SAME AS HTML
-    let gst = 0;
-    if (projectStatus !== 'OC Received') {
-      const gstRate = baseAmount > 4500000 ? 0.05 : 0.01;
-      gst = baseAmount * gstRate;
-    }
-    
-    // 4. Registration Fee calculation - EXACT SAME AS HTML
-    const isJodi = typology.toLowerCase().includes('jodi');
-    let registrationFee = 0;
-    if (baseAmount > 0) {
-      if (baseAmount < 3000000) {
-        registrationFee = Math.max(100, baseAmount * 0.01);
-        if (isJodi) registrationFee *= 2;
-      } else {
-        registrationFee = isJodi ? 60000 : 30000;
-      }
-    }
-    
-    // 8. Per Sq Ft Difference - EXACT SAME AS HTML
-    const perSqFtDifference = saleableArea * (psfRate - avRate);
-    
-    // Final Total Calculation - EXACT SAME AS HTML
-    // Fixed Component is always added back to the total regardless of checkbox state
-    const total = baseAmount + gst + stampDuty + registrationFee + possessionCharges + fixedComponent + perSqFtDifference + legalCharges;
-    
-    return formatIndianCurrency(Math.round(total));
-  }
-  return "";
+): number => {
+  return calculateUniversalTotalPackage(config, tabData, formData, parseIndianCurrency, formatIndianCurrency);
 };
 
 interface CurrentStepEditTab1Props {
@@ -98,6 +34,7 @@ interface CurrentStepEditTab1Props {
       reraPossession: string;
       mahaReraNumber: string;
       mahaReraLink: string;
+      flatsPerFloor: string;
       psfIncludesParking?: boolean;
       psfIncludesFixedComponent?: boolean;
       numberOfParkingIncluded?: string;
@@ -128,6 +65,7 @@ interface CurrentStepEditTab1Props {
         reraPossession: string;
         mahaReraNumber: string;
         mahaReraLink: string;
+        flatsPerFloor: string;
         psfIncludesParking?: boolean;
         psfIncludesFixedComponent?: boolean;
         numberOfParkingIncluded?: string;
@@ -158,6 +96,10 @@ interface CurrentStepEditTab1Props {
   formData: FormDataType;
   isAdmin?: boolean;
 }
+
+// Initialize universal totalPackage interceptor and form submission wrapper
+interceptFormSubmission();
+wrapFormSubmission();
 
 export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
   subTabs,
@@ -194,7 +136,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
     },
     tabId: number,
     includesFixedComponentOverride?: boolean
-  ): string => {
+  ): number => {
     return calculateTotalPackageEnhanced(
       config,
       typeof includesFixedComponentOverride === 'boolean'
@@ -241,13 +183,15 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
       // Recalculate total package when relevant fields change (include typology) - Enhanced with HTML logic
       if (['saleableArea', 'psfRate', 'avRate', 'fixedComponent', 'possessionCharges', 'typology'].includes(field)) {
         const updatedConfig = newConfigs[configIndex];
-        newConfigs[configIndex].totalPackage = calculateTotalPackageEnhanced(
+        const calculatedTotal = calculateTotalPackageEnhanced(
           updatedConfig,
           prev[tabId],
           formData,
           parseIndianCurrency,
           formatIndianCurrency
         );
+        // Ensure totalPackage is always stored as formatted currency
+        newConfigs[configIndex].totalPackage = calculatedTotal;
       }
 
       return {
@@ -296,6 +240,115 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
 
 
 
+  // Utility function to ensure totalPackage is always formatted consistently
+  const ensureTotalPackageFormatting = (data: typeof subTabData) => {
+    const formattedData = { ...data };
+    Object.entries(formattedData).forEach(([tabId, tabData]) => {
+      if (tabData?.pricingConfigs) {
+        tabData.pricingConfigs = tabData.pricingConfigs.map(config => ({
+          ...config,
+          totalPackage: calculateTotalPackageEnhanced(
+            config,
+            tabData,
+            formData,
+            parseIndianCurrency,
+            formatIndianCurrency
+          )
+        }));
+      }
+    });
+    return formattedData;
+  };
+
+  // Sync totalPackage values with calculated values
+  useEffect(() => {
+    Object.entries(subTabData).forEach(([tabId, tabData]) => {
+      if (tabData?.pricingConfigs) {
+        const updatedConfigs = tabData.pricingConfigs.map(config => {
+          const newTotal = calculateTotalPackageEnhanced(
+            config,
+            tabData,
+            formData,
+            parseIndianCurrency,
+            formatIndianCurrency
+          );
+          return { ...config, totalPackage: newTotal };
+        });
+        
+        // Check if any values changed to avoid infinite loop
+        const hasChanges = updatedConfigs.some((config, index) => 
+          config.totalPackage !== tabData.pricingConfigs[index]?.totalPackage
+        );
+        
+        if (hasChanges) {
+          setSubTabData(prev => ({
+            ...prev,
+            [tabId]: {
+              ...prev[tabId],
+              pricingConfigs: updatedConfigs,
+            },
+          }));
+        }
+      }
+    });
+  }, [formData.registration, ...Object.values(subTabData).map(tab => tab?.projectStatus)]); // Re-sync when registration or project status changes
+
+  // Function to prepare data for submission with correct totalPackage formatting
+  const prepareDataForSubmission = () => {
+    const formattedSubTabData = ensureTotalPackageFormatting(subTabData);
+    return formattedSubTabData;
+  };
+
+  // Expose functions for use by parent components
+  React.useImperativeHandle(React.useRef(), () => ({
+    ensureTotalPackageFormatting,
+    prepareDataForSubmission
+  }), [subTabData, formData]);
+
+  // Make the function available globally for form submission
+  React.useEffect(() => {
+    (window as any).getCurrentStepTab1Data = prepareDataForSubmission;
+    
+    // Global function to fix totalPackage in any data structure
+    (window as any).fixTotalPackageInFormData = (data: any) => {
+      return fixTotalPackageInData(data, formData, parseIndianCurrency, formatIndianCurrency);
+    };
+    
+    // Force fix typologies totalPackage to match subTabData
+    (window as any).forceFixTypologiesTotalPackage = (data: any) => {
+      if (data.subTabData && data.typologies) {
+        data.typologies = data.typologies.map((typology: any) => {
+          const matchingConfig = Object.values(data.subTabData).find((tabData: any) => 
+            tabData?.pricingConfigs?.find((config: any) => 
+              config.typology === typology.typology &&
+              config.saleableArea === typology.saleableArea &&
+              config.avRate === typology.avRate
+            )
+          );
+          
+          if (matchingConfig) {
+            const config = (matchingConfig as any).pricingConfigs.find((config: any) => 
+              config.typology === typology.typology &&
+              config.saleableArea === typology.saleableArea &&
+              config.avRate === typology.avRate
+            );
+            if (config?.totalPackage) {
+              return { ...typology, totalPackage: config.totalPackage };
+            }
+          }
+          return typology;
+        });
+      }
+      return data;
+    };
+    
+    return () => {
+      delete (window as any).getCurrentStepTab1Data;
+      delete (window as any).fixTotalPackageInFormData;
+      delete (window as any).forceFixTypologiesTotalPackage;
+    };
+  }, [subTabData, formData]);
+
   // Cleanup object URLs on unmount and when configs change
   useEffect(() => {
     return () => {
@@ -330,6 +383,19 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
       }
     });
   }, [subTabData]);
+
+  // Initialize fixedComponentVisibility based on existing data
+  useEffect(() => {
+    const newVisibility: Record<number, boolean> = {};
+    Object.entries(subTabData).forEach(([tabId, tabData]) => {
+      const hasAnyFixedComponent = (tabData?.pricingConfigs || []).some(config => {
+        const cleanValue = parseIndianCurrency(config.fixedComponent || '').replace(/[^\d.]/g, '').trim();
+        return cleanValue && cleanValue !== '' && parseFloat(cleanValue) > 0;
+      });
+      newVisibility[parseInt(tabId)] = hasAnyFixedComponent;
+    });
+    setFixedComponentVisibility(newVisibility);
+  }, [subTabData, parseIndianCurrency]);
   
   if (isLoadingReraData) {
     return (
@@ -384,7 +450,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
 
                 {/* Header Row */}
                 <div className="bg-neutral-100 p-2 rounded-t border">
-                  <div className="grid grid-cols-7 gap-4 text-sm font-medium text-neutral-700">
+                  <div className="grid grid-cols-8 gap-4 text-sm font-medium text-neutral-700">
                     <div>Bldg No./Phase</div>
                     <div>Project Type</div>
                     <div>Project Status</div>
@@ -392,12 +458,13 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                     <div>RERA Number</div>
                     <div>RERA Possession</div>
                     <div>RERA URL</div>
+                    <div>Flats per Floor *</div>
                   </div>
                 </div>
 
                 {/* Data Row */}
                 <div className="bg-white border-x border-b rounded-b p-2">
-                  <div className="grid grid-cols-7 gap-4">
+                  <div className="grid grid-cols-8 gap-4">
                     <div>
                       <input
                         type="text"
@@ -603,6 +670,25 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={subTabData[tab.id]?.flatsPerFloor || ""}
+                        onChange={(e) => {
+                          const filtered = e.target.value.replace(/[^0-9]/g, "");
+                          setSubTabData((prev) => ({
+                            ...prev,
+                            [tab.id]: {
+                              ...prev[tab.id],
+                              flatsPerFloor: filtered,
+                            },
+                          }));
+                        }}
+                        disabled={!isAdmin}
+                        className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -621,7 +707,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                   <div 
                     className="grid gap-1 text-xs font-medium text-neutral-700 text-center"
                     style={{
-                      gridTemplateColumns: "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
+                      gridTemplateColumns: (subTabData[tab.id]?.pricingConfigs?.length || 0) > 1 
+                        ? "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr 0.3fr"
+                        : "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
                     }}
                   >
                     <div>Typology</div>
@@ -641,6 +729,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                       <br />
                       Plan
                     </div>
+                    {(subTabData[tab.id]?.pricingConfigs?.length || 0) > 1 && <div>Remove</div>}
                   </div>
                 </div>
 
@@ -657,7 +746,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         <div 
                           className="grid gap-1"
                           style={{
-                            gridTemplateColumns: "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
+                            gridTemplateColumns: (subTabData[tab.id]?.pricingConfigs?.length || 0) > 1 
+                              ? "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr 0.3fr"
+                              : "1fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.3fr 0.3fr 0.6fr"
                           }}
                         >
                           <div>
@@ -759,13 +850,18 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 
                                 // Update checkbox visibility state with setTimeout to avoid render phase update
                                 setTimeout(() => {
-                                  const hasValue = parseFloat(numericValue) > 0;
+                                  // Check if any pricing config has a fixed component value
+                                  const updatedConfigs = [...(subTabData[tab.id]?.pricingConfigs || [])];
+                                  updatedConfigs[index] = { ...updatedConfigs[index], fixedComponent: numericValue };
+                                  
+                                  const hasAnyFixedComponent = updatedConfigs.some(config => {
+                                    const cleanValue = parseIndianCurrency(config.fixedComponent || '').replace(/[^\d.]/g, '').trim();
+                                    return cleanValue && cleanValue !== '' && parseFloat(cleanValue) > 0;
+                                  });
+                                  
                                   setFixedComponentVisibility(prev => ({
                                     ...prev,
-                                    [tab.id]: hasValue || (subTabData[tab.id]?.pricingConfigs || []).some(config => {
-                                      const cleanValue = parseIndianCurrency(config.fixedComponent || '').replace(/[^\d.]/g, '').trim();
-                                      return cleanValue && cleanValue !== '' && parseFloat(cleanValue) > 0;
-                                    })
+                                    [tab.id]: hasAnyFixedComponent
                                   }));
                                 }, 0);
                               }}
@@ -794,7 +890,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           <div>
                             <input
                               type="text"
-                              value={formatIndianCurrency(config.totalPackage || "")}
+                              value={formatIndianCurrency(calculateTotalPackage(config, tab.id))}
                               disabled
                               onWheel={(e) => e.currentTarget.blur()}
                               maxLength={15}
@@ -984,6 +1080,32 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               </button>
                             )}
                           </div>
+                          {(subTabData[tab.id]?.pricingConfigs?.length || 0) > 1 && (
+                            <div className="flex justify-center items-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!isAdmin) return;
+                                  setSubTabData((prev) => {
+                                    const currentConfigs = prev[tab.id]?.pricingConfigs || [];
+                                    const newConfigs = currentConfigs.filter((_, i) => i !== index);
+                                    return {
+                                      ...prev,
+                                      [tab.id]: {
+                                        ...prev[tab.id],
+                                        pricingConfigs: newConfigs,
+                                      },
+                                    };
+                                  });
+                                }}
+                                disabled={!isAdmin}
+                                className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                title={isAdmin ? "Remove this row" : "Admin access required"}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )
@@ -1226,6 +1348,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                 reraPossession: "",
                 mahaReraNumber: "",
                 mahaReraLink: "",
+                flatsPerFloor: "",
                 psfIncludesParking: false,
                 psfIncludesFixedComponent: false,
                 numberOfParkingIncluded: "",

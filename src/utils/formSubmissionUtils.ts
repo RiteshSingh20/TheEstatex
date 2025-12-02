@@ -201,6 +201,18 @@ export const generateId = (): string => {
   return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
+// Preserve totalPackage formatting when transforming data
+export const preserveTotalPackageFormatting = (sourceData: any, targetData: any): any => {
+  if (sourceData && targetData && sourceData.totalPackage && targetData.totalPackage) {
+    // If source has formatted totalPackage (contains ₹ or commas), preserve it
+    if (typeof sourceData.totalPackage === 'string' && 
+        (sourceData.totalPackage.includes('₹') || sourceData.totalPackage.includes(','))) {
+      targetData.totalPackage = sourceData.totalPackage;
+    }
+  }
+  return targetData;
+};
+
 // Deep clone object safely
 export const deepClone = <T>(obj: T): T => {
   if (obj === null || typeof obj !== 'object') return obj;

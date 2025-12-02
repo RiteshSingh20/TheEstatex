@@ -240,21 +240,20 @@ export function currentStepEditTab0(
 
         {/* Header Row */}
         <div className="bg-neutral-100 p-2 rounded-t border">
-          <div className="grid grid-cols-8 gap-2 text-sm font-medium text-neutral-700">
+          <div className="grid grid-cols-7 gap-2 text-sm font-medium text-neutral-700">
             <div>State *</div>
             <div>District *</div>
             <div>Pin Code *</div>
             <div>Land Parcel *</div>
             <div>Towers *</div>
             <div>Storey *</div>
-            <div>Flats per Floor *</div>
             <div>Cosmo Project *</div>
           </div>
         </div>
 
         {/* Data Row */}
         <div className="bg-white border-x border-b rounded-b p-2">
-          <div className="grid grid-cols-8 gap-2">
+          <div className="grid grid-cols-7 gap-2">
             <div>
               <select
                 value={
@@ -363,21 +362,6 @@ export function currentStepEditTab0(
                   setFormData((prev) => ({
                     ...prev,
                     storey: e.target.value,
-                  }));
-                }}
-                className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
-                required
-              />
-            </div>
-            <div>
-              <input
-                type="text"
-                value={String(formData.flatsPerFloor || "")}
-                onChange={(e) => {
-                  const filtered = e.target.value.replace(/[^0-9]/g, "");
-                  setFormData((prev) => ({
-                    ...prev,
-                    flatsPerFloor: filtered,
                   }));
                 }}
                 className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
