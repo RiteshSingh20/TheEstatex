@@ -14,8 +14,6 @@ import {
 import { useAuth } from "../utils/authContext";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
-import Input from "../components/ui/Input";
-import Select from "../components/ui/Select";
 import Tabs from "../components/ui/Tabs";
 // import { Tooltip } from "react-tooltip";
 import { fetchBanners } from "../utils/api";
@@ -28,12 +26,11 @@ import {
 } from "../utils/firestoreListings";
 import { normalizeForEdit } from "../utils/costSheetAdapter";
 import { generateWhatsAppText } from "../utils/helper";
-import { getWhatsAppUrl, openWhatsApp } from "../utils/deviceDetection";
+import { openWhatsApp } from "../utils/deviceDetection";
 import { stations } from "../utils/stations";
 import { PropertyCategory } from "../types";
 import { CostSheet } from "./Compare";
 import toast from "react-hot-toast";
-import ProjectDetailsModal from "../components/ProjectDetailsModal";
 import { NewPropertyModal } from "../components/NewPropertyTables/NewPropertyModal";
 
 const formatPriceDisplay = (value: string): string => {

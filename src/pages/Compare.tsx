@@ -332,29 +332,85 @@ const Compare = () => {
     let floorRiseAmount = 0;
     
     if (floorRiseType === "Floor Rise") {
-      // Rise Rate = Rise Rate × Saleable Area
+      // Rise Rate calculation with conditional placement
       const riseRate = parseInt(floorRiseConfig.rate || "0") || 0;
       const startsFrom = parseInt(floorRiseConfig.startsFrom || "1") || 1;
       
       // Only apply floor rise if floor is >= startsFrom
       if (floor >= startsFrom) {
-        floorRiseAmount = riseRate * area * (floor - startsFrom + 1);
+        const floorDifference = floor - startsFrom + 1;
+        const riseAmount = riseRate * floorDifference * area;
+        
+        // Add to agreement value only if AV Rate = PSF Rate
+        if (av === psf) {
+          floorRiseAmount = riseAmount;
+        } else {
+          floorRiseAmount = 0; // Will be added to furniture charges instead
+        }
       }
-    } else if (floorRiseType === "Fixed Rate") {
-      // Fixed Rate = Fixed Rate of Typology selected
-      const fixedRate = parseInt(floorRiseConfig.fixedRateStartsFrom || "0") || 0;
-      floorRiseAmount = fixedRate;
+    } else if (floorRiseType === "FR - Fixed Rate") {
+      // FR - Fixed Rate calculation with floor-based logic
+      const fixedRateStartsFrom = parseInt(floorRiseConfig.fixedRateStartsFrom || "1") || 1;
+      const typologyRates = floorRiseConfig.typologyRates || {};
+      const fixedRate = parseInt(typologyRates[bhkType] || "0") || 0;
+      
+      // Only calculate if floor >= fixedRateStartsFrom
+      if (floor >= fixedRateStartsFrom) {
+        const floorDifference = floor - fixedRateStartsFrom + 1;
+        floorRiseAmount = fixedRate * floorDifference;
+      } else {
+        floorRiseAmount = 0;
+      }
+      
+      // Add to agreement value only if AV Rate = PSF Rate
+      if (av !== psf) {
+        floorRiseAmount = 0; // Will be added to furniture charges instead
+      }
+    } else if (floorRiseType === "Floor Band") {
+      // Floor Band calculation - add to agreement value only if AV Rate = PSF Rate
+      if (av === psf) {
+        const actualFloor = floor || 1;
+        
+        // Try root level floorBandConfig first
+        let matchingBand = null;
+        if (propertyData.floorBandConfig && propertyData.floorBandConfig.length > 0) {
+          matchingBand = propertyData.floorBandConfig.find(band => {
+            const fromFloor = parseInt(band.fromFloor || "1");
+            const toFloor = parseInt(band.toFloor || "999");
+            return actualFloor >= fromFloor && actualFloor <= toFloor;
+          });
+          
+          if (matchingBand && matchingBand.rates && matchingBand.rates[bhkType]) {
+            const rate = parseInt(matchingBand.rates[bhkType] || "0") || 0;
+            floorRiseAmount = rate > 20000 ? rate : rate * area;
+          }
+        }
+        
+        // Fallback to typology floorBandConfiguration
+        if (!matchingBand && floorBandConfiguration && floorBandConfiguration.length > 0) {
+          matchingBand = floorBandConfiguration.find(band => {
+            const fromFloor = parseInt(band.fromFloor || "1");
+            const toFloor = parseInt(band.toFloor || "999");
+            return actualFloor >= fromFloor && actualFloor <= toFloor;
+          });
+          
+          if (matchingBand) {
+            const rate = parseInt(matchingBand.rate || "0") || 0;
+            floorRiseAmount = rate > 20000 ? rate : rate * area;
+          }
+        }
+      } else {
+        // AV ≠ PSF: Floor Band will be added to furniture charges, not agreement value
+        floorRiseAmount = 0;
+      }
     } else {
-      // Band Rate calculation
-      // If floor no input is not there, consider 1st floor by default
+      // Legacy Band Rate calculation
       const actualFloor = floor || 1;
       const bandRate = getFloorBandRate(actualFloor, bhkType, floorBandConfiguration, propertyData.typologyRates);
       
-      // If rate > 20000, don't multiply with saleable area
       if (bandRate > 20000) {
         floorRiseAmount = bandRate;
       } else {
-        // Typologies Rate × Saleable Area
         floorRiseAmount = bandRate * area;
       }
     }
@@ -405,9 +461,56 @@ const Compare = () => {
         if (floorRiseType === "Floor Rise") {
           const riseRate = parseInt(floorRiseConfig.rate || "0") || 0;
           const startsFrom = parseInt(floorRiseConfig.startsFrom || "1") || 1;
-          floorRisePerFloor = floor >= startsFrom ? riseRate * area : 0;
-        } else if (floorRiseType === "Fixed Rate") {
-          floorRisePerFloor = parseInt(floorRiseConfig.fixedRateStartsFrom || "0") || 0;
+          if (floor >= startsFrom) {
+            const floorDifference = floor - startsFrom + 1;
+            floorRisePerFloor = riseRate * floorDifference * area;
+          } else {
+            floorRisePerFloor = 0;
+          }
+        } else if (floorRiseType === "FR - Fixed Rate") {
+          const fixedRateStartsFrom = parseInt(floorRiseConfig.fixedRateStartsFrom || "1") || 1;
+          const bhkType = typology.typology || "";
+          const typologyRates = floorRiseConfig.typologyRates || {};
+          const fixedRate = parseInt(typologyRates[bhkType] || "0") || 0;
+          
+          if (floor >= fixedRateStartsFrom) {
+            const floorDifference = floor - fixedRateStartsFrom + 1;
+            floorRisePerFloor = fixedRate * floorDifference;
+          } else {
+            floorRisePerFloor = 0;
+          }
+        } else if (floorRiseType === "Floor Band") {
+          const bhkType = typology.typology || "";
+          const actualFloor = floor || 1;
+          
+          // Try root level floorBandConfig first
+          let matchingBand = null;
+          if (sheet.floorBandConfig && sheet.floorBandConfig.length > 0) {
+            matchingBand = sheet.floorBandConfig.find(band => {
+              const fromFloor = parseInt(band.fromFloor || "1");
+              const toFloor = parseInt(band.toFloor || "999");
+              return actualFloor >= fromFloor && actualFloor <= toFloor;
+            });
+            
+            if (matchingBand && matchingBand.rates && matchingBand.rates[bhkType]) {
+              const rate = parseInt(matchingBand.rates[bhkType] || "0") || 0;
+              floorRisePerFloor = rate > 20000 ? rate : rate * area;
+            }
+          }
+          
+          // Fallback to typology floorBandConfiguration
+          if (!matchingBand && typology.floorBandConfiguration && typology.floorBandConfiguration.length > 0) {
+            matchingBand = typology.floorBandConfiguration.find(band => {
+              const fromFloor = parseInt(band.fromFloor || "1");
+              const toFloor = parseInt(band.toFloor || "999");
+              return actualFloor >= fromFloor && actualFloor <= toFloor;
+            });
+            
+            if (matchingBand) {
+              const rate = parseInt(matchingBand.rate || "0") || 0;
+              floorRisePerFloor = rate > 20000 ? rate : rate * area;
+            }
+          }
         } else {
           const bhkType = typology.typology || "";
           const bandRate = getFloorBandRate(floor, bhkType, typology.floorBandConfiguration || [], sheet.typologyRates);
@@ -524,23 +627,81 @@ const Compare = () => {
       // Add original legal charges to calculated registration fee
       const totalRegistrationCharges = registrationFee + originalRegistrationFromDB;
 
-      // Calculate furniture charges (including fixed component)
+      // Calculate furniture charges (including fixed component, PSF-AV difference, and Floor Band)
       let furnitureCharges = 0;
       if (sheet.typologies && sheet.typologies.length > 0) {
         const typology = sheet.typologies[0];
         const furnitureArea = parseFloat(String(typology.saleableArea)) || 0;
         const psfRate = parseFloat(String(typology.psfRate)) || 0;
         const avRate = parseFloat(String(typology.avRate)) || 0;
-        const baseFurnitureCharges = sheet.station?.trim() !== "" ? (psfRate - avRate) * furnitureArea : 0;
-        // Always add fixed component to furniture charges for display
-        furnitureCharges = baseFurnitureCharges + fixedComponentAmount;
+        
+        // PSF-AV difference × saleable area
+        const psfAvDifference = (psfRate - avRate) * furnitureArea;
+        
+        // Floor Band amount (if Floor Band type and AV ≠ PSF)
+        let floorBandAmount = 0;
+        const currentFloorRiseType = sheet.floorRise || "";
+        
+        // Floor Rise amount (if Floor Rise type and AV ≠ PSF)
+        if (currentFloorRiseType === "Floor Rise" && psfRate !== avRate) {
+          const floorRiseConfig = sheet.floorRiseConfig || {};
+          const riseRate = parseInt(floorRiseConfig.rate || "0") || 0;
+          const startsFrom = parseInt(floorRiseConfig.startsFrom || "1") || 1;
+          
+          if (floor >= startsFrom) {
+            const floorDifference = floor - startsFrom + 1;
+            floorBandAmount = riseRate * floorDifference * furnitureArea;
+          }
+        } else if (currentFloorRiseType === "FR - Fixed Rate" && psfRate !== avRate) {
+          const floorRiseConfig = sheet.floorRiseConfig || {};
+          const fixedRateStartsFrom = parseInt(floorRiseConfig.fixedRateStartsFrom || "1") || 1;
+          const bhkType = typology.typology || "";
+          const typologyRates = floorRiseConfig.typologyRates || {};
+          const fixedRate = parseInt(typologyRates[bhkType] || "0") || 0;
+          
+          if (floor >= fixedRateStartsFrom) {
+            const floorDifference = floor - fixedRateStartsFrom + 1;
+            floorBandAmount = fixedRate * floorDifference;
+          }
+        } else if (currentFloorRiseType === "Floor Band" && psfRate !== avRate) {
+          const bhkType = typology.typology || "";
+          const actualFloor = floor || 1;
+          
+          // Try root level floorBandConfig first
+          let matchingBand = null;
+          if (sheet.floorBandConfig && sheet.floorBandConfig.length > 0) {
+            matchingBand = sheet.floorBandConfig.find(band => {
+              const fromFloor = parseInt(band.fromFloor || "1");
+              const toFloor = parseInt(band.toFloor || "999");
+              return actualFloor >= fromFloor && actualFloor <= toFloor;
+            });
+            
+            if (matchingBand && matchingBand.rates && matchingBand.rates[bhkType]) {
+              const rate = parseInt(matchingBand.rates[bhkType] || "0") || 0;
+              floorBandAmount = rate > 20000 ? rate : rate * furnitureArea;
+            }
+          }
+          
+          // Fallback to typology floorBandConfiguration
+          if (!matchingBand && typology.floorBandConfiguration && typology.floorBandConfiguration.length > 0) {
+            matchingBand = typology.floorBandConfiguration.find(band => {
+              const fromFloor = parseInt(band.fromFloor || "1");
+              const toFloor = parseInt(band.toFloor || "999");
+              return actualFloor >= fromFloor && actualFloor <= toFloor;
+            });
+            
+            if (matchingBand) {
+              const rate = parseInt(matchingBand.rate || "0") || 0;
+              floorBandAmount = rate > 20000 ? rate : rate * furnitureArea;
+            }
+          }
+        }
+        
+        furnitureCharges = psfAvDifference + floorBandAmount + fixedComponentAmount;
       } else {
         const furnitureArea = safeNumber(sheet.saleableArea) || safeNumber(sheet.reraCarpet) || 0;
-        const baseFurnitureCharges = sheet.station?.trim() !== ""
-          ? ((safeNumber(sheet.psfRate) || 0) - (safeNumber(sheet.avRate) || 0)) * furnitureArea
-          : 0;
-        // Always add fixed component to furniture charges for display
-        furnitureCharges = baseFurnitureCharges + fixedComponentAmount;
+        const psfAvDifference = ((safeNumber(sheet.psfRate) || 0) - (safeNumber(sheet.avRate) || 0)) * furnitureArea;
+        furnitureCharges = psfAvDifference + fixedComponentAmount;
       }
 
       // Get possession charges from new or legacy structure
@@ -925,6 +1086,7 @@ const Compare = () => {
                   key: "floorRisePerFloor",
                   formatter: formatCurrency,
                   icon: "📈",
+                  custom: true,
                 },
                 { label: "Floor", key: "floor", icon: "🪜" },
                 {
@@ -1042,6 +1204,108 @@ const Compare = () => {
                           )}
                         </td>
                       ))}
+                    </tr>
+                  );
+                }
+
+                // Handle Floor Rise row with custom logic
+                if (key === "floorRisePerFloor" && custom) {
+                  return (
+                    <tr
+                      key={key}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="sticky left-0 z-10 bg-white p-3 font-semibold text-gray-700 border-r">
+                        <div className="flex items-center">
+                          <span>{label}</span>
+                          {suffix && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              {suffix}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {costSheets.map((sheet, index) => {
+                        let floorRiseAmount = 0;
+                        
+                        if (sheet.projectName && sheet.typologies && sheet.typologies.length > 0) {
+                          const typology = sheet.typologies[0];
+                          const saleableArea = parseFloat(String(typology.saleableArea)) || 0;
+                          const floorRiseConfig = sheet.floorRiseConfig || {};
+                          const floorRise = sheet.floorRise || "";
+                          
+                          if (floorRise === "Floor Rise") {
+                            // Rise Rate = Rise Rate × Saleable Area
+                            const riseRate = parseInt(floorRiseConfig.rate || "0") || 0;
+                            floorRiseAmount = riseRate * saleableArea;
+                          } else if (floorRise === "FR - Fixed Rate") {
+                            // FR - Fixed Rate - show the fixed rate directly
+                            const bhkType = typology.typology || "";
+                            const typologyRates = sheet.floorRiseConfig?.typologyRates || {};
+                            floorRiseAmount = parseInt(typologyRates[bhkType] || "0") || 0;
+                          } else if (floorRise === "Floor Band") {
+                            // Floor Band calculation - check both root floorBandConfig and typology floorBandConfiguration
+                            const bhkType = typology.typology || "";
+                            const floor = sheet.floor || 1; // Default to floor 1 if no input
+                            
+                            // Try root level floorBandConfig first
+                            let matchingBand = null;
+                            if (sheet.floorBandConfig && sheet.floorBandConfig.length > 0) {
+                              matchingBand = sheet.floorBandConfig.find(band => {
+                                const fromFloor = parseInt(band.fromFloor || "1");
+                                const toFloor = parseInt(band.toFloor || "999");
+                                return floor >= fromFloor && floor <= toFloor;
+                              });
+                              
+                              if (matchingBand && matchingBand.rates && matchingBand.rates[bhkType]) {
+                                const rate = parseInt(matchingBand.rates[bhkType] || "0") || 0;
+                                floorRiseAmount = rate > 20000 ? rate : rate * saleableArea;
+                              }
+                            }
+                            
+                            // Fallback to typology floorBandConfiguration
+                            if (!matchingBand && typology.floorBandConfiguration && typology.floorBandConfiguration.length > 0) {
+                              matchingBand = typology.floorBandConfiguration.find(band => {
+                                const fromFloor = parseInt(band.fromFloor || "1");
+                                const toFloor = parseInt(band.toFloor || "999");
+                                return floor >= fromFloor && floor <= toFloor;
+                              });
+                              
+                              if (matchingBand) {
+                                const rate = parseInt(matchingBand.rate || "0") || 0;
+                                floorRiseAmount = rate > 20000 ? rate : rate * saleableArea;
+                              }
+                            }
+                          } else {
+                            // Use the existing calculated value for other types
+                            floorRiseAmount = sheet.floorRisePerFloor || 0;
+                          }
+                        }
+                        
+                        return (
+                          <td
+                            key={`${index}-${key}`}
+                            className="px-2 py-1 text-sm text-right border-r border-gray-200"
+                          >
+                            {sheet.projectName ? (
+                              <div className="flex items-center justify-end">
+                                {sheet.floorRise === "Floor Rise" && (
+                                  <span className="text-xs text-blue-600 mr-4">Rise Rate</span>
+                                )}
+                                {sheet.floorRise === "FR - Fixed Rate" && (
+                                  <span className="text-xs text-green-600 mr-4">Fixed Rate</span>
+                                )}
+                                {sheet.floorRise === "Floor Band" && (
+                                  <span className="text-xs text-orange-600 mr-4">Band Rate</span>
+                                )}
+                                <span>{formatCurrency(floorRiseAmount)}</span>
+                              </div>
+                            ) : (
+                              <div className="h-6" />
+                            )}
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 }
@@ -1348,29 +1612,45 @@ const Compare = () => {
             </div>
             
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Difference between AV & PSF (Disabled)
-                </label>
-                <input
-                  type="text"
-                  value={formatCurrency((getFieldValue(costSheets[selectedColumnIndex], 'psfRate') || 0) - (getFieldValue(costSheets[selectedColumnIndex], 'avRate') || 0))}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Floor Rise (Disabled)
-                </label>
-                <input
-                  type="text"
-                  value={formatCurrency(costSheets[selectedColumnIndex]?.floorRisePerFloor || 0)}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
-                />
-              </div>
+              {(() => {
+                const sheet = costSheets[selectedColumnIndex];
+                const psfRate = getFieldValue(sheet, 'psfRate') || 0;
+                const avRate = getFieldValue(sheet, 'avRate') || 0;
+                const saleableArea = getFieldValue(sheet, 'saleableArea') || 0;
+                const showDifferenceFields = psfRate !== avRate;
+                
+                return (
+                  <>
+                    {showDifferenceFields && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Difference between AV & PSF (Disabled)
+                          </label>
+                          <input
+                            type="text"
+                            value={formatCurrency((psfRate - avRate) * saleableArea)}
+                            disabled
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Floor Rise (Disabled)
+                          </label>
+                          <input
+                            type="text"
+                            value={formatCurrency(sheet?.floorRisePerFloor || 0)}
+                            disabled
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
