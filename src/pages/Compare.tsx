@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { X, Edit3 } from "lucide-react";
+import { X, Edit3, Download } from "lucide-react";
 import Button from "../components/ui/Button";
 import { getStampDutyRates, getCostSheets } from "../utils/firestoreListings";
 import StampDutyDebugger from "../components/StampDutyDebugger";
@@ -155,12 +155,20 @@ export interface StampDutyRate {
 const Compare = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  
+
   const [costSheets, setCostSheets] = useState<CostSheet[]>([]);
   const [stampDutyRates, setStampDutyRates] = useState<StampDutyRate[]>([]);
   const [allCostSheets, setAllCostSheets] = useState<CostSheet[]>([]);
   const [showStampDutyDebugger, setShowStampDutyDebugger] = useState(false);
   const [showFurnitureModal, setShowFurnitureModal] = useState(false);
+  const [showNegotiationModal, setShowNegotiationModal] = useState(false);
   const [selectedColumnIndex, setSelectedColumnIndex] = useState<number | null>(null);
+  const [selectedNegotiationValue, setSelectedNegotiationValue] = useState<string>("");
+  const [filterPropertyType, setFilterPropertyType] = useState("");
+  const [filterLocation, setFilterLocation] = useState("");
+  const [filtersApplied, setFiltersApplied] = useState(false);
+  const [filteredSheets, setFilteredSheets] = useState<CostSheet[]>([]);
   const safeNumber = (val: unknown, fallback = undefined) => {
     if (typeof val === "number" && !isNaN(val)) return val;
     if (typeof val === "string") {
@@ -220,7 +228,26 @@ const Compare = () => {
         case 'saleableArea':
           return safeNumber(typology.saleableArea) || safeNumber(sheet.saleableArea);
         case 'reraCarpet':
-          return safeNumber(typology.reraCarpet) || safeNumber(sheet.reraCarpet);
+          // Check all typologies for reraCarpet, not just the first one
+          let reraCarpetValue;
+          if (sheet.typologies) {
+            for (const t of sheet.typologies) {
+              if (t.reraCarpet) {
+                reraCarpetValue = safeNumber(t.reraCarpet);
+                break;
+              }
+            }
+          }
+          // Check pricingConfigs as fallback
+          if (!reraCarpetValue && sheet.pricingConfigs) {
+            for (const p of sheet.pricingConfigs) {
+              if (p.reraCarpet) {
+                reraCarpetValue = safeNumber(p.reraCarpet);
+                break;
+              }
+            }
+          }
+          return reraCarpetValue || safeNumber(sheet.reraCarpet);
         case 'psfRate':
           return safeNumber(typology.psfRate) || safeNumber(sheet.psfRate);
         case 'avRate':
@@ -773,12 +800,17 @@ const Compare = () => {
 
   useEffect(() => {
     const fetchInitialData = async () => {
+      console.log('Compare: Fetching initial data...');
       const [rates, allSheets] = await Promise.all([
         getStampDutyRates(),
         getCostSheets(),
       ]);
       
-
+      console.log('Compare: Fetched data:', {
+        ratesCount: rates.length,
+        sheetsCount: allSheets.length,
+        selectedItemsCount: initialSelectedItemsRef.current.length
+      });
       
       setStampDutyRates(rates);
       setAllCostSheets(allSheets);
@@ -786,25 +818,118 @@ const Compare = () => {
     fetchInitialData();
   }, []);
 
-  const initialSelectedItemsRef = useRef<CostSheet[]>(
-    location.state?.selectedItems || []
-  );
+  const initialSelectedItemsRef = useRef<CostSheet[]>([]);
+
+  // Get selected items from sessionStorage or location.state
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const storageKey = urlParams.get('storageKey');
+    const bhkFilter = urlParams.get('bhkType');
+    
+    console.log('Compare: URL search params:', location.search);
+    console.log('Compare: Storage key from URL:', storageKey);
+    console.log('Compare: BHK filter from URL:', bhkFilter);
+    console.log('Compare: Location state:', location.state);
+    
+    let selectedItems: CostSheet[] = [];
+    
+    if (storageKey) {
+      // New tab - get from sessionStorage
+      console.log('Compare: Looking for data in sessionStorage with key:', storageKey);
+      const storedData = sessionStorage.getItem(storageKey);
+      console.log('Compare: Retrieved data from sessionStorage:', storedData);
+      
+      if (storedData) {
+        try {
+          const parsedData = JSON.parse(storedData);
+          selectedItems = Array.isArray(parsedData) ? parsedData : [];
+          console.log('Compare: Parsed selected items:', selectedItems.length, 'items');
+          // Don't remove immediately - let it expire naturally or remove after a delay
+          setTimeout(() => {
+            sessionStorage.removeItem(storageKey);
+          }, 1000);
+        } catch (error) {
+          console.error('Error parsing stored comparison data:', error);
+        }
+      } else {
+        console.log('Compare: No data found in sessionStorage for key:', storageKey);
+        // Check if there are any compare keys in sessionStorage
+        const allKeys = Object.keys(sessionStorage);
+        const compareKeys = allKeys.filter(key => key.startsWith('compare_'));
+        console.log('Compare: All compare keys in sessionStorage:', compareKeys);
+      }
+    } else {
+      // Same tab - get from location.state
+      selectedItems = location.state?.selectedItems || [];
+      console.log('Compare: Using location.state, found', selectedItems.length, 'items');
+    }
+    
+    console.log('Compare: Final selected items count:', selectedItems.length);
+    initialSelectedItemsRef.current = selectedItems;
+    
+    // Store BHK filter for auto-filtering
+    if (bhkFilter) {
+      sessionStorage.setItem('compare_bhk_filter', bhkFilter);
+    }
+  }, [location]);
 
   useEffect(() => {
     if (stampDutyRates.length && allCostSheets.length) {
-      const updatedSheets = initialSelectedItemsRef.current.map((item) =>
+      console.log('Compare: Setting up cost sheets...', {
+        selectedItemsCount: initialSelectedItemsRef.current.length,
+        selectedItems: initialSelectedItemsRef.current.map(item => ({ id: item.id, projectName: item.projectName }))
+      });
+      
+      let updatedSheets = initialSelectedItemsRef.current.map((item) =>
         recalculateCostSheet(item)
       );
+      
+      // Check for BHK filter from dashboard and auto-populate if no items selected
+      const bhkFilter = sessionStorage.getItem('compare_bhk_filter');
+      if (bhkFilter && updatedSheets.length === 0) {
+        console.log('Compare: Auto-filtering for BHK type:', bhkFilter);
+        
+        // Filter approved cost sheets by BHK type
+        const matchingSheets = allCostSheets.filter(sheet => {
+          const isApproved = sheet.isApproved === true || sheet.approvalStatus === 'approved';
+          if (!isApproved) return false;
+          
+          // Check typologies for matching BHK
+          if (sheet.typologies && Array.isArray(sheet.typologies)) {
+            return sheet.typologies.some(typology => 
+              typology.typology === bhkFilter && typology.availability !== "Sold Out"
+            );
+          }
+          
+          // Check legacy flatType
+          const flatType = sheet.flatType;
+          const availability = sheet.availability;
+          return flatType === bhkFilter && availability !== "Sold Out";
+        });
+        
+        // Take first 3 matching properties
+        const autoSelectedSheets = matchingSheets.slice(0, 3).map(sheet => recalculateCostSheet(sheet));
+        updatedSheets = autoSelectedSheets;
+        
+        console.log('Compare: Auto-selected', autoSelectedSheets.length, 'properties for', bhkFilter);
+        
+        // Clear the filter after use
+        sessionStorage.removeItem('compare_bhk_filter');
+      }
+      
       // Ensure we always have 5 columns (empty ones will be filled with dropdowns)
       while (updatedSheets.length < 5) {
         updatedSheets.push({ id: `empty-${updatedSheets.length}` });
       }
-      setCostSheets(updatedSheets);
       
-
-
+      console.log('Compare: Final cost sheets:', updatedSheets.map(sheet => ({ id: sheet.id, projectName: sheet.projectName })));
+      setCostSheets(updatedSheets);
     }
   }, [stampDutyRates, allCostSheets, recalculateCostSheet]);
+
+
+
+
 
   const handleClose = () => navigate("/dashboard");
 
@@ -874,29 +999,82 @@ const Compare = () => {
   };
 
   const handleCarpetAreaChange = (index: number, newArea: number) => {
+    console.log('RERA Carpet Area Change:', { index, newArea, filtersApplied });
+    
     setCostSheets((prev) => {
       const updated = [...prev];
       const currentSheet = updated[index];
+      const currentTypology = getFieldValue(currentSheet, 'flatType') || currentSheet.typologies?.[0]?.typology || currentSheet.flatType;
 
-      // Find matching sheet from allCostSheets
-      const matchingSheet = allCostSheets.find(
-        (sheet) =>
-          sheet.projectName === currentSheet.projectName &&
-          sheet.flatType === currentSheet.flatType &&
-          safeNumber(sheet.reraCarpet) === newArea
-      );
+      console.log('Current sheet:', { projectName: currentSheet.projectName, typology: currentTypology });
 
-      // If we find a full matching sheet, update multiple fields
+      // Use filtered sheets if filters are applied, otherwise use all sheets
+      const sheetsToSearch = filtersApplied ? filteredSheets : allCostSheets;
+      
+      console.log('Sheets to search:', sheetsToSearch.length, 'sheets');
+      
+      // Find matching sheet with same project and typology (or any project if filters applied)
+      const matchingSheet = sheetsToSearch.find((sheet) => {
+        // If filters are applied, search across all projects; otherwise same project only
+        if (!filtersApplied && sheet.projectName !== currentSheet.projectName) return false;
+        
+        // Check if this sheet has the matching carpet area
+        let hasMatchingArea = false;
+        
+        // Check typologies
+        if (sheet.typologies) {
+          hasMatchingArea = sheet.typologies.some(t => 
+            t.typology === currentTypology && safeNumber(t.reraCarpet) === newArea
+          );
+        }
+        
+        // Check pricingConfigs
+        if (!hasMatchingArea && sheet.pricingConfigs) {
+          hasMatchingArea = sheet.pricingConfigs.some(p => 
+            p.typology === currentTypology && safeNumber(p.reraCarpet) === newArea
+          );
+        }
+        
+        // Check legacy fields
+        if (!hasMatchingArea && sheet.flatType === currentTypology && safeNumber(sheet.reraCarpet) === newArea) {
+          hasMatchingArea = true;
+        }
+        
+        if (hasMatchingArea) {
+          console.log('Found matching sheet:', { projectName: sheet.projectName, id: sheet.id });
+        }
+        
+        return hasMatchingArea;
+      });
+
       if (matchingSheet) {
+        console.log('Updating with matching sheet:', matchingSheet.projectName);
+        // Preserve the current sheet's user inputs while updating with matching sheet data
+        const updatedSheet = {
+          ...recalculateCostSheet(matchingSheet),
+          // Preserve user-modified fields from current sheet
+          discount: currentSheet.discount,
+          floor: currentSheet.floor,
+          withParking: currentSheet.withParking,
+          includeParkingInAgreement: currentSheet.includeParkingInAgreement
+        };
+        updated[index] = recalculateCostSheet(updatedSheet);
+      } else {
+        console.log('No matching sheet found for carpet area:', newArea);
+        // If no matching sheet found, just update the current sheet's carpet area
         const updatedSheet = {
           ...currentSheet,
-          ...matchingSheet, // overrides with updated saleableArea, psfRate, etc.
+          reraCarpet: newArea
         };
-
+        // Update typologies if they exist
+        if (updatedSheet.typologies && updatedSheet.typologies.length > 0) {
+          updatedSheet.typologies = updatedSheet.typologies.map(t => 
+            t.typology === currentTypology ? { ...t, reraCarpet: newArea } : t
+          );
+        }
         updated[index] = recalculateCostSheet(updatedSheet);
       }
 
-      // Recalculate costs
       return updated;
     });
   };
@@ -911,6 +1089,135 @@ const Compare = () => {
         updated[index] = recalculated;
         return updated;
       });
+    }
+  };
+
+  const handleExportPDF = () => {
+    const selectedProperties = costSheets.filter(sheet => sheet.projectName);
+    if (selectedProperties.length === 0) {
+      alert('No properties selected for comparison');
+      return;
+    }
+
+    // Clone the comparison table
+    const tableElement = document.querySelector('.min-w-full.border-collapse');
+    if (!tableElement) return;
+    
+    const clonedTable = tableElement.cloneNode(true) as HTMLElement;
+    
+    // Remove negotiation row from cloned table
+    const negotiationRows = clonedTable.querySelectorAll('tr');
+    negotiationRows.forEach(row => {
+      const firstCell = row.querySelector('td');
+      if (firstCell && firstCell.textContent?.includes('Negotiation Scope')) {
+        row.remove();
+      }
+    });
+    
+    // Replace interactive elements with actual data values
+    costSheets.forEach((sheet, colIndex) => {
+      if (!sheet.projectName) return;
+      
+      // Find RERA Carpet Area row and replace dropdown with actual value
+      const reraRows = clonedTable.querySelectorAll('tr');
+      reraRows.forEach(row => {
+        const firstCell = row.querySelector('td');
+        if (firstCell && firstCell.textContent?.includes('RERA Carpet Area')) {
+          const cells = row.querySelectorAll('td');
+          const targetCell = cells[colIndex + 1]; // +1 because first cell is label
+          if (targetCell) {
+            const carpetArea = getFieldValue(sheet, 'reraCarpet');
+            targetCell.textContent = carpetArea ? formatArea(carpetArea) : 'N/A';
+          }
+        }
+      });
+    });
+    
+    // Remove remaining interactive elements
+    clonedTable.querySelectorAll('select, button, input').forEach(el => {
+      const parent = el.parentElement;
+      if (parent) {
+        if (el.tagName === 'SELECT') {
+          const selectedOption = (el as HTMLSelectElement).selectedOptions[0];
+          parent.textContent = selectedOption ? selectedOption.textContent : 'N/A';
+        } else if (el.tagName === 'INPUT') {
+          parent.textContent = (el as HTMLInputElement).value || 'N/A';
+        } else {
+          parent.textContent = el.textContent || 'N/A';
+        }
+      }
+    });
+
+    // Create HTML content for PDF with copy protection
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Property Comparison Report</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20px;
+              -webkit-user-select: none;
+              -moz-user-select: none;
+              -ms-user-select: none;
+              user-select: none;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .header { text-align: center; margin-bottom: 30px; }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-bottom: 20px;
+              font-size: 12px;
+            }
+            th, td { 
+              border: 1px solid #ddd; 
+              padding: 6px 8px; 
+              text-align: left;
+              word-wrap: break-word;
+            }
+            .bg-blue-50 { background-color: #eff6ff !important; }
+            .border-l-4.border-blue-500 { border-left: 4px solid #3b82f6 !important; }
+            .font-semibold { font-weight: 600; }
+            .text-right { text-align: right; }
+            .font-bold.text-blue-700 { font-weight: bold; color: #1d4ed8; }
+            @media print {
+              body { -webkit-print-color-adjust: exact; }
+              * { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+            }
+          </style>
+          <script>
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            document.addEventListener('selectstart', e => e.preventDefault());
+            document.addEventListener('dragstart', e => e.preventDefault());
+            document.addEventListener('keydown', e => {
+              if (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 's' || e.key === 'p')) {
+                e.preventDefault();
+              }
+            });
+          </script>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Property Comparison Report</h1>
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+          </div>
+          ${clonedTable.outerHTML}
+        </body>
+      </html>
+    `;
+
+    // Create and download PDF
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
     }
   };
 
@@ -934,7 +1241,165 @@ const Compare = () => {
       <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
         {/* Modern Header */}
         <div className="bg-[#0a1f44] px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-white">Property Comparison</h2>
+          <div className="flex items-center gap-6">
+            <h2 className="text-2xl font-bold text-white">Property Comparison</h2>
+            
+            {/* Inline Filter Controls */}
+            <div className="flex items-center gap-3">
+              <select
+                value={filterPropertyType}
+                onChange={(e) => setFilterPropertyType(e.target.value)}
+                className="bg-white border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">All Types</option>
+                {Array.from(new Set(
+                  allCostSheets
+                    .filter(sheet => sheet.isApproved === true || sheet.approvalStatus === 'approved')
+                    .flatMap(sheet => {
+                      const types = [];
+                      if (sheet.typologies) {
+                        sheet.typologies.forEach(t => {
+                          if (t.typology && t.availability !== "Sold Out") types.push(t.typology);
+                        });
+                      }
+                      if (sheet.flatType && sheet.availability !== "Sold Out") types.push(sheet.flatType);
+                      return types;
+                    })
+                    .filter(Boolean)
+                )).sort().map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              
+              <select
+                value={filterLocation}
+                onChange={(e) => setFilterLocation(e.target.value)}
+                className="bg-white border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">All Locations</option>
+                {(() => {
+                  // Get locations from approved cost sheets
+                  const sheetLocations = allCostSheets
+                    .filter(sheet => sheet.isApproved === true || sheet.approvalStatus === 'approved')
+                    .flatMap(sheet => {
+                      const locations = [];
+                      if (sheet.station) locations.push(sheet.station);
+                      if (sheet.location) locations.push(sheet.location);
+                      return locations;
+                    })
+                    .filter(Boolean);
+                  
+                  // Combine with static station names (East/West variants)
+                  const staticStations = [
+                    'Airoli East', 'Airoli West', 'Andheri East', 'Andheri West', 'Badlapur East', 'Badlapur West',
+                    'Belapur East', 'Belapur West', 'Bhandup East', 'Bhandup West', 'Borivali East', 'Borivali West',
+                    'Chembur East', 'Chembur West', 'Dahisar East', 'Dahisar West', 'Dombivli East', 'Dombivli West',
+                    'Ghatkopar East', 'Ghatkopar West', 'Goregaon East', 'Goregaon West', 'Jogeshwari East', 'Jogeshwari West',
+                    'Juhu East', 'Juhu West', 'Kalyan East', 'Kalyan West', 'Kandivali East', 'Kandivali West',
+                    'Kharghar East', 'Kharghar West', 'Kurla East', 'Kurla West', 'Malad East', 'Malad West',
+                    'Mira Road East', 'Mira Road West', 'Mulund East', 'Mulund West', 'Nalasopara East', 'Nalasopara West',
+                    'Nerul East', 'Nerul West', 'Panvel East', 'Panvel West', 'Powai East', 'Powai West',
+                    'Santacruz East', 'Santacruz West', 'Thane East', 'Thane West', 'Ulwe East', 'Ulwe West',
+                    'Vasai East', 'Vasai West', 'Vashi East', 'Vashi West', 'Virar East', 'Virar West'
+                  ];
+                  
+                  // Combine and deduplicate all locations
+                  const allLocations = Array.from(new Set([...sheetLocations, ...staticStations]));
+                  
+                  return allLocations.sort().map(location => (
+                    <option key={location} value={location}>{location}</option>
+                  ));
+                })()}
+              </select>
+              
+              <button
+                onClick={() => {
+                  // Use the same filter logic as Dashboard
+                  const filtered = allCostSheets.filter(sheet => {
+                    const isApproved = sheet.isApproved === true || sheet.approvalStatus === 'approved';
+                    if (!isApproved) return false;
+                    
+                    // Location filter - check station and location fields
+                    if (filterLocation) {
+                      const locations = [sheet.station, sheet.location].filter(Boolean);
+                      const hasMatchingLocation = locations.some(loc => 
+                        loc.toLowerCase().trim() === filterLocation.toLowerCase().trim()
+                      );
+                      
+                      if (!hasMatchingLocation) {
+                        return false;
+                      }
+                    }
+                    
+                    // Check if sheet has any available typologies matching the BHK filter
+                    let hasMatchingTypology = false;
+                    
+                    // Check typologies array
+                    if (sheet.typologies && Array.isArray(sheet.typologies)) {
+                      hasMatchingTypology = sheet.typologies.some((typology) => {
+                        if (typology.availability === "Sold Out") return false;
+                        
+                        // BHK filter
+                        if (filterPropertyType) {
+                          return typology.typology?.toLowerCase() === filterPropertyType.toLowerCase();
+                        }
+                        return true;
+                      });
+                    }
+                    
+                    // Fallback to old structure
+                    if (!hasMatchingTypology) {
+                      const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
+                      const availability = sheet.availability || sheet.typologies?.[0]?.availability;
+                      
+                      if (availability === "Sold Out") return false;
+                      
+                      if (filterPropertyType) {
+                        hasMatchingTypology = flatType?.toLowerCase() === filterPropertyType.toLowerCase();
+                      } else {
+                        hasMatchingTypology = true;
+                      }
+                    }
+                    
+                    if (!hasMatchingTypology) return false;
+                    
+                    return true;
+                  });
+                  
+                  // Set filtered sheets and mark filters as applied
+                  setFilteredSheets(filtered);
+                  setFiltersApplied(true);
+                  
+                  // Clear the table - show 5 empty columns
+                  const emptySheets = Array.from({ length: 5 }, (_, index) => ({ id: `empty-${index}` }));
+                  setCostSheets(emptySheets);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm transition-colors"
+              >
+                Apply
+              </button>
+              
+              {filtersApplied && (
+                <button
+                  onClick={() => {
+                    // Clear filters and reset table
+                    setFilterPropertyType("");
+                    setFilterLocation("");
+                    setFiltersApplied(false);
+                    setFilteredSheets([]);
+                    
+                    // Reset to original state with empty columns
+                    const emptySheets = Array.from({ length: 5 }, (_, index) => ({ id: `empty-${index}` }));
+                    setCostSheets(emptySheets);
+                  }}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1 rounded text-sm transition-colors"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+          
           <div className="flex items-center gap-3">
             <button
               className="text-white hover:text-gray-300 transition-colors px-3 py-1 border border-white/30 rounded text-sm"
@@ -953,7 +1418,7 @@ const Compare = () => {
         </div>
 
         {/* Table Container with Sticky Headers */}
-        <div className="overflow-x-auto max-h-[75vh] relative">
+        <div className="overflow-x-auto max-h-[70vh] relative">
           <table className="min-w-full border-collapse">
             <tbody className="divide-y divide-gray-200">
               {/* Discount Row */}
@@ -1024,20 +1489,90 @@ const Compare = () => {
                       {sheet.projectName && (
                         <option value={sheet.id}>{sheet.projectName}</option>
                       )}
-                      {availableProjectOptions.map((projectName) => {
-                        // Find cost sheets with this project name that match the current flatType (if any)
-                        const currentFlatType = costSheets.find(s => s.projectName)?.flatType;
-                        const projectSheets = allCostSheets.filter(
-                          (s) => s.projectName === projectName &&
-                          (!currentFlatType || s.flatType === currentFlatType)
-                        );
-                        const projectSheet = projectSheets[0];
-                        return projectSheet ? (
-                          <option key={projectSheet.id} value={projectSheet.id}>
-                            {projectName}
-                          </option>
-                        ) : null;
-                      })}
+                      {(() => {
+                        // Use filtered sheets if filters are applied, otherwise use all sheets
+                        const sheetsToUse = filtersApplied ? filteredSheets : allCostSheets.filter(sheet => {
+                          // Only show approved properties
+                          if (!(sheet.isApproved === true || sheet.approvalStatus === 'approved')) return false;
+                          
+                          // Get filters from URL parameters for initial load
+                          const urlParams = new URLSearchParams(location.search);
+                          const bhkFilter = urlParams.get('bhkType');
+                          const stationFilter = urlParams.get('station');
+                          const subLocationFilter = urlParams.get('subLocation');
+                          const possessionFilter = urlParams.get('possession');
+                          
+                          // BHK filter - check both flatType and typology with flexible matching
+                          if (bhkFilter) {
+                            const flatType = sheet.flatType || sheet.typologies?.[0]?.typology || sheet.type;
+                            if (!flatType) return false;
+                            
+                            const normalizedFlatType = flatType.toLowerCase().trim();
+                            const normalizedFilter = bhkFilter.toLowerCase().trim();
+                            
+                            // Exact match or contains match for jodi types
+                            if (normalizedFlatType !== normalizedFilter && 
+                                !normalizedFlatType.includes(normalizedFilter) &&
+                                !normalizedFilter.includes(normalizedFlatType)) {
+                              return false;
+                            }
+                          }
+                          
+                          // Station filter - check multiple location fields
+                          if (stationFilter) {
+                            const stationToCheck = sheet.station || sheet.location || sheet.city;
+                            if (!stationToCheck || stationToCheck.toLowerCase().trim() !== stationFilter.toLowerCase().trim()) return false;
+                          }
+                          
+                          // Sub Location filter
+                          if (subLocationFilter && subLocationFilter !== 'null' && subLocationFilter !== '[]') {
+                            try {
+                              const subLocations = JSON.parse(subLocationFilter);
+                              if (Array.isArray(subLocations) && subLocations.length > 0) {
+                                const sheetSubLocation = sheet.subLocation || sheet.road || sheet.area;
+                                if (!sheetSubLocation || !subLocations.some(loc => 
+                                  loc.toLowerCase().trim() === sheetSubLocation.toLowerCase().trim()
+                                )) {
+                                  return false;
+                                }
+                              }
+                            } catch {
+                              // If parsing fails, skip this filter
+                            }
+                          }
+                          
+                          // Possession filter
+                          if (possessionFilter) {
+                            const possession = sheet.possession || sheet.reraPossession || sheet.typologies?.[0]?.developerPossession;
+                            if (possessionFilter === 'Ready to Move') {
+                              if (!possession || possession.toLowerCase().trim() !== 'ready to move') return false;
+                            } else {
+                              if (!possession || !possession.includes(possessionFilter)) return false;
+                            }
+                          }
+                          
+                          // Check availability - exclude sold out properties
+                          const availability = sheet.availability || sheet.typologies?.[0]?.availability || sheet.availibility;
+                          if (availability && availability.toLowerCase().includes('sold out')) return false;
+                          
+                          return true;
+                        });
+                        
+                        // Get unique project names from sheets, excluding already selected ones
+                        const availableProjectOptions = Array.from(
+                          new Set(sheetsToUse.map(sheet => sheet.projectName).filter(Boolean))
+                        ).filter(projectName => !selectedProjectNames.includes(projectName));
+                        
+                        return availableProjectOptions.map((projectName) => {
+                          // Find the first matching sheet for this project
+                          const projectSheet = sheetsToUse.find(s => s.projectName === projectName);
+                          return projectSheet ? (
+                            <option key={projectSheet.id} value={projectSheet.id}>
+                              {projectName}
+                            </option>
+                          ) : null;
+                        });
+                      })()}
                     </select>
                   </td>
                 ))}
@@ -1426,22 +1961,38 @@ const Compare = () => {
                           );
                         }
 
-                        // Filter all cost-sheets to just this column's flatType (and same project, if desired)
-                        const currentFlatType = getFieldValue(sheet, 'flatType');
-                        const sameTypeSheets = allCostSheets.filter(
-                          (s) => {
-                            const sheetFlatType = getFieldValue(s, 'flatType');
-                            return sheetFlatType === currentFlatType &&
-                                   s.projectName === sheet.projectName;
-                          }
-                        );
-
-                        // pull out numeric carpet areas:
-                        const carpetAreas = Array.from(
+                        // Get carpet areas only from the selected property
+                        const currentTypology = getFieldValue(sheet, 'flatType') || sheet.typologies?.[0]?.typology || sheet.flatType;
+                        
+                        // Get carpet areas only from the current selected property
+                        const typologyCarpetAreas = Array.from(
                           new Set(
-                            sameTypeSheets
-                              .map((s) => getFieldValue(s, 'reraCarpet'))
-                              .filter((n) => n !== undefined && !isNaN(n))
+                            [sheet] // Only use the current sheet
+                              .flatMap(s => {
+                                const areas = [];
+                                // Check typologies for matching typology
+                                if (s.typologies) {
+                                  s.typologies.forEach(t => {
+                                    if (t.typology === currentTypology && t.reraCarpet) {
+                                      areas.push(safeNumber(t.reraCarpet));
+                                    }
+                                  });
+                                }
+                                // Check pricingConfigs for matching typology
+                                if (s.pricingConfigs) {
+                                  s.pricingConfigs.forEach(p => {
+                                    if (p.typology === currentTypology && p.reraCarpet) {
+                                      areas.push(safeNumber(p.reraCarpet));
+                                    }
+                                  });
+                                }
+                                // Check legacy field if typology matches
+                                if ((s.flatType === currentTypology) && s.reraCarpet) {
+                                  areas.push(safeNumber(s.reraCarpet));
+                                }
+                                return areas;
+                              })
+                              .filter(n => n !== undefined && !isNaN(n) && n > 0)
                           )
                         ).sort((a, b) => a - b);
 
@@ -1450,24 +2001,36 @@ const Compare = () => {
                             key={sheet.id}
                             className="px-2 py-1 text-sm text-right border-r border-gray-200"
                           >
-                            <select
-                              value={getFieldValue(sheet, 'reraCarpet') || ""}
-                              onChange={(e) =>
-                                handleCarpetAreaChange(
-                                  index,
-                                  Number(e.target.value)
-                                )
-                              }
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500
-                         focus:border-blue-500"
-                            >
-                              {carpetAreas.map((area) => (
-                                <option key={area} value={area}>
-                                  {formatArea(area)}
-                                </option>
-                              ))}
-                            </select>
+                            {(() => {
+                              const currentCarpetArea = getFieldValue(sheet, 'reraCarpet');
+                              return (
+                                <select
+                                  value={currentCarpetArea || ""}
+                                  onChange={(e) =>
+                                    handleCarpetAreaChange(
+                                      index,
+                                      Number(e.target.value)
+                                    )
+                                  }
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500
+                             focus:border-blue-500"
+                                >
+                                  <option value="">Select Carpet Area</option>
+                                  {/* Show current value if it exists but not in filtered list */}
+                                  {currentCarpetArea && !typologyCarpetAreas.includes(currentCarpetArea) && (
+                                    <option key={currentCarpetArea} value={currentCarpetArea}>
+                                      {formatArea(currentCarpetArea)} (Current)
+                                    </option>
+                                  )}
+                                  {typologyCarpetAreas.map((area) => (
+                                    <option key={area} value={area}>
+                                      {formatArea(area)}
+                                    </option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
                           </td>
                         );
                       })}
@@ -1566,6 +2129,50 @@ const Compare = () => {
                   </td>
                 ))}
               </tr>
+
+              {/* Negotiation Scope */}
+              <tr className="bg-blue-50 border-l-4 border-blue-500 hover:bg-blue-100">
+                <td className="sticky left-0 z-10 bg-blue-50 border-l-4 border-blue-500 p-3 font-semibold text-gray-700 border-r">
+                  <div className="flex items-center">
+                    <span>Negotiation Scope</span>
+                  </div>
+                </td>
+                {costSheets.map((sheet, index) => (
+                  <td
+                    key={index}
+                    className="px-2 py-1 text-sm text-right border-r border-gray-200"
+                  >
+                    {sheet.projectName ? (
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => {
+                            const negotiationValue = (() => {
+                              // Get negotiation scope from pricingConfigs or typologies
+                              if (sheet.pricingConfigs && sheet.pricingConfigs.length > 0) {
+                                const config = sheet.pricingConfigs.find(config => config.negotiationScope);
+                                return config?.negotiationScope || "N/A";
+                              }
+                              if (sheet.typologies && sheet.typologies.length > 0) {
+                                const typology = sheet.typologies.find(t => t.negotiationScope);
+                                return typology?.negotiationScope || "N/A";
+                              }
+                              return "N/A";
+                            })();
+                            
+                            setSelectedNegotiationValue(negotiationValue === "N/A" ? "N/A" : Number(negotiationValue).toLocaleString("en-IN"));
+                            setShowNegotiationModal(true);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                        >
+                          View
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="h-10"></div>
+                    )}
+                  </td>
+                ))}
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1573,18 +2180,37 @@ const Compare = () => {
         {/* Footer with Summary */}
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
           <div className="flex justify-between items-center">
-            <p className="text-gray-600">
-              Comparing{" "}
-              <strong>{costSheets.filter((s) => s.projectName).length}</strong>{" "}
-              properties
-            </p>
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-2 rounded-lg transition-colors"
-            >
-              Close Comparison
-            </Button>
+            <div className="text-gray-600">
+              {filtersApplied ? (
+                <p>
+                  Filtered <strong>{filteredSheets.length}</strong> properties available for selection
+                </p>
+              ) : (
+                <p>
+                  Comparing{" "}
+                  <strong>{costSheets.filter((s) => s.projectName).length}</strong>{" "}
+                  properties
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleExportPDF}
+                className="border-green-600 text-green-600 hover:bg-green-50 px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
+                disabled={costSheets.filter(s => s.projectName).length === 0}
+              >
+                <Download className="h-4 w-4" />
+                Export PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleClose}
+                className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-2 rounded-lg transition-colors"
+              >
+                Close Comparison
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1595,6 +2221,38 @@ const Compare = () => {
           district="Thane"
           onClose={() => setShowStampDutyDebugger(false)}
         />
+      )}
+
+      {/* Negotiation Modal */}
+      {showNegotiationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 w-64 mx-4">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-semibold text-gray-900">Negotiation Scope</h3>
+              <button
+                onClick={() => setShowNegotiationModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            <div className="text-center py-2">
+              <div className="text-lg font-bold text-blue-600">
+                ₹{selectedNegotiationValue}
+              </div>
+            </div>
+            
+            <div className="flex justify-center mt-3">
+              <button
+                onClick={() => setShowNegotiationModal(false)}
+                className="px-4 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Furniture Modal */}

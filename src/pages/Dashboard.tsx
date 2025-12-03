@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Building,
   Filter,
@@ -163,6 +163,7 @@ const possessionOptions = [
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState("residential");
   const [propertyCategory, setPropertyCategory] =
     useState<PropertyCategory>("Resale");
@@ -256,6 +257,133 @@ const Dashboard = () => {
   const [fullViewer, setFullViewer] = useState<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>({isOpen: false, files: [], currentIndex: 0, type: 'image'});
 
   const navigate = useNavigate();
+  
+  // Handle compare functionality - opens in new tab with preserved filters
+  const handleCompare = () => {
+    console.log('Dashboard: Starting compare with selected sheets:', selectedCostSheets.map(sheet => ({ id: sheet.id, projectName: sheet.projectName })));
+    
+    // Create a unique storage key for this comparison session
+    const storageKey = `compare_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Store selected items in sessionStorage for new tab access (only if items are selected)
+    if (selectedCostSheets.length > 0) {
+      sessionStorage.setItem(storageKey, JSON.stringify(selectedCostSheets));
+      console.log('Dashboard: Stored data in sessionStorage with key:', storageKey);
+    }
+    
+    // Create URL with current filters and storage key
+    const filterParams = new URLSearchParams();
+    
+    // Add current filters to URL parameters
+    Object.entries(appliedFilters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && 
+          !(Array.isArray(value) && value.length === 0)) {
+        if (Array.isArray(value)) {
+          filterParams.set(key, JSON.stringify(value));
+        } else {
+          filterParams.set(key, String(value));
+        }
+      }
+    });
+    
+    // Add property category and selected category
+    filterParams.set('propertyCategory', propertyCategory);
+    filterParams.set('selectedCategory', selectedCategory);
+    
+    // Add storage key only if we have selected items
+    if (selectedCostSheets.length > 0) {
+      filterParams.set('storageKey', storageKey);
+    }
+    
+    // Open compare page in new tab with filters
+    const compareUrl = `/compare?${filterParams.toString()}`;
+    console.log('Dashboard: Opening compare URL:', compareUrl);
+    window.open(compareUrl, '_blank');
+  };
+
+  // Handle opening compare tab when no properties are selected but filters are applied
+  const handleOpenCompareWithFilters = () => {
+    // Create URL with current filters
+    const filterParams = new URLSearchParams();
+    
+    // Add current filters to URL parameters
+    Object.entries(appliedFilters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && 
+          !(Array.isArray(value) && value.length === 0)) {
+        if (Array.isArray(value)) {
+          filterParams.set(key, JSON.stringify(value));
+        } else {
+          filterParams.set(key, String(value));
+        }
+      }
+    });
+    
+    // Add property category and selected category
+    filterParams.set('propertyCategory', propertyCategory);
+    filterParams.set('selectedCategory', selectedCategory);
+    
+    // Open compare page in new tab with filters for auto-population
+    const compareUrl = `/compare?${filterParams.toString()}`;
+    console.log('Dashboard: Opening compare URL with filters for auto-population:', compareUrl);
+    window.open(compareUrl, '_blank');
+  };
+  
+  // Parse URL parameters to restore filters when coming back from compare page
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const hasUrlFilters = urlParams.size > 0;
+    
+    if (hasUrlFilters) {
+      const restoredFilters: any = {};
+      
+      // Parse each filter parameter
+      urlParams.forEach((value, key) => {
+        if (key === 'propertyCategory') {
+          setPropertyCategory(value as PropertyCategory);
+        } else if (key === 'selectedCategory') {
+          setSelectedCategory(value);
+        } else {
+          try {
+            // Try to parse as JSON for arrays
+            if (value.startsWith('[') && value.endsWith(']')) {
+              restoredFilters[key] = JSON.parse(value);
+            } else if (value === 'true') {
+              restoredFilters[key] = true;
+            } else if (value === 'false') {
+              restoredFilters[key] = false;
+            } else if (value === 'undefined') {
+              restoredFilters[key] = undefined;
+            } else {
+              restoredFilters[key] = value;
+            }
+          } catch {
+            restoredFilters[key] = value;
+          }
+        }
+      });
+      
+      if (Object.keys(restoredFilters).length > 0) {
+        setFilters(restoredFilters);
+        setAppliedFilters(restoredFilters);
+        setHasFiltered(true);
+        setEverFiltered(true);
+        
+        // Auto-apply filters after a short delay to ensure data is loaded
+        setTimeout(() => {
+          if (propertyCategory === "New") {
+            // For new properties, the filtering is handled by useMemo hooks
+            // No need to call applyFilters
+          } else {
+            // For resale/rental, we might need to trigger filtering
+            // The filtering is handled by useMemo hooks automatically
+          }
+        }, 100);
+      }
+      
+      // Clean up URL after restoring filters
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [location.search]);
 
   const openMediaModal = (title: string, files: string[], type: 'image' | 'video' | 'pdf' = 'image') => {
     setMediaModal({isOpen: true, title, files, type});
@@ -460,18 +588,43 @@ const Dashboard = () => {
 
     if (propertyCategory === "New") {
       costSheets.forEach((sheet) => {
-        const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
-        const availability = sheet.availability || sheet.typologies?.[0]?.availability;
         const stationToCheck = sheet.station || sheet.location;
-        
         const isApproved = sheet.isApproved === true || sheet.approvalStatus === 'approved';
         
-        if (flatType && isApproved && availability !== "Sold Out") {
+        if (isApproved) {
           // Filter by location if selected
           if (filters.station && stationToCheck?.toLowerCase().trim() !== filters.station.toLowerCase().trim()) {
             return;
           }
-          typeSet.add(flatType.trim());
+          
+          // Only add typologies that are actually available (not sold out)
+          if (sheet.typologies && Array.isArray(sheet.typologies)) {
+            sheet.typologies.forEach((typology) => {
+              if (typology.typology && typology.availability !== "Sold Out") {
+                typeSet.add(typology.typology.trim());
+              }
+            });
+          }
+          
+          // Check subTabData for additional available typologies
+          if (sheet.subTabData) {
+            Object.values(sheet.subTabData).forEach((tabData: any) => {
+              if (tabData.pricingConfigs && Array.isArray(tabData.pricingConfigs)) {
+                tabData.pricingConfigs.forEach((config: any) => {
+                  if (config.typology && config.availability !== "Sold Out") {
+                    typeSet.add(config.typology.trim());
+                  }
+                });
+              }
+            });
+          }
+          
+          // Fallback to old structure - only if available
+          const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
+          const availability = sheet.availability || sheet.typologies?.[0]?.availability;
+          if (flatType && availability !== "Sold Out") {
+            typeSet.add(flatType.trim());
+          }
         }
       });
     } else {
@@ -1197,29 +1350,13 @@ const Dashboard = () => {
     locationFilterType,
   ]);
 
-  // Clean filtering for New properties (unchanged)
+  // Clean filtering for New properties - handles complex database structure
   const filteredNewProperties = useMemo(() => {
     if (propertyCategory !== "New") return [];
 
     return costSheets.filter((sheet) => {
-      // Handle both old and new data structures
-      const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
-      const availability = sheet.availability || sheet.typologies?.[0]?.availability;
       const stationToCheck = sheet.station || sheet.location;
-      const totalPackage = sheet.totalPackage || sheet.typologies?.[0]?.totalPackage;
-      const possession = sheet.possession || sheet.typologies?.[0]?.developerPossession;
       
-      // Filter out "Sold Out" properties
-      if (availability === "Sold Out") return false;
-
-      // BHK filter
-      if (
-        appliedFilters.bhkType &&
-        flatType?.toLowerCase() !== appliedFilters.bhkType.toLowerCase()
-      ) {
-        return false;
-      }
-
       // Station filter
       if (appliedFilters.station) {
         const sheetStation = stationToCheck || "";
@@ -1246,6 +1383,59 @@ const Dashboard = () => {
         }
       }
 
+      // Check if sheet has any available typologies matching the BHK filter
+      let hasMatchingTypology = false;
+      
+      // Check typologies array
+      if (sheet.typologies && Array.isArray(sheet.typologies)) {
+        hasMatchingTypology = sheet.typologies.some((typology) => {
+          if (typology.availability === "Sold Out") return false;
+          
+          // BHK filter
+          if (appliedFilters.bhkType) {
+            return typology.typology?.toLowerCase() === appliedFilters.bhkType.toLowerCase();
+          }
+          return true; // If no BHK filter, any available typology is valid
+        });
+      }
+      
+      // Check subTabData for additional typologies
+      if (!hasMatchingTypology && sheet.subTabData) {
+        Object.values(sheet.subTabData).forEach((tabData: any) => {
+          if (tabData.pricingConfigs && Array.isArray(tabData.pricingConfigs)) {
+            const hasMatch = tabData.pricingConfigs.some((config: any) => {
+              if (config.availability === "Sold Out") return false;
+              
+              // BHK filter
+              if (appliedFilters.bhkType) {
+                return config.typology?.toLowerCase() === appliedFilters.bhkType.toLowerCase();
+              }
+              return true; // If no BHK filter, any available typology is valid
+            });
+            if (hasMatch) hasMatchingTypology = true;
+          }
+        });
+      }
+      
+      // Fallback to old structure
+      if (!hasMatchingTypology) {
+        const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
+        const availability = sheet.availability || sheet.typologies?.[0]?.availability;
+        
+        if (availability === "Sold Out") return false;
+        
+        if (appliedFilters.bhkType) {
+          hasMatchingTypology = flatType?.toLowerCase() === appliedFilters.bhkType.toLowerCase();
+        } else {
+          hasMatchingTypology = true;
+        }
+      }
+      
+      if (!hasMatchingTypology) return false;
+
+      // Other filters (possession, cosmo, amenities, budget, etc.)
+      const possession = sheet.possession || sheet.typologies?.[0]?.developerPossession;
+      
       // Possession filter
       if (appliedFilters.possession) {
         if (appliedFilters.possession === "Ready to Move") {
@@ -1285,6 +1475,7 @@ const Dashboard = () => {
       }
 
       // Budget filter
+      const totalPackage = sheet.totalPackage || sheet.typologies?.[0]?.totalPackage;
       const pkg = totalPackage || 0;
       if (appliedFilters.minBudget && pkg < Number(appliedFilters.minBudget)) {
         return false;
@@ -1620,17 +1811,21 @@ const Dashboard = () => {
 
   // Add this useEffect hook right after your existing useEffect hooks
   useEffect(() => {
-    // Reset table data when switching categories
-    setHasFiltered(false);
-    setEverFiltered(false);
-    setSelectedProperties([]);
-    setSelectedCostSheets([]);
+    // Only reset if not coming from URL parameters (compare page)
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.size === 0) {
+      // Reset table data when switching categories
+      setHasFiltered(false);
+      setEverFiltered(false);
+      setSelectedProperties([]);
+      setSelectedCostSheets([]);
+    }
     // Refetch location options when category changes
     if (stationsLoaded) {
       fetchAvailableStations();
     }
     // Keep filters open when switching property categories
-  }, [propertyCategory]);
+  }, [propertyCategory, location.search]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -3262,6 +3457,11 @@ const Dashboard = () => {
                           setSelectedCostSheets([]);
                         }
                         setShowFilters(false);
+                        
+                        // Clear URL parameters when applying new filters
+                        if (location.search) {
+                          window.history.replaceState({}, '', window.location.pathname);
+                        }
                       }}
                       disabled={selectedCategory !== "residential"}
                     >
@@ -3355,7 +3555,7 @@ const Dashboard = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            if (!filters.bhkType) {
+                            if (!appliedFilters.bhkType) {
                               toast.error(
                                 "Please select a Configuration (BHK type) first."
                               );
@@ -3383,24 +3583,7 @@ const Dashboard = () => {
                               return;
                             }
 
-                            const flatTypes = filteredNewProperties
-                              .map((cs) => cs.flatType?.toLowerCase())
-                              .filter(Boolean); // remove undefined/null
-
-                            const allSameFlatType =
-                              flatTypes.length > 0 &&
-                              flatTypes.every((ft) => ft === flatTypes[0]);
-
-                            if (!allSameFlatType) {
-                              toast.error(
-                                "The visible properties have different configurations. Please filter to a single configuration."
-                              );
-                              return;
-                            }
-
-                            navigate("/compare", {
-                              state: { selectedItems: selectedCostSheets },
-                            });
+                            handleCompare();
                           }}
                         >
                           Compare
@@ -3417,6 +3600,8 @@ const Dashboard = () => {
                       </div>
                     </div>
                   )}
+
+
 
                   {/* Updated Cost Sheets Table */}
                   <div className="overflow-x-auto max-w-full max-h-screen overflow-y-auto sticky top-0 z-40 bg-white">
