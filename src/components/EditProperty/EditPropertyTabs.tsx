@@ -287,7 +287,6 @@ export function handleEditPropertyForm(
                       selectedStateCode,
                       handleStateChange,
                       stampRates,
-                      setShowJurisdictionModal,
                       cities,
                       handleInputChange,
                       locationData

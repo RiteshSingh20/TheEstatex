@@ -1,5 +1,5 @@
 import React from "react";
-import { CostSheet } from "../../src/pages/Compare";
+import { CostSheet } from "./CompareComponents/Compare";
 import { X } from "lucide-react";
 import Modal from "./ui/Modal";
 
@@ -19,6 +19,36 @@ const ProjectDetailsModal: React.FC<Props> = ({ open, onClose, data }) => {
     return typeof numeric === "number" && !isNaN(numeric)
       ? `₹ ${numeric.toLocaleString("en-IN")}/-`
       : "—";
+  };
+
+  const formatPossessionDates = (dateField: string) => {
+    const typologies = (data as any).typologies;
+    if (!typologies || !Array.isArray(typologies)) {
+      return dateField === "reraPossession"
+        ? data.reraPossession || "—"
+        : data.possession || "—";
+    }
+
+    const uniqueDatesSet = new Set();
+    typologies.forEach((t: any) => {
+      const date = t[dateField];
+      if (date) {
+        try {
+          const formattedDate = new Date(date).toLocaleDateString("en-US", {
+            month: "short",
+            year: "numeric",
+          });
+          uniqueDatesSet.add(formattedDate);
+        } catch {}
+      }
+    });
+
+    const uniqueDates = Array.from(uniqueDatesSet);
+    return uniqueDates.length > 0
+      ? uniqueDates.join(" | ")
+      : dateField === "reraPossession"
+      ? data.reraPossession || "—"
+      : data.possession || "—";
   };
 
   const formatValueByField = (key: string, value: any): React.ReactNode => {
@@ -99,7 +129,9 @@ const ProjectDetailsModal: React.FC<Props> = ({ open, onClose, data }) => {
       case "floorRise":
         return `₹ ${value} / sq.ft. / floor`;
       case "reraPossession":
-        return value ? `${value}` : "—";
+        return formatPossessionDates("reraPossession");
+      case "possession":
+        return formatPossessionDates("developerPossession");
       default:
         return value || "—";
     }
@@ -198,7 +230,15 @@ const ProjectDetailsModal: React.FC<Props> = ({ open, onClose, data }) => {
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div className="max-w-4xl w-full max-h-[70vh] flex flex-col select-none" style={{userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none'}}>
+      <div
+        className="max-w-4xl w-full max-h-[70vh] flex flex-col select-none"
+        style={{
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          MozUserSelect: "none",
+          msUserSelect: "none",
+        }}
+      >
         <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-200">
           <h2 className="text-2xl font-semibold">{data.projectName}</h2>
           <button onClick={onClose}>
@@ -256,7 +296,9 @@ const ProjectDetailsModal: React.FC<Props> = ({ open, onClose, data }) => {
               <div className="flex-grow border-t border-gray-300"></div>
             </div>
 
-            {(data as any).sourcingManagers && Array.isArray((data as any).sourcingManagers) && (data as any).sourcingManagers.length > 0 ? (
+            {(data as any).sourcingManagers &&
+            Array.isArray((data as any).sourcingManagers) &&
+            (data as any).sourcingManagers.length > 0 ? (
               <div className="overflow-hidden rounded-lg border border-neutral-200">
                 <table className="min-w-full divide-y divide-neutral-200">
                   <thead className="bg-neutral-50">
@@ -273,53 +315,53 @@ const ProjectDetailsModal: React.FC<Props> = ({ open, onClose, data }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-neutral-200">
-                    {(data as any).sourcingManagers.map((manager: any, index: number) => (
-                      <tr key={index} className="hover:bg-neutral-50">
-                        <td className="px-4 py-3 text-sm font-medium text-neutral-900">
-                          {index + 1}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-neutral-800">
-                          {manager.name || "-"}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-neutral-800">
-                          {manager.contact || "-"}
-                        </td>
-                      </tr>
-                    ))}
+                    {(data as any).sourcingManagers.map(
+                      (manager: any, index: number) => (
+                        <tr key={index} className="hover:bg-neutral-50">
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-800">
+                            {manager.name || "-"}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-800">
+                            {manager.contact || "-"}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (data as any).smName || (data as any).smContact ? (
+              <div className="overflow-hidden rounded-lg border border-neutral-200">
+                <table className="min-w-full divide-y divide-neutral-200">
+                  <thead className="bg-neutral-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
+                        Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
+                        Contact
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    <tr className="hover:bg-neutral-50">
+                      <td className="px-4 py-3 text-sm text-neutral-800">
+                        {(data as any).smName || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-neutral-800">
+                        {(data as any).smContact || "-"}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
             ) : (
-              (data as any).smName || (data as any).smContact ? (
-                <div className="overflow-hidden rounded-lg border border-neutral-200">
-                  <table className="min-w-full divide-y divide-neutral-200">
-                    <thead className="bg-neutral-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                          Name
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                          Contact
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white">
-                      <tr className="hover:bg-neutral-50">
-                        <td className="px-4 py-3 text-sm text-neutral-800">
-                          {(data as any).smName || "-"}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-neutral-800">
-                          {(data as any).smContact || "-"}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-sm text-neutral-500 italic">
-                  No sourcing manager information available
-                </div>
-              )
+              <div className="text-sm text-neutral-500 italic">
+                No sourcing manager information available
+              </div>
             )}
           </div>
         </div>

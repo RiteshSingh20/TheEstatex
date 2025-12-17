@@ -46,7 +46,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../utils/firebase";
-import { StampDutyRate } from "../pages/Compare";
+import { StampDutyRate } from "../components/CompareComponents/Compare";
 import { UserRole } from "../types";
 import { usePermissions } from "../hooks/usePermissions";
 import RoleBadge from "../components/ui/RoleBadge";

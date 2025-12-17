@@ -44,19 +44,18 @@ export function NewPropertyModal({
       return dateField === 'reraPossession' ? selectedSheet.reraPossession || "-" : "-";
     }
     
-    const reraDateMap = new Map();
+    const uniqueDatesSet = new Set();
     typologies.forEach((t: any) => {
-      const reraNumber = t.mahaReraNumber;
       const date = t[dateField];
-      if (reraNumber && date) {
+      if (date) {
         try {
           const formattedDate = new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-          reraDateMap.set(reraNumber, formattedDate);
+          uniqueDatesSet.add(formattedDate);
         } catch {}
       }
     });
     
-    const uniqueDates = Array.from(reraDateMap.values());
+    const uniqueDates = Array.from(uniqueDatesSet);
     return uniqueDates.length > 0 ? uniqueDates.join(' | ') : (dateField === 'reraPossession' ? selectedSheet.reraPossession || "-" : "-");
   };
 

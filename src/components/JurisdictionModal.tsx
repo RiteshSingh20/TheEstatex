@@ -1,5 +1,5 @@
-import React from 'react';
-import { StampDutyRate } from '../pages/Compare';
+import React from "react";
+import { StampDutyRate } from "./CompareComponents/Compare";
 
 interface JurisdictionModalProps {
   isOpen: boolean;
@@ -12,7 +12,7 @@ const JurisdictionModal: React.FC<JurisdictionModalProps> = ({
   isOpen,
   onClose,
   district,
-  availableRates
+  availableRates,
 }) => {
   if (!isOpen) return null;
 
@@ -33,14 +33,16 @@ const JurisdictionModal: React.FC<JurisdictionModalProps> = ({
 
         <div className="mb-4">
           <p className="text-gray-700 mb-2">
-            We couldn't find jurisdiction data required to calculate the Stamp Duty for the selected district: <strong>{district}</strong>.
+            We couldn't find jurisdiction data required to calculate the Stamp
+            Duty for the selected district: <strong>{district}</strong>.
           </p>
           <p className="text-gray-600 text-sm">
-            Please verify the district selection or contact your administrator to update the jurisdiction details.
+            Please verify the district selection or contact your administrator
+            to update the jurisdiction details.
           </p>
         </div>
 
-        {availableRates.length > 0 && (
+        {/* {availableRates.length > 0 && (
           <div className="mb-4">
             <h3 className="font-semibold mb-2">Available Jurisdictions:</h3>
             <div className="max-h-32 overflow-y-auto border border-gray-200 rounded p-2">
@@ -52,7 +54,7 @@ const JurisdictionModal: React.FC<JurisdictionModalProps> = ({
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="flex justify-end gap-3">
           <button

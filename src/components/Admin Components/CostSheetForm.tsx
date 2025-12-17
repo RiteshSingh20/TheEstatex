@@ -28,7 +28,7 @@ import {
 import { deleteMatchedPropertiesFromOldDB } from "../../utils/deleteMatchedProperties";
 import { normalizeForEdit } from "../../utils/costSheetAdapter";
 
-import { CostSheet } from "../../pages/Compare";
+import { CostSheet } from "../CompareComponents/Compare";
 import {
   doc,
   updateDoc,
@@ -40,7 +40,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../utils/firebase";
 import { useAuth } from "../../utils/authContext";
-import { StampDutyRate } from "../../pages/Compare";
+import { StampDutyRate } from "../CompareComponents/Compare";
 import { fetchCities, fetchStates } from "../../utils/api";
 import { State, City } from "../../types";
 import AmenityModal from "../AmenityModal";
@@ -319,6 +319,15 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
       const stateObj = states.find((state) => state.name === formData.state);
       if (stateObj) {
         setSelectedStateCode(stateObj.iso2);
+        // Fetch cities when setting state code
+        fetchCities(stateObj.iso2)
+          .then((citiesData) => {
+            setCities(citiesData);
+          })
+          .catch((error) => {
+            console.error("Failed to fetch cities:", error);
+            setCities([]);
+          });
       } else {
         setSelectedStateCode(formData.state as string);
       }
@@ -584,7 +593,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
         }
       }
 
-      if (editData.state) {
+      if (editData.state && states.length > 0) {
         const stateObj = states.find((state) => state.name === editData.state);
         if (stateObj) {
           setSelectedStateCode(stateObj.iso2);
@@ -593,7 +602,10 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
             .then((citiesData) => {
               setCities(citiesData);
             })
-            .catch((error) => {});
+            .catch((error) => {
+              console.error("Failed to fetch cities:", error);
+              setCities([]);
+            });
         }
       }
 

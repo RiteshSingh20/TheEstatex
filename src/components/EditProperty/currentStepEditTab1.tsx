@@ -16,9 +16,10 @@ const calculateTotalPackageEnhanced = (
   tabData: any,
   formData: FormDataType,
   parseIndianCurrency: (value: string) => string,
-  formatIndianCurrency: (value: string | number) => string
+  formatIndianCurrency: (value: string | number) => string,
+  stampRates?: any[]
 ): number => {
-  return calculateUniversalTotalPackage(config, tabData, formData, parseIndianCurrency, formatIndianCurrency);
+  return calculateUniversalTotalPackage(config, tabData, formData, parseIndianCurrency, formatIndianCurrency, stampRates);
 };
 
 interface CurrentStepEditTab1Props {
@@ -39,6 +40,7 @@ interface CurrentStepEditTab1Props {
       psfIncludesFixedComponent?: boolean;
       numberOfParkingIncluded?: string;
       parkingCharges?: string;
+      mandatoryParkingTypologies?: string[];
       pricingConfigs: {
         typology: string;
         saleableArea: string;
@@ -70,6 +72,7 @@ interface CurrentStepEditTab1Props {
         psfIncludesFixedComponent?: boolean;
         numberOfParkingIncluded?: string;
         parkingCharges?: string;
+        mandatoryParkingTypologies?: string[];
           pricingConfigs: {
             typology: string;
             saleableArea: string;
@@ -144,13 +147,22 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
         : subTabData[tabId],
       formData,
       parseIndianCurrency,
-      formatIndianCurrency
+      formatIndianCurrency,
+      stampRates
     );
   };
 
   // Extract tab name update logic to avoid duplication
   const updateTabName = (tabId: number, value: string) => {
-    if (value.trim()) {
+    const wingBuildingNo = subTabData[tabId]?.wingBuildingNo?.trim();
+    
+    if (wingBuildingNo) {
+      setSubTabs((prev) =>
+        prev.map((t) =>
+          t.id === tabId ? { ...t, name: wingBuildingNo } : t
+        )
+      );
+    } else if (value.trim()) {
       setSubTabs((prev) =>
         prev.map((t) =>
           t.id === tabId ? { ...t, name: value.trim() } : t
@@ -165,6 +177,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
       );
     }
   };
+
+
 
   // Function to handle changes that require recalculation
   const handlePricingChange = (
@@ -188,7 +202,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
           prev[tabId],
           formData,
           parseIndianCurrency,
-          formatIndianCurrency
+          formatIndianCurrency,
+          stampRates
         );
         // Ensure totalPackage is always stored as formatted currency
         newConfigs[configIndex].totalPackage = calculatedTotal;
@@ -224,7 +239,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
           { ...updatedData[tabId], [field]: value },
           formData,
           parseIndianCurrency,
-          formatIndianCurrency
+          formatIndianCurrency,
+          stampRates
         )
       })) || [];
 
@@ -252,7 +268,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
             tabData,
             formData,
             parseIndianCurrency,
-            formatIndianCurrency
+            formatIndianCurrency,
+            stampRates
           )
         }));
       }
@@ -270,7 +287,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
             tabData,
             formData,
             parseIndianCurrency,
-            formatIndianCurrency
+            formatIndianCurrency,
+            stampRates
           );
           return { ...config, totalPackage: newTotal };
         });
@@ -311,7 +329,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
     
     // Global function to fix totalPackage in any data structure
     (window as any).fixTotalPackageInFormData = (data: any) => {
-      return fixTotalPackageInData(data, formData, parseIndianCurrency, formatIndianCurrency);
+      return fixTotalPackageInData(data, formData, parseIndianCurrency, formatIndianCurrency, stampRates);
     };
     
     // Force fix typologies totalPackage to match subTabData
@@ -470,15 +488,40 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                         type="text"
                         placeholder="e.g., Bldg 1, Phase 4"
                         value={subTabData[tab.id]?.wingBuildingNo || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setSubTabData((prev) => ({
                             ...prev,
                             [tab.id]: {
                               ...prev[tab.id],
                               wingBuildingNo: e.target.value,
                             },
-                          }))
-                        }
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          const wingBuildingNo = e.target.value.trim();
+                          const reraNumber = subTabData[tab.id]?.mahaReraNumber?.trim();
+                          
+                          if (wingBuildingNo) {
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: wingBuildingNo } : t
+                              )
+                            );
+                          } else if (reraNumber) {
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: reraNumber } : t
+                              )
+                            );
+                          } else {
+                            const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                              )
+                            );
+                          }
+                        }}
                         disabled={!isAdmin}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
@@ -511,7 +554,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 { ...subTabData[tab.id], type: newValue },
                                 formData,
                                 parseIndianCurrency,
-                                formatIndianCurrency
+                                formatIndianCurrency,
+                                stampRates
                               )
                             }));
                             setSubTabData(prev => ({
@@ -560,7 +604,8 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 { ...subTabData[tab.id], projectStatus: newValue },
                                 formData,
                                 parseIndianCurrency,
-                                formatIndianCurrency
+                                formatIndianCurrency,
+                                stampRates
                               )
                             }));
                             setSubTabData(prev => ({
@@ -619,10 +664,56 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                             },
                           }));
                         }}
-                        onBlur={(e) => updateTabName(tab.id, e.target.value)}
+                        onBlur={(e) => {
+                          const wingBuildingNo = subTabData[tab.id]?.wingBuildingNo?.trim();
+                          const reraNumber = e.target.value.trim();
+                          
+                          if (wingBuildingNo) {
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: wingBuildingNo } : t
+                              )
+                            );
+                          } else if (reraNumber) {
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: reraNumber } : t
+                              )
+                            );
+                          } else {
+                            const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                              )
+                            );
+                          }
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === "Tab") {
-                            updateTabName(tab.id, e.currentTarget.value);
+                            const wingBuildingNo = subTabData[tab.id]?.wingBuildingNo?.trim();
+                            const reraNumber = e.currentTarget.value.trim();
+                            
+                            if (wingBuildingNo) {
+                              setSubTabs((prev) =>
+                                prev.map((t) =>
+                                  t.id === tab.id ? { ...t, name: wingBuildingNo } : t
+                                )
+                              );
+                            } else if (reraNumber) {
+                              setSubTabs((prev) =>
+                                prev.map((t) =>
+                                  t.id === tab.id ? { ...t, name: reraNumber } : t
+                                )
+                              );
+                            } else {
+                              const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
+                              setSubTabs((prev) =>
+                                prev.map((t) =>
+                                  t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                                )
+                              );
+                            }
                           }
                         }}
                         disabled={!isAdmin || subTabData[tab.id]?.type === "Pre-launch"}
@@ -1169,13 +1260,36 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           value={formatIndianCurrency(subTabData[tab.id]?.parkingCharges || "")}
                           onChange={(e) => {
                             const numericValue = parseIndianCurrency(e.target.value);
-                            setSubTabData((prev) => ({
-                              ...prev,
-                              [tab.id]: {
-                                ...prev[tab.id],
-                                parkingCharges: numericValue,
-                              },
-                            }));
+                            setSubTabData((prev) => {
+                              const updatedData = {
+                                ...prev,
+                                [tab.id]: {
+                                  ...prev[tab.id],
+                                  parkingCharges: numericValue,
+                                },
+                              };
+                              
+                              // Recalculate totals when parking charges change
+                              const newConfigs = updatedData[tab.id]?.pricingConfigs.map(config => ({
+                                ...config,
+                                totalPackage: calculateTotalPackageEnhanced(
+                                  config,
+                                  updatedData[tab.id],
+                                  formData,
+                                  parseIndianCurrency,
+                                  formatIndianCurrency,
+                                  stampRates
+                                )
+                              })) || [];
+                              
+                              return {
+                                ...updatedData,
+                                [tab.id]: {
+                                  ...updatedData[tab.id],
+                                  pricingConfigs: newConfigs,
+                                },
+                              };
+                            });
                           }}
                           disabled={!isAdmin}
                           className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -1202,13 +1316,36 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                             const updated = e.target.checked
                                               ? [...current, typology]
                                               : current.filter(t => t !== typology);
-                                            setSubTabData((prev) => ({
-                                              ...prev,
-                                              [tab.id]: {
-                                                ...prev[tab.id],
-                                                mandatoryParkingTypologies: updated,
-                                              },
-                                            }));
+                                            setSubTabData((prev) => {
+                                              const updatedData = {
+                                                ...prev,
+                                                [tab.id]: {
+                                                  ...prev[tab.id],
+                                                  mandatoryParkingTypologies: updated,
+                                                },
+                                              };
+                                              
+                                              // Recalculate totals for all configs when mandatory parking changes
+                                              const newConfigs = updatedData[tab.id]?.pricingConfigs.map(config => ({
+                                                ...config,
+                                                totalPackage: calculateTotalPackageEnhanced(
+                                                  config,
+                                                  updatedData[tab.id],
+                                                  formData,
+                                                  parseIndianCurrency,
+                                                  formatIndianCurrency,
+                                                  stampRates
+                                                )
+                                              })) || [];
+                                              
+                                              return {
+                                                ...updatedData,
+                                                [tab.id]: {
+                                                  ...updatedData[tab.id],
+                                                  pricingConfigs: newConfigs,
+                                                },
+                                              };
+                                            });
                                           }}
                                           disabled={!isAdmin}
                                           className="rounded disabled:cursor-not-allowed"

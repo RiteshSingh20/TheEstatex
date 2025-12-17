@@ -4,7 +4,8 @@ export const calculateUniversalTotalPackage = (
   tabData: any,
   formData: any,
   parseIndianCurrency: (value: string) => string,
-  formatIndianCurrency: (value: string | number) => string
+  formatIndianCurrency: (value: string | number) => string,
+  stampRates?: any[]
 ): number => {
   const saleableArea = parseFloat(config.saleableArea) || 0;
   const psfRate = parseFloat(parseIndianCurrency(config.psfRate || "")) || 0;
@@ -12,11 +13,14 @@ export const calculateUniversalTotalPackage = (
   const fixedComponent = parseFloat(parseIndianCurrency(config.fixedComponent || "")) || 0;
   const possessionCharges = parseFloat(parseIndianCurrency(config.possessionCharges || "")) || 0;
   const legalCharges = parseFloat(parseIndianCurrency(formData?.registration || "")) || 0;
+  const parkingCharges = parseFloat(parseIndianCurrency(tabData?.parkingCharges || config.parkingCharges || "")) || 0;
+  const typology = config.typology || "";
+  const mandatoryTypologies = tabData?.mandatoryParkingTypologies || [];
+  const isMandatoryParking = mandatoryTypologies.includes(typology);
 
   if (saleableArea && avRate) {
     const includesFixedComponent = tabData?.psfIncludesFixedComponent || false;
     const projectStatus = tabData?.projectStatus || "";
-    const typology = config.typology || "";
     
     let baseAmount;
     if (includesFixedComponent) {
@@ -25,27 +29,59 @@ export const calculateUniversalTotalPackage = (
       baseAmount = saleableArea * avRate;
     }
     
-    const stampDuty = baseAmount * 0.07;
+    // Add parking charges to baseAmount if mandatory and rates are same
+    if (isMandatoryParking && psfRate === avRate) {
+      baseAmount += parkingCharges;
+    }
+    
+    // Find matching stamp duty rate based on district/jurisdiction
+    let stampDutyRate = 0.07; // Default 7%
+    if (stampRates && formData?.district) {
+      const matchedRate = stampRates.find(
+        (r) =>
+          (r.location || "").toLowerCase() === (formData.district || "").toLowerCase() ||
+          (r.jurisdiction || "").toLowerCase() === (formData.district || "").toLowerCase()
+      );
+      if (matchedRate?.rate) {
+        stampDutyRate = matchedRate.rate / 100; // Convert percentage to decimal
+      }
+    }
+    
+    const stampDuty = Math.ceil((baseAmount * stampDutyRate) / 100) * 100;
     
     let gst = 0;
     if (projectStatus !== 'OC Received') {
       const gstRate = baseAmount > 4500000 ? 0.05 : 0.01;
-      gst = baseAmount * gstRate;
+      gst = Math.ceil(baseAmount * gstRate);
     }
     
     const isJodi = typology.toLowerCase().includes('jodi');
     let registrationFee = 0;
     if (baseAmount > 0) {
-      if (baseAmount < 3000000) {
-        registrationFee = Math.max(100, baseAmount * 0.01);
-        if (isJodi) registrationFee *= 2;
+      if (isJodi) {
+        if (baseAmount <= 6000000) {
+          registrationFee = Math.max(100, baseAmount * 0.01);
+        } else {
+          registrationFee = 60000;
+        }
       } else {
-        registrationFee = isJodi ? 60000 : 30000;
+        if (baseAmount < 3000000) {
+          registrationFee = Math.max(100, baseAmount * 0.01);
+        } else {
+          registrationFee = 30000;
+        }
       }
     }
     
     const perSqFtDifference = saleableArea * (psfRate - avRate);
-    const total = baseAmount + gst + stampDuty + registrationFee + possessionCharges + fixedComponent + perSqFtDifference + legalCharges;
+    
+    // Add parking charges directly to total if mandatory but rates are different
+    let additionalParkingCharges = 0;
+    if (isMandatoryParking && psfRate !== avRate) {
+      additionalParkingCharges = parkingCharges;
+    }
+    
+    const total = baseAmount + gst + stampDuty + registrationFee + possessionCharges + fixedComponent + perSqFtDifference + legalCharges + additionalParkingCharges;
     
     return Math.round(total);
   }
@@ -86,7 +122,8 @@ export const fixTotalPackageInData = (
               tabData,
               formData,
               parseIndianCurrency,
-              formatIndianCurrency
+              formatIndianCurrency,
+              stampRates
             );
             masterCalculation.set(key, calculatedTotal);
             return { ...config, totalPackage: calculatedTotal };
@@ -102,7 +139,8 @@ export const fixTotalPackageInData = (
           typology,
           formData,
           parseIndianCurrency,
-          formatIndianCurrency
+          formatIndianCurrency,
+          stampRates
         );
         return { ...typology, totalPackage: calculatedTotal };
       });
@@ -118,7 +156,8 @@ export const fixTotalPackageInData = (
               tabData,
               formData,
               parseIndianCurrency,
-              formatIndianCurrency
+              formatIndianCurrency,
+              stampRates
             );
             return { ...config, totalPackage: calculatedTotal };
           });
@@ -133,7 +172,8 @@ export const fixTotalPackageInData = (
           typology,
           formData,
           parseIndianCurrency,
-          formatIndianCurrency
+          formatIndianCurrency,
+          stampRates
         );
         return { ...typology, totalPackage: calculatedTotal };
       });
@@ -146,14 +186,15 @@ export const fixTotalPackageInData = (
         fixedData,
         formData,
         parseIndianCurrency,
-        formatIndianCurrency
+        formatIndianCurrency,
+        stampRates
       );
     }
 
     // Recursively fix nested objects
     Object.keys(fixedData).forEach(key => {
       if (typeof fixedData[key] === 'object') {
-        fixedData[key] = fixTotalPackageInData(fixedData[key], formData, parseIndianCurrency, formatIndianCurrency);
+        fixedData[key] = fixTotalPackageInData(fixedData[key], formData, parseIndianCurrency, formatIndianCurrency, stampRates);
       }
     });
 

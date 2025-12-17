@@ -42,6 +42,7 @@ export function currentStepTab1(
       psfIncludesFixedComponent?: boolean;
       numberOfParkingIncluded?: string;
       parkingCharges?: string;
+      mandatoryParkingTypologies?: string[];
       pricingConfigs: {
         typology: string;
         saleableArea: string;
@@ -72,6 +73,7 @@ export function currentStepTab1(
         psfIncludesFixedComponent?: boolean;
         numberOfParkingIncluded?: string;
         parkingCharges?: string;
+        mandatoryParkingTypologies?: string[];
         pricingConfigs: {
           typology: string;
           saleableArea: string;
@@ -258,15 +260,40 @@ export function currentStepTab1(
                         type="text"
                         placeholder="e.g., Bldg 1, Phase 4"
                         value={subTabData[tab.id]?.wingBuildingNo || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setSubTabData((prev) => ({
                             ...prev,
                             [tab.id]: {
                               ...prev[tab.id],
                               wingBuildingNo: e.target.value,
                             },
-                          }))
-                        }
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          const wingBuildingNo = e.target.value.trim();
+                          const reraNumber = subTabData[tab.id]?.mahaReraNumber?.trim();
+                          
+                          if (wingBuildingNo) {
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: wingBuildingNo } : t
+                              )
+                            );
+                          } else if (reraNumber) {
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: reraNumber } : t
+                              )
+                            );
+                          } else {
+                            const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                              )
+                            );
+                          }
+                        }}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                       />
                     </div>
@@ -405,30 +432,26 @@ export function currentStepTab1(
                           }));
                         }}
                         onBlur={(e) => {
-                          const value = e.target.value;
-                          if (value.trim()) {
+                          const wingBuildingNo = subTabData[tab.id]?.wingBuildingNo?.trim();
+                          const reraNumber = e.target.value.trim();
+                          
+                          if (wingBuildingNo) {
                             setSubTabs((prev) =>
                               prev.map((t) =>
-                                t.id === tab.id
-                                  ? {
-                                      ...t,
-                                      name: value.trim(),
-                                    }
-                                  : t
+                                t.id === tab.id ? { ...t, name: wingBuildingNo } : t
+                              )
+                            );
+                          } else if (reraNumber) {
+                            setSubTabs((prev) =>
+                              prev.map((t) =>
+                                t.id === tab.id ? { ...t, name: reraNumber } : t
                               )
                             );
                           } else {
-                            const tabIndex = subTabs.findIndex(
-                              (t) => t.id === tab.id
-                            );
+                            const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
                             setSubTabs((prev) =>
                               prev.map((t) =>
-                                t.id === tab.id
-                                  ? {
-                                      ...t,
-                                      name: `RERA-${tabIndex + 1}`,
-                                    }
-                                  : t
+                                t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
                               )
                             );
                           }
@@ -970,16 +993,101 @@ export function currentStepTab1(
                           value={formatIndianCurrency(subTabData[tab.id]?.parkingCharges || "")}
                           onChange={(e) => {
                             const numericValue = parseIndianCurrency(e.target.value);
-                            setSubTabData((prev) => ({
-                              ...prev,
-                              [tab.id]: {
-                                ...prev[tab.id],
-                                parkingCharges: numericValue,
-                              },
-                            }));
+                            setSubTabData((prev) => {
+                              const updatedData = {
+                                ...prev,
+                                [tab.id]: {
+                                  ...prev[tab.id],
+                                  parkingCharges: numericValue,
+                                },
+                              };
+                              
+                              // Recalculate totals when parking charges change
+                              const newConfigs = updatedData[tab.id]?.pricingConfigs.map(config => ({
+                                ...config,
+                                totalPackage: calculateTotalPackageEnhanced(
+                                  config,
+                                  updatedData[tab.id],
+                                  formData,
+                                  parseIndianCurrency,
+                                  formatIndianCurrency
+                                )
+                              })) || [];
+                              
+                              return {
+                                ...updatedData,
+                                [tab.id]: {
+                                  ...updatedData[tab.id],
+                                  pricingConfigs: newConfigs,
+                                },
+                              };
+                            });
                           }}
                           className="w-32 border border-neutral-300 rounded px-2 py-1 text-sm"
                         />
+                        {subTabData[tab.id]?.parkingCharges && parseIndianCurrency(subTabData[tab.id]?.parkingCharges || "") && (
+                          <>
+                            <div className="ml-4">
+                              <label className="text-sm font-medium text-neutral-700 block mb-2">
+                                Mandatory with:
+                              </label>
+                              <div className="flex flex-wrap gap-4">
+                                {(() => {
+                                  const uniqueTypologies = [...new Set((subTabData[tab.id]?.pricingConfigs || []).map(config => config.typology).filter(Boolean))];
+                                  return uniqueTypologies.length === 0 ? (
+                                    <div className="text-sm text-gray-500">Add typologies first</div>
+                                  ) : (
+                                    uniqueTypologies.map((typology, index) => (
+                                      <label key={index} className="flex items-center gap-2 text-sm">
+                                        <input
+                                          type="checkbox"
+                                          checked={(subTabData[tab.id]?.mandatoryParkingTypologies || []).includes(typology)}
+                                          onChange={(e) => {
+                                            const current = subTabData[tab.id]?.mandatoryParkingTypologies || [];
+                                            const updated = e.target.checked
+                                              ? [...current, typology]
+                                              : current.filter(t => t !== typology);
+                                            setSubTabData((prev) => {
+                                              const updatedData = {
+                                                ...prev,
+                                                [tab.id]: {
+                                                  ...prev[tab.id],
+                                                  mandatoryParkingTypologies: updated,
+                                                },
+                                              };
+                                              
+                                              // Recalculate totals for all configs when mandatory parking changes
+                                              const newConfigs = updatedData[tab.id]?.pricingConfigs.map(config => ({
+                                                ...config,
+                                                totalPackage: calculateTotalPackageEnhanced(
+                                                  config,
+                                                  updatedData[tab.id],
+                                                  formData,
+                                                  parseIndianCurrency,
+                                                  formatIndianCurrency
+                                                )
+                                              })) || [];
+                                              
+                                              return {
+                                                ...updatedData,
+                                                [tab.id]: {
+                                                  ...updatedData[tab.id],
+                                                  pricingConfigs: newConfigs,
+                                                },
+                                              };
+                                            });
+                                          }}
+                                          className="rounded"
+                                        />
+                                        <span>{typology}</span>
+                                      </label>
+                                    ))
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                        </>
+                        )}
                         {subTabData[tab.id]?.parkingCharges && parseIndianCurrency(subTabData[tab.id]?.parkingCharges || "") && (
                           <>
                             <div className="ml-4">

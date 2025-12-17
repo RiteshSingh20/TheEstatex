@@ -1,4 +1,4 @@
-import { StampDutyRate } from '../pages/Compare';
+import { StampDutyRate } from "../components/CompareComponents/Compare";
 
 /**
  * Enhanced stamp duty rate lookup with debugging
@@ -10,52 +10,64 @@ export const findStampDutyRate = (
   debug = false
 ): { rate: StampDutyRate | null; debugInfo: string[] } => {
   const debugInfo: string[] = [];
-  
+
   if (!stampRates || stampRates.length === 0) {
-    debugInfo.push('❌ No stamp duty rates available');
+    debugInfo.push("❌ No stamp duty rates available");
     return { rate: null, debugInfo };
   }
 
   if (!district && !station) {
-    debugInfo.push('❌ No district or station provided');
+    debugInfo.push("❌ No district or station provided");
     return { rate: null, debugInfo };
   }
 
-  const searchTerm = (district || station || '').trim().toLowerCase();
+  const searchTerm = (district || station || "").trim().toLowerCase();
   debugInfo.push(`🔍 Searching for: "${searchTerm}"`);
-  
+
   // Try multiple matching strategies
   let matchedRate = null;
-  
+
   // Strategy 1: Exact jurisdiction match
-  matchedRate = stampRates.find(rate => {
-    const jurisdiction = String(rate.jurisdiction || '').trim().toLowerCase();
+  matchedRate = stampRates.find((rate) => {
+    const jurisdiction = String(rate.jurisdiction || "")
+      .trim()
+      .toLowerCase();
     const match = jurisdiction === searchTerm;
     if (debug) {
-      debugInfo.push(`Check "${rate.jurisdiction}" → "${jurisdiction}" === "${searchTerm}" = ${match}`);
+      debugInfo.push(
+        `Check "${rate.jurisdiction}" → "${jurisdiction}" === "${searchTerm}" = ${match}`
+      );
     }
     return match;
   });
-  
+
   if (matchedRate) {
-    debugInfo.push(`✅ FOUND: ${matchedRate.jurisdiction} (${matchedRate.rate}%)`);
+    debugInfo.push(
+      `✅ FOUND: ${matchedRate.jurisdiction} (${matchedRate.rate}%)`
+    );
     return { rate: matchedRate, debugInfo };
   }
-  
+
   // Strategy 2: Contains match (fallback)
-  matchedRate = stampRates.find(rate => {
-    const jurisdiction = String(rate.jurisdiction || '').trim().toLowerCase();
-    return jurisdiction.includes(searchTerm) || searchTerm.includes(jurisdiction);
+  matchedRate = stampRates.find((rate) => {
+    const jurisdiction = String(rate.jurisdiction || "")
+      .trim()
+      .toLowerCase();
+    return (
+      jurisdiction.includes(searchTerm) || searchTerm.includes(jurisdiction)
+    );
   });
-  
+
   if (matchedRate) {
-    debugInfo.push(`✅ PARTIAL MATCH: ${matchedRate.jurisdiction} (${matchedRate.rate}%)`);
+    debugInfo.push(
+      `✅ PARTIAL MATCH: ${matchedRate.jurisdiction} (${matchedRate.rate}%)`
+    );
     return { rate: matchedRate, debugInfo };
   }
 
   debugInfo.push(`❌ NO MATCH for "${searchTerm}"`);
-  debugInfo.push('Available jurisdictions:');
-  stampRates.forEach(rate => {
+  debugInfo.push("Available jurisdictions:");
+  stampRates.forEach((rate) => {
     debugInfo.push(`  - "${rate.jurisdiction}" (${rate.rate}%)`);
   });
 
@@ -84,7 +96,7 @@ export const debugStampDutyLookup = (
   station?: string
 ): void => {
   const { debugInfo } = findStampDutyRate(stampRates, district, station, true);
-  console.group('🏛️ Stamp Duty Rate Lookup Debug');
-  debugInfo.forEach(info => console.log(info));
+  console.group("🏛️ Stamp Duty Rate Lookup Debug");
+  debugInfo.forEach((info) => console.log(info));
   console.groupEnd();
 };

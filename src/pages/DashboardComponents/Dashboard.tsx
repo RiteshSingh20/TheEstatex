@@ -11,43 +11,53 @@ import {
   Eye,
   ChevronRight,
 } from "lucide-react";
-import { useAuth } from "../utils/authContext";
-import Card from "../components/ui/Card";
-import Button from "../components/ui/Button";
-import Tabs from "../components/ui/Tabs";
+import { useAuth } from "../../utils/authContext";
+import Card from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import Tabs from "../../components/ui/Tabs";
 // import { Tooltip } from "react-tooltip";
-import { fetchBanners } from "../utils/api";
+import { fetchBanners } from "../../utils/api";
 import {
   getUsers,
   getResaleProperties,
   getRentalProperties,
   getCostSheets,
   getUserActiveSubscriptions,
-} from "../utils/firestoreListings";
-import { normalizeForEdit } from "../utils/costSheetAdapter";
-import { generateWhatsAppText } from "../utils/helper";
-import { openWhatsApp } from "../utils/deviceDetection";
-import { stations } from "../utils/stations";
-import { PropertyCategory } from "../types";
-import { CostSheet } from "./Compare";
+} from "../../utils/firestoreListings";
+import { normalizeForEdit } from "../../utils/costSheetAdapter";
+import { generateWhatsAppText } from "../../utils/helper";
+import { openWhatsApp } from "../../utils/deviceDetection";
+import { stations } from "../../utils/stations";
+import { PropertyCategory } from "../../types";
+import { CostSheet } from "../../components/CompareComponents/Compare";
 import toast from "react-hot-toast";
-import { NewPropertyModal } from "../components/NewPropertyTables/NewPropertyModal";
+import { NewPropertyModal } from "../../components/NewPropertyTables/NewPropertyModal";
+import { mediaDisplayComponent } from "./mediaDisplayComponent";
+import { mediaPreviewGridModal } from "./mediaPreviewGridModal";
+import { displayWhatsAppPreview } from "./displayWhatsAppPreview";
+import { newPropertiesActionBar } from "./NewPropertiesComponents/newPropertiesActionBar";
+import { newPropertiesTable } from "./NewPropertiesComponents/newPropertiesTable";
 
 const formatPriceDisplay = (value: string): string => {
-  const num = parseInt(value.replace(/[^0-9]/g, ''));
-  if (isNaN(num) || num === 0) return '';
-  
-  if (num >= 10000000) { // 1 crore or more
+  const num = parseInt(value.replace(/[^0-9]/g, ""));
+  if (isNaN(num) || num === 0) return "";
+
+  if (num >= 10000000) {
+    // 1 crore or more
     const crores = num / 10000000;
     return crores % 1 === 0 ? `₹${crores} Cr` : `₹${crores.toFixed(1)} Cr`;
-  } else if (num >= 100000) { // 1 lakh or more
+  } else if (num >= 100000) {
+    // 1 lakh or more
     const lakhs = num / 100000;
     return lakhs % 1 === 0 ? `₹${lakhs} Lac` : `₹${lakhs.toFixed(1)} Lac`;
-  } else if (num >= 1000) { // 1 thousand or more
+  } else if (num >= 1000) {
+    // 1 thousand or more
     const thousands = num / 1000;
-    return thousands % 1 === 0 ? `₹${thousands} K` : `₹${thousands.toFixed(1)} K`;
+    return thousands % 1 === 0
+      ? `₹${thousands} K`
+      : `₹${thousands.toFixed(1)} K`;
   }
-  return '';
+  return "";
 };
 
 const bhkOptions = [
@@ -154,11 +164,10 @@ const currentYear = new Date().getFullYear();
 
 const possessionOptions = [
   { value: "Ready to Move", label: "Ready to Move" },
-  // generate the next 7 years:
-  ...Array.from({ length: 7 }, (_, i) => {
-    const year = currentYear + i;
-    return { value: year.toString(), label: year.toString() };
-  }),
+  { value: "1-2yrs", label: "1yr to 2yrs (Upto 24 Months)" },
+  { value: "2-3yrs", label: "2yrs to 3yrs (13-36 Months)" },
+  { value: "3-4yrs", label: "3yrs to 4yrs (25-48 Months)" },
+  { value: "4+yrs", label: "4yrs & Above (37+ Months)" },
 ];
 
 const Dashboard = () => {
@@ -204,6 +213,7 @@ const Dashboard = () => {
     petFriendly: undefined as boolean | undefined,
     furnishing: undefined as string | undefined,
     ocRed: undefined as string | undefined,
+    schemes: [] as string[],
   });
   const [appliedFilters, setAppliedFilters] = useState({
     bhkType: "",
@@ -221,6 +231,7 @@ const Dashboard = () => {
     petFriendly: undefined as boolean | undefined,
     furnishing: undefined as string | undefined,
     ocRed: undefined as string | undefined,
+    schemes: [] as string[],
   });
   const [showFilters, setShowFilters] = useState(true);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -247,37 +258,65 @@ const Dashboard = () => {
   const [showSubLocationDropdown, setShowSubLocationDropdown] = useState(false);
   const [subLocationSearchTerm, setSubLocationSearchTerm] = useState("");
   const [selectedSubLocationIndex, setSelectedSubLocationIndex] = useState(-1);
+  const [showSchemesDropdown, setShowSchemesDropdown] = useState(false);
+  const [schemesSearchTerm, setSchemesSearchTerm] = useState("");
+  const [selectedSchemesIndex, setSelectedSchemesIndex] = useState(-1);
   const [locationFilterType, setLocationFilterType] = useState<
     "subLocation" | "society"
   >("subLocation");
   const [isFiltering, setIsFiltering] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewText, setPreviewText] = useState("");
-  const [mediaModal, setMediaModal] = useState<{isOpen: boolean, title: string, files: string[], type: 'image' | 'video' | 'pdf'}>({isOpen: false, title: '', files: [], type: 'image'});
-  const [fullViewer, setFullViewer] = useState<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+  const [mediaModal, setMediaModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    files: string[];
+    type: "image" | "video" | "pdf";
+  }>({ isOpen: false, title: "", files: [], type: "image" });
+  const [fullViewer, setFullViewer] = useState<{
+    isOpen: boolean;
+    files: string[];
+    currentIndex: number;
+    type: "image" | "video" | "pdf";
+  }>({ isOpen: false, files: [], currentIndex: 0, type: "image" });
 
   const navigate = useNavigate();
-  
+
   // Handle compare functionality - opens in new tab with preserved filters
   const handleCompare = () => {
-    console.log('Dashboard: Starting compare with selected sheets:', selectedCostSheets.map(sheet => ({ id: sheet.id, projectName: sheet.projectName })));
-    
+    console.log(
+      "Dashboard: Starting compare with selected sheets:",
+      selectedCostSheets.map((sheet) => ({
+        id: sheet.id,
+        projectName: sheet.projectName,
+      }))
+    );
+
     // Create a unique storage key for this comparison session
-    const storageKey = `compare_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    const storageKey = `compare_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
     // Store selected items in sessionStorage for new tab access (only if items are selected)
     if (selectedCostSheets.length > 0) {
       sessionStorage.setItem(storageKey, JSON.stringify(selectedCostSheets));
-      console.log('Dashboard: Stored data in sessionStorage with key:', storageKey);
+      console.log(
+        "Dashboard: Stored data in sessionStorage with key:",
+        storageKey
+      );
     }
-    
+
     // Create URL with current filters and storage key
     const filterParams = new URLSearchParams();
-    
+
     // Add current filters to URL parameters
     Object.entries(appliedFilters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '' && 
-          !(Array.isArray(value) && value.length === 0)) {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        !(Array.isArray(value) && value.length === 0)
+      ) {
         if (Array.isArray(value)) {
           filterParams.set(key, JSON.stringify(value));
         } else {
@@ -285,73 +324,46 @@ const Dashboard = () => {
         }
       }
     });
-    
+
     // Add property category and selected category
-    filterParams.set('propertyCategory', propertyCategory);
-    filterParams.set('selectedCategory', selectedCategory);
-    
+    filterParams.set("propertyCategory", propertyCategory);
+    filterParams.set("selectedCategory", selectedCategory);
+
     // Add storage key only if we have selected items
     if (selectedCostSheets.length > 0) {
-      filterParams.set('storageKey', storageKey);
+      filterParams.set("storageKey", storageKey);
     }
-    
+
     // Open compare page in new tab with filters
     const compareUrl = `/compare?${filterParams.toString()}`;
-    console.log('Dashboard: Opening compare URL:', compareUrl);
-    window.open(compareUrl, '_blank');
+    console.log("Dashboard: Opening compare URL:", compareUrl);
+    window.open(compareUrl, "_blank");
   };
 
-  // Handle opening compare tab when no properties are selected but filters are applied
-  const handleOpenCompareWithFilters = () => {
-    // Create URL with current filters
-    const filterParams = new URLSearchParams();
-    
-    // Add current filters to URL parameters
-    Object.entries(appliedFilters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '' && 
-          !(Array.isArray(value) && value.length === 0)) {
-        if (Array.isArray(value)) {
-          filterParams.set(key, JSON.stringify(value));
-        } else {
-          filterParams.set(key, String(value));
-        }
-      }
-    });
-    
-    // Add property category and selected category
-    filterParams.set('propertyCategory', propertyCategory);
-    filterParams.set('selectedCategory', selectedCategory);
-    
-    // Open compare page in new tab with filters for auto-population
-    const compareUrl = `/compare?${filterParams.toString()}`;
-    console.log('Dashboard: Opening compare URL with filters for auto-population:', compareUrl);
-    window.open(compareUrl, '_blank');
-  };
-  
   // Parse URL parameters to restore filters when coming back from compare page
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const hasUrlFilters = urlParams.size > 0;
-    
+
     if (hasUrlFilters) {
       const restoredFilters: any = {};
-      
+
       // Parse each filter parameter
       urlParams.forEach((value, key) => {
-        if (key === 'propertyCategory') {
+        if (key === "propertyCategory") {
           setPropertyCategory(value as PropertyCategory);
-        } else if (key === 'selectedCategory') {
+        } else if (key === "selectedCategory") {
           setSelectedCategory(value);
         } else {
           try {
             // Try to parse as JSON for arrays
-            if (value.startsWith('[') && value.endsWith(']')) {
+            if (value.startsWith("[") && value.endsWith("]")) {
               restoredFilters[key] = JSON.parse(value);
-            } else if (value === 'true') {
+            } else if (value === "true") {
               restoredFilters[key] = true;
-            } else if (value === 'false') {
+            } else if (value === "false") {
               restoredFilters[key] = false;
-            } else if (value === 'undefined') {
+            } else if (value === "undefined") {
               restoredFilters[key] = undefined;
             } else {
               restoredFilters[key] = value;
@@ -361,13 +373,13 @@ const Dashboard = () => {
           }
         }
       });
-      
+
       if (Object.keys(restoredFilters).length > 0) {
         setFilters(restoredFilters);
         setAppliedFilters(restoredFilters);
         setHasFiltered(true);
         setEverFiltered(true);
-        
+
         // Auto-apply filters after a short delay to ensure data is loaded
         setTimeout(() => {
           if (propertyCategory === "New") {
@@ -379,127 +391,172 @@ const Dashboard = () => {
           }
         }, 100);
       }
-      
+
       // Clean up URL after restoring filters
-      window.history.replaceState({}, '', window.location.pathname);
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, [location.search]);
 
-  const openMediaModal = (title: string, files: string[], type: 'image' | 'video' | 'pdf' = 'image') => {
-    setMediaModal({isOpen: true, title, files, type});
+  const openMediaModal = (
+    title: string,
+    files: string[],
+    type: "image" | "video" | "pdf" = "image"
+  ) => {
+    setMediaModal({ isOpen: true, title, files, type });
   };
 
   const getMediaSections = (mediaFiles: any) => {
     const sections = [];
-    
+
     if (mediaFiles?.elevationImages?.length > 0) {
-      sections.push({ name: 'Elevation Images', files: mediaFiles.elevationImages, type: 'image' });
+      sections.push({
+        name: "Elevation Images",
+        files: mediaFiles.elevationImages,
+        type: "image",
+      });
     }
     if (mediaFiles?.floorPlanImages?.length > 0) {
-      sections.push({ name: 'Floor Plan Images', files: mediaFiles.floorPlanImages, type: 'image' });
+      sections.push({
+        name: "Floor Plan Images",
+        files: mediaFiles.floorPlanImages,
+        type: "image",
+      });
     }
     if (mediaFiles?.amenitiesImages?.length > 0) {
-      sections.push({ name: 'Amenities Images', files: mediaFiles.amenitiesImages, type: 'image' });
+      sections.push({
+        name: "Amenities Images",
+        files: mediaFiles.amenitiesImages,
+        type: "image",
+      });
     }
     if (mediaFiles?.typologyImages) {
-      Object.entries(mediaFiles.typologyImages).forEach(([typology, images]: [string, any]) => {
-        if (Array.isArray(images) && images.length > 0) {
-          sections.push({ name: `${typology} Images`, files: images, type: 'image' });
+      Object.entries(mediaFiles.typologyImages).forEach(
+        ([typology, images]: [string, any]) => {
+          if (Array.isArray(images) && images.length > 0) {
+            sections.push({
+              name: `${typology} Images`,
+              files: images,
+              type: "image",
+            });
+          }
         }
-      });
+      );
     }
     if (mediaFiles?.projectWalkthrough?.length > 0) {
-      sections.push({ name: 'Project Walkthrough', files: mediaFiles.projectWalkthrough, type: 'video' });
-    }
-    if (mediaFiles?.typologyVideos) {
-      Object.entries(mediaFiles.typologyVideos).forEach(([typology, video]: [string, any]) => {
-        if (video) {
-          sections.push({ name: `${typology} Video`, files: [video], type: 'video' });
-        }
+      sections.push({
+        name: "Project Walkthrough",
+        files: mediaFiles.projectWalkthrough,
+        type: "video",
       });
     }
-    
+    if (mediaFiles?.typologyVideos) {
+      Object.entries(mediaFiles.typologyVideos).forEach(
+        ([typology, video]: [string, any]) => {
+          if (video) {
+            sections.push({
+              name: `${typology} Video`,
+              files: [video],
+              type: "video",
+            });
+          }
+        }
+      );
+    }
+
     return sections;
   };
 
   const getFileName = (url: string): string => {
     try {
       // For Firebase storage URLs, extract the original filename
-      if (url.includes('firebase') || url.includes('googleapis.com')) {
+      if (url.includes("firebase") || url.includes("googleapis.com")) {
         // Look for the filename in the URL path after the last %2F (encoded /)
         const decodedUrl = decodeURIComponent(url);
         const pathMatch = decodedUrl.match(/\/([^/]+)\?/);
         if (pathMatch && pathMatch[1]) {
           // If it contains a path like costSheets/123456/filename.jpg, get just the filename
-          const parts = pathMatch[1].split('/');
+          const parts = pathMatch[1].split("/");
           const filename = parts[parts.length - 1];
           // Skip database-generated names and folder paths
-          if (filename && !filename.match(/^\d+$/) && filename.includes('.')) {
+          if (filename && !filename.match(/^\d+$/) && filename.includes(".")) {
             return filename;
           }
         }
-        
+
         // Alternative: look for filename in the token or alt parameter
         const altMatch = url.match(/[?&]alt=([^&]+)/);
         if (altMatch) {
           const altValue = decodeURIComponent(altMatch[1]);
-          if (altValue !== 'media' && altValue.includes('.')) {
+          if (altValue !== "media" && altValue.includes(".")) {
             return altValue;
           }
         }
       }
-      
+
       // Fallback: extract from URL path
-      const urlParts = url.split('/');
-      const filename = urlParts[urlParts.length - 1].split('?')[0];
+      const urlParts = url.split("/");
+      const filename = urlParts[urlParts.length - 1].split("?")[0];
       const decodedFilename = decodeURIComponent(filename);
-      
+
       // Return filename if it looks like a real file (has extension)
-      if (decodedFilename && decodedFilename.includes('.') && !decodedFilename.match(/^\d+$/)) {
+      if (
+        decodedFilename &&
+        decodedFilename.includes(".") &&
+        !decodedFilename.match(/^\d+$/)
+      ) {
         return decodedFilename;
       }
-      
+
       // Default fallback
-      return 'Media File';
+      return "Media File";
     } catch {
-      return 'Media File';
+      return "Media File";
     }
   };
 
-  const openFullViewer = (files: string[], index: number, type: 'image' | 'video' | 'pdf') => {
-    setFullViewer({isOpen: true, files, currentIndex: index, type});
+  const openFullViewer = (
+    files: string[],
+    index: number,
+    type: "image" | "video" | "pdf"
+  ) => {
+    setFullViewer({ isOpen: true, files, currentIndex: index, type });
   };
 
-  const navigateMedia = (direction: 'prev' | 'next') => {
-    setFullViewer(prev => ({
+  const navigateMedia = (direction: "prev" | "next") => {
+    setFullViewer((prev) => ({
       ...prev,
-      currentIndex: direction === 'prev' 
-        ? (prev.currentIndex - 1 + prev.files.length) % prev.files.length
-        : (prev.currentIndex + 1) % prev.files.length
+      currentIndex:
+        direction === "prev"
+          ? (prev.currentIndex - 1 + prev.files.length) % prev.files.length
+          : (prev.currentIndex + 1) % prev.files.length,
     }));
   };
 
   const handleBrochureClick = (sheet: CostSheet) => {
     if (sheet.mediaFiles?.brochure) {
-      openFullViewer([sheet.mediaFiles.brochure], 0, 'pdf');
+      openFullViewer([sheet.mediaFiles.brochure], 0, "pdf");
     }
   };
 
   const handleVideoClick = (sheet: CostSheet) => {
     const mediaSections = getMediaSections(sheet.mediaFiles);
-    const videoSections = mediaSections.filter(section => section.type === 'video');
+    const videoSections = mediaSections.filter(
+      (section) => section.type === "video"
+    );
     if (videoSections.length > 0) {
-      setSelectedProjectData(sheet);
-      openMediaModal('Videos', [], 'video');
+      setSelectedMediaProjectData(sheet);
+      openMediaModal("Videos", [], "video");
     }
   };
 
   const handleImageClick = (sheet: CostSheet) => {
     const mediaSections = getMediaSections(sheet.mediaFiles);
-    const imageSections = mediaSections.filter(section => section.type === 'image');
+    const imageSections = mediaSections.filter(
+      (section) => section.type === "image"
+    );
     if (imageSections.length > 0) {
-      setSelectedProjectData(sheet);
-      openMediaModal('Images', [], 'image');
+      setSelectedMediaProjectData(sheet);
+      openMediaModal("Images", [], "image");
     }
   };
 
@@ -507,22 +564,27 @@ const Dashboard = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!fullViewer.isOpen) return;
-      
-      if (e.key === 'ArrowLeft') {
+
+      if (e.key === "ArrowLeft") {
         e.preventDefault();
-        navigateMedia('prev');
-      } else if (e.key === 'ArrowRight') {
+        navigateMedia("prev");
+      } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        navigateMedia('next');
-      } else if (e.key === 'Escape') {
+        navigateMedia("next");
+      } else if (e.key === "Escape") {
         e.preventDefault();
-        setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+        setFullViewer({
+          isOpen: false,
+          files: [],
+          currentIndex: 0,
+          type: "image",
+        });
       }
     };
 
     if (fullViewer.isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [fullViewer.isOpen]);
 
@@ -589,14 +651,19 @@ const Dashboard = () => {
     if (propertyCategory === "New") {
       costSheets.forEach((sheet) => {
         const stationToCheck = sheet.station || sheet.location;
-        const isApproved = sheet.isApproved === true || sheet.approvalStatus === 'approved';
-        
+        const isApproved =
+          sheet.isApproved === true || sheet.approvalStatus === "approved";
+
         if (isApproved) {
           // Filter by location if selected
-          if (filters.station && stationToCheck?.toLowerCase().trim() !== filters.station.toLowerCase().trim()) {
+          if (
+            filters.station &&
+            stationToCheck?.toLowerCase().trim() !==
+              filters.station.toLowerCase().trim()
+          ) {
             return;
           }
-          
+
           // Only add typologies that are actually available (not sold out)
           if (sheet.typologies && Array.isArray(sheet.typologies)) {
             sheet.typologies.forEach((typology) => {
@@ -605,11 +672,14 @@ const Dashboard = () => {
               }
             });
           }
-          
+
           // Check subTabData for additional available typologies
           if (sheet.subTabData) {
             Object.values(sheet.subTabData).forEach((tabData: any) => {
-              if (tabData.pricingConfigs && Array.isArray(tabData.pricingConfigs)) {
+              if (
+                tabData.pricingConfigs &&
+                Array.isArray(tabData.pricingConfigs)
+              ) {
                 tabData.pricingConfigs.forEach((config: any) => {
                   if (config.typology && config.availability !== "Sold Out") {
                     typeSet.add(config.typology.trim());
@@ -618,24 +688,30 @@ const Dashboard = () => {
               }
             });
           }
-          
+
           // Fallback to old structure - only if available
           const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
-          const availability = sheet.availability || sheet.typologies?.[0]?.availability;
+          const availability =
+            sheet.availability || sheet.typologies?.[0]?.availability;
           if (flatType && availability !== "Sold Out") {
             typeSet.add(flatType.trim());
           }
         }
       });
     } else {
-      const properties = propertyCategory === "Rental"
-        ? subscriptionFilteredProperties.rental
-        : subscriptionFilteredProperties.resale;
-      
+      const properties =
+        propertyCategory === "Rental"
+          ? subscriptionFilteredProperties.rental
+          : subscriptionFilteredProperties.resale;
+
       properties.forEach((property) => {
         if (property.type && property.listingState !== "Hold") {
           // Filter by location if selected
-          if (filters.station && property.station?.toLowerCase().trim() !== filters.station.toLowerCase().trim()) {
+          if (
+            filters.station &&
+            property.station?.toLowerCase().trim() !==
+              filters.station.toLowerCase().trim()
+          ) {
             return;
           }
           typeSet.add(property.type.trim());
@@ -647,7 +723,12 @@ const Dashboard = () => {
       .filter((type) => type.length > 0)
       .sort()
       .map((type) => ({ value: type, label: type }));
-  }, [subscriptionFilteredProperties, costSheets, propertyCategory, filters.station]);
+  }, [
+    subscriptionFilteredProperties,
+    costSheets,
+    propertyCategory,
+    filters.station,
+  ]);
 
   // Dynamic filter configuration based on selected category
   const getFilterConfig = () => {
@@ -715,19 +796,17 @@ const Dashboard = () => {
       costSheets.forEach((sheet) => {
         const fieldValue =
           locationFilterType === "subLocation"
-            ? (sheet.subLocation || sheet.road)
+            ? sheet.subLocation || sheet.road
             : sheet.projectName;
         const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
-        const availability = sheet.availability || sheet.typologies?.[0]?.availability;
+        const availability =
+          sheet.availability || sheet.typologies?.[0]?.availability;
         const stationToCheck = sheet.station || sheet.location;
-        
-        const isApproved = sheet.isApproved === true || sheet.approvalStatus === 'approved';
-        
-        if (
-          fieldValue &&
-          isApproved &&
-          availability !== "Sold Out"
-        ) {
+
+        const isApproved =
+          sheet.isApproved === true || sheet.approvalStatus === "approved";
+
+        if (fieldValue && isApproved && availability !== "Sold Out") {
           // Filter by property type if selected
           if (
             filters.bhkType &&
@@ -799,12 +878,17 @@ const Dashboard = () => {
 
       // Collect unique location names from property listings based on category
       const additionalLocations = new Set<string>();
-      
+
       if (propertyCategory === "Resale") {
         subscriptionFilteredProperties.resale.forEach((property) => {
           if (property.station) {
             const stationName = property.station.trim();
-            if (stationName && !defaultLocationOptions.some(opt => opt.value.toLowerCase() === stationName.toLowerCase())) {
+            if (
+              stationName &&
+              !defaultLocationOptions.some(
+                (opt) => opt.value.toLowerCase() === stationName.toLowerCase()
+              )
+            ) {
               additionalLocations.add(stationName);
             }
           }
@@ -813,7 +897,12 @@ const Dashboard = () => {
         subscriptionFilteredProperties.rental.forEach((property) => {
           if (property.station) {
             const stationName = property.station.trim();
-            if (stationName && !defaultLocationOptions.some(opt => opt.value.toLowerCase() === stationName.toLowerCase())) {
+            if (
+              stationName &&
+              !defaultLocationOptions.some(
+                (opt) => opt.value.toLowerCase() === stationName.toLowerCase()
+              )
+            ) {
               additionalLocations.add(stationName);
             }
           }
@@ -823,25 +912,32 @@ const Dashboard = () => {
           const stationToCheck = sheet.station || sheet.location;
           if (stationToCheck) {
             const stationName = stationToCheck.trim();
-            if (stationName && !defaultLocationOptions.some(opt => opt.value.toLowerCase() === stationName.toLowerCase())) {
+            if (
+              stationName &&
+              !defaultLocationOptions.some(
+                (opt) => opt.value.toLowerCase() === stationName.toLowerCase()
+              )
+            ) {
               additionalLocations.add(stationName);
             }
           }
         });
       }
-      
+
       // Convert additional locations to options format
       const additionalLocationOptions = Array.from(additionalLocations)
         .sort()
-        .map(location => ({ value: location, label: location }));
-      
+        .map((location) => ({ value: location, label: location }));
+
       // Combine default and additional locations
-      const allLocationOptions = [...defaultLocationOptions, ...additionalLocationOptions];
-      
+      const allLocationOptions = [
+        ...defaultLocationOptions,
+        ...additionalLocationOptions,
+      ];
+
       setLocationOptions(allLocationOptions);
       setStationsLoaded(true);
     } catch (error) {
-      
       setStationsLoaded(true);
     }
   };
@@ -854,6 +950,8 @@ const Dashboard = () => {
 
   const [openProjectModal, setOpenProjectModal] = useState(false);
   const [selectedProjectData, setSelectedProjectData] =
+    useState<CostSheet | null>(null);
+  const [selectedMediaProjectData, setSelectedMediaProjectData] =
     useState<CostSheet | null>(null);
   const [openPropertyModal, setOpenPropertyModal] = useState(false);
   const [selectedPropertyData, setSelectedPropertyData] =
@@ -939,7 +1037,6 @@ const Dashboard = () => {
           setNDStationNames(ndNames);
         }
       } catch (error) {
-        
         if (isMounted) {
           setRRStationNames([]);
           setNDStationNames([]);
@@ -961,10 +1058,20 @@ const Dashboard = () => {
 
   // Update location options when property data changes
   useEffect(() => {
-    if (stationsLoaded && (subscriptionFilteredProperties.resale.length > 0 || subscriptionFilteredProperties.rental.length > 0 || costSheets.length > 0)) {
+    if (
+      stationsLoaded &&
+      (subscriptionFilteredProperties.resale.length > 0 ||
+        subscriptionFilteredProperties.rental.length > 0 ||
+        costSheets.length > 0)
+    ) {
       fetchAvailableStations();
     }
-  }, [subscriptionFilteredProperties, costSheets, stationsLoaded, propertyCategory]);
+  }, [
+    subscriptionFilteredProperties,
+    costSheets,
+    stationsLoaded,
+    propertyCategory,
+  ]);
 
   // Load inventory data silently in background
   useEffect(() => {
@@ -1004,9 +1111,7 @@ const Dashboard = () => {
             rental: allRental as unknown as ResaleProperty[],
           });
         }
-      } catch (error) {
-        
-      }
+      } catch (error) {}
     };
 
     // Load data silently without blocking UI
@@ -1034,9 +1139,7 @@ const Dashboard = () => {
         if (user.role !== "admin" && locations.length === 0) return;
         const data = await fetchBanners(locations);
         if (isMounted) setBanners(data);
-      } catch (error) {
-        
-      }
+      } catch (error) {}
     };
 
     if (
@@ -1062,26 +1165,36 @@ const Dashboard = () => {
       const approvedSheets = allSheets
         .filter((sheet) => {
           // Handle both approval field names
-          return sheet.isApproved === true || sheet.approvalStatus === 'approved';
+          return (
+            sheet.isApproved === true || sheet.approvalStatus === "approved"
+          );
         })
         .map((sheet) => {
           // Normalize data for consistent handling
           const normalized = normalizeForEdit(sheet);
-          
+
           // Handle old structure fields for backward compatibility
-          if (normalized.dataVersion === 'v1') {
+          if (normalized.dataVersion === "v1") {
             return {
               ...normalized,
               // Map old structure fields to expected properties
               station: normalized.station || normalized.location,
               subLocation: normalized.subLocation || normalized.location,
               possession: normalized.possession || normalized.reraPossession,
-              availability: normalized.availibility || normalized.availability || 'Available',
-              brochureUrl: normalized.brochureUrl || normalized.mediaFiles?.brochure,
-              imageUrl: normalized.imageUrl || (normalized.mediaFiles?.elevationImages?.[0]),
-              videoUrl: normalized.videoUrl || (normalized.mediaFiles?.projectWalkthrough?.[0]),
+              availability:
+                normalized.availibility ||
+                normalized.availability ||
+                "Available",
+              brochureUrl:
+                normalized.brochureUrl || normalized.mediaFiles?.brochure,
+              imageUrl:
+                normalized.imageUrl ||
+                normalized.mediaFiles?.elevationImages?.[0],
+              videoUrl:
+                normalized.videoUrl ||
+                normalized.mediaFiles?.projectWalkthrough?.[0],
               // Ensure isApproved is set for consistency
-              isApproved: true
+              isApproved: true,
             };
           } else {
             // Handle new structure
@@ -1090,16 +1203,21 @@ const Dashboard = () => {
               // Map new structure fields
               station: normalized.location,
               subLocation: normalized.subLocation || normalized.road,
-              possession: normalized.possession || normalized.typologies?.[0]?.developerPossession,
-              availability: normalized.typologies?.[0]?.availability || 'Available',
+              possession:
+                normalized.possession ||
+                normalized.typologies?.[0]?.developerPossession,
+              availability:
+                normalized.typologies?.[0]?.availability || "Available",
               brochureUrl: normalized.mediaFiles?.brochure,
               imageUrl: normalized.mediaFiles?.elevationImages?.[0],
               videoUrl: normalized.mediaFiles?.projectWalkthrough?.[0],
               // For new structure, use first typology's totalPackage if main totalPackage is not available
-              totalPackage: normalized.totalPackage || normalized.typologies?.[0]?.totalPackage,
+              totalPackage:
+                normalized.totalPackage ||
+                normalized.typologies?.[0]?.totalPackage,
               flatType: normalized.typologies?.[0]?.typology,
               // Ensure isApproved is set for consistency
-              isApproved: true
+              isApproved: true,
             };
           }
         });
@@ -1144,7 +1262,6 @@ const Dashboard = () => {
             });
 
             if (hasMatch) {
-
             }
             return hasMatch;
           })
@@ -1279,16 +1396,25 @@ const Dashboard = () => {
       }
 
       // Carpet Area filter - use carpetArea for Resale/Rental
-      if (appliedFilters.minCarpetArea && Number(property.carpetArea || 0) < Number(appliedFilters.minCarpetArea)) {
+      if (
+        appliedFilters.minCarpetArea &&
+        Number(property.carpetArea || 0) < Number(appliedFilters.minCarpetArea)
+      ) {
         return false;
       }
-      if (appliedFilters.maxCarpetArea && Number(property.carpetArea || 0) > Number(appliedFilters.maxCarpetArea)) {
+      if (
+        appliedFilters.maxCarpetArea &&
+        Number(property.carpetArea || 0) > Number(appliedFilters.maxCarpetArea)
+      ) {
         return false;
       }
 
       // OC/Red filter (for resale only)
       if (appliedFilters.ocRed !== undefined && propertyCategory === "Resale") {
-        const ocStatus = property.ocAvailable === "Yes" || property.ocAvailable === true ? "OC" : "Red";
+        const ocStatus =
+          property.ocAvailable === "Yes" || property.ocAvailable === true
+            ? "OC"
+            : "Red";
         if (ocStatus !== appliedFilters.ocRed) {
           return false;
         }
@@ -1320,7 +1446,8 @@ const Dashboard = () => {
 
       // Parking filter
       if (appliedFilters.parking !== undefined) {
-        const hasParking = property.parking === "Open" || property.parking === "Covered";
+        const hasParking =
+          property.parking === "Open" || property.parking === "Covered";
         if (hasParking !== appliedFilters.parking) {
           return false;
         }
@@ -1356,7 +1483,7 @@ const Dashboard = () => {
 
     return costSheets.filter((sheet) => {
       const stationToCheck = sheet.station || sheet.location;
-      
+
       // Station filter
       if (appliedFilters.station) {
         const sheetStation = stationToCheck || "";
@@ -1372,7 +1499,7 @@ const Dashboard = () => {
       if (appliedFilters.subLocation.length > 0) {
         const fieldValue =
           locationFilterType === "subLocation"
-            ? (sheet.subLocation || sheet.road)
+            ? sheet.subLocation || sheet.road
             : sheet.projectName;
         if (
           !appliedFilters.subLocation.some(
@@ -1385,30 +1512,36 @@ const Dashboard = () => {
 
       // Check if sheet has any available typologies matching the BHK filter
       let hasMatchingTypology = false;
-      
+
       // Check typologies array
       if (sheet.typologies && Array.isArray(sheet.typologies)) {
         hasMatchingTypology = sheet.typologies.some((typology) => {
           if (typology.availability === "Sold Out") return false;
-          
+
           // BHK filter
           if (appliedFilters.bhkType) {
-            return typology.typology?.toLowerCase() === appliedFilters.bhkType.toLowerCase();
+            return (
+              typology.typology?.toLowerCase() ===
+              appliedFilters.bhkType.toLowerCase()
+            );
           }
           return true; // If no BHK filter, any available typology is valid
         });
       }
-      
+
       // Check subTabData for additional typologies
       if (!hasMatchingTypology && sheet.subTabData) {
         Object.values(sheet.subTabData).forEach((tabData: any) => {
           if (tabData.pricingConfigs && Array.isArray(tabData.pricingConfigs)) {
             const hasMatch = tabData.pricingConfigs.some((config: any) => {
               if (config.availability === "Sold Out") return false;
-              
+
               // BHK filter
               if (appliedFilters.bhkType) {
-                return config.typology?.toLowerCase() === appliedFilters.bhkType.toLowerCase();
+                return (
+                  config.typology?.toLowerCase() ===
+                  appliedFilters.bhkType.toLowerCase()
+                );
               }
               return true; // If no BHK filter, any available typology is valid
             });
@@ -1416,36 +1549,83 @@ const Dashboard = () => {
           }
         });
       }
-      
+
       // Fallback to old structure
       if (!hasMatchingTypology) {
         const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
-        const availability = sheet.availability || sheet.typologies?.[0]?.availability;
-        
+        const availability =
+          sheet.availability || sheet.typologies?.[0]?.availability;
+
         if (availability === "Sold Out") return false;
-        
+
         if (appliedFilters.bhkType) {
-          hasMatchingTypology = flatType?.toLowerCase() === appliedFilters.bhkType.toLowerCase();
+          hasMatchingTypology =
+            flatType?.toLowerCase() === appliedFilters.bhkType.toLowerCase();
         } else {
           hasMatchingTypology = true;
         }
       }
-      
+
       if (!hasMatchingTypology) return false;
 
-      // Other filters (possession, cosmo, amenities, budget, etc.)
-      const possession = sheet.possession || sheet.typologies?.[0]?.developerPossession;
-      
-      // Possession filter
+      // Possession filter - check all subTabData developerPossession dates
       if (appliedFilters.possession) {
-        if (appliedFilters.possession === "Ready to Move") {
-          if (possession?.toLowerCase() !== "ready to move") {
+        const now = new Date();
+        const currentDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        );
+
+        // Collect all unique developerPossession dates from subTabData
+        const possessionDates = new Set<string>();
+        if (sheet.subTabData) {
+          Object.values(sheet.subTabData).forEach((tabData: any) => {
+            if (tabData.developerPossession) {
+              possessionDates.add(tabData.developerPossession);
+            }
+          });
+        }
+        // Also check typologies array
+        if (sheet.typologies && Array.isArray(sheet.typologies)) {
+          sheet.typologies.forEach((typology) => {
+            if (typology.developerPossession) {
+              possessionDates.add(typology.developerPossession);
+            }
+          });
+        }
+
+        // Check if any possession date matches the filter
+        const hasMatchingPossession = Array.from(possessionDates).some(
+          (possessionDate) => {
+            if (appliedFilters.possession === "Ready to Move") {
+              return possessionDate?.toLowerCase() === "ready to move";
+            }
+
+            // Parse the date
+            const possDate = new Date(possessionDate);
+            if (isNaN(possDate.getTime())) return false;
+
+            // Calculate months from current date
+            const monthsDiff =
+              (possDate.getFullYear() - currentDate.getFullYear()) * 12 +
+              (possDate.getMonth() - currentDate.getMonth());
+
+            if (appliedFilters.possession === "1-2yrs") {
+              return monthsDiff >= 0 && monthsDiff <= 24;
+            } else if (appliedFilters.possession === "2-3yrs") {
+              return monthsDiff >= 13 && monthsDiff <= 36;
+            } else if (appliedFilters.possession === "3-4yrs") {
+              return monthsDiff >= 25 && monthsDiff <= 48;
+            } else if (appliedFilters.possession === "4+yrs") {
+              return monthsDiff >= 37;
+            }
             return false;
           }
-        } else {
-          if (!possession?.endsWith(appliedFilters.possession)) {
-            return false;
-          }
+        );
+
+        if (!hasMatchingPossession) {
+          return false;
         }
       }
 
@@ -1474,14 +1654,93 @@ const Dashboard = () => {
         }
       }
 
-      // Budget filter
-      const totalPackage = sheet.totalPackage || sheet.typologies?.[0]?.totalPackage;
-      const pkg = totalPackage || 0;
-      if (appliedFilters.minBudget && pkg < Number(appliedFilters.minBudget)) {
-        return false;
-      }
-      if (appliedFilters.maxBudget && pkg > Number(appliedFilters.maxBudget)) {
-        return false;
+      // Budget filter with negotiation scope
+      if (appliedFilters.minBudget || appliedFilters.maxBudget) {
+        const selectedTypology = appliedFilters.bhkType;
+        let lowestPackage = Infinity;
+        let lowestSaleableArea = 0;
+        let lowestNegotiationScope = 0;
+
+        // Find lowest property for the selected typology
+        if (sheet.typologies && Array.isArray(sheet.typologies)) {
+          sheet.typologies.forEach((typology) => {
+            if (
+              (!selectedTypology || typology.typology === selectedTypology) &&
+              typology.availability !== "Sold Out"
+            ) {
+              const pkgValue = typology.totalPackage;
+              const pkg =
+                typeof pkgValue === "string"
+                  ? Number(pkgValue.replace(/[^0-9]/g, ""))
+                  : pkgValue || 0;
+              if (pkg > 0 && pkg < lowestPackage) {
+                lowestPackage = pkg;
+                lowestSaleableArea = Number(typology.saleableArea) || 0;
+                lowestNegotiationScope = Number(typology.negotiationScope) || 0;
+              }
+            }
+          });
+        }
+
+        if (sheet.subTabData) {
+          Object.values(sheet.subTabData).forEach((tabData: any) => {
+            if (
+              tabData.pricingConfigs &&
+              Array.isArray(tabData.pricingConfigs)
+            ) {
+              tabData.pricingConfigs.forEach((config: any) => {
+                if (
+                  (!selectedTypology || config.typology === selectedTypology) &&
+                  config.availability !== "Sold Out"
+                ) {
+                  const pkgValue = config.totalPackage;
+                  const pkg =
+                    typeof pkgValue === "string"
+                      ? Number(pkgValue.replace(/[^0-9]/g, ""))
+                      : pkgValue || 0;
+                  if (pkg > 0 && pkg < lowestPackage) {
+                    lowestPackage = pkg;
+                    lowestSaleableArea = Number(config.saleableArea) || 0;
+                    lowestNegotiationScope =
+                      Number(config.negotiationScope) || 0;
+                  }
+                }
+              });
+            }
+          });
+        }
+
+        if (lowestPackage === Infinity) return false;
+
+        // Check direct budget match
+        const matchesDirectBudget =
+          (!appliedFilters.minBudget ||
+            lowestPackage >= Number(appliedFilters.minBudget)) &&
+          (!appliedFilters.maxBudget ||
+            lowestPackage <= Number(appliedFilters.maxBudget));
+
+        if (matchesDirectBudget) {
+          (sheet as any)._isNegotiatedMatch = false;
+        } else if (lowestNegotiationScope > 0 && lowestSaleableArea > 0) {
+          // Calculate negotiated price
+          const negotiationAmount = lowestNegotiationScope * lowestSaleableArea;
+          const negotiatedPrice = lowestPackage - negotiationAmount;
+
+          const matchesNegotiatedBudget =
+            (!appliedFilters.minBudget ||
+              negotiatedPrice >= Number(appliedFilters.minBudget)) &&
+            (!appliedFilters.maxBudget ||
+              negotiatedPrice <= Number(appliedFilters.maxBudget));
+
+          if (matchesNegotiatedBudget) {
+            (sheet as any)._isNegotiatedMatch = true;
+            (sheet as any)._negotiatedPrice = negotiatedPrice;
+          } else {
+            return false;
+          }
+        } else {
+          return false;
+        }
       }
 
       // Pet friendly filter
@@ -1493,12 +1752,34 @@ const Dashboard = () => {
       }
 
       // Carpet Area filter for New properties - use reraCarpet field from various data structures
-      const reraCarpetValue = sheet.reraCarpet || sheet.typologies?.[0]?.reraCarpet || sheet.subTabData?.[0]?.pricingConfigs?.[0]?.reraCarpet || 0;
-      if (appliedFilters.minCarpetArea && Number(reraCarpetValue) < Number(appliedFilters.minCarpetArea)) {
+      const reraCarpetValue =
+        sheet.reraCarpet ||
+        sheet.typologies?.[0]?.reraCarpet ||
+        sheet.subTabData?.[0]?.pricingConfigs?.[0]?.reraCarpet ||
+        0;
+      if (
+        appliedFilters.minCarpetArea &&
+        Number(reraCarpetValue) < Number(appliedFilters.minCarpetArea)
+      ) {
         return false;
       }
-      if (appliedFilters.maxCarpetArea && Number(reraCarpetValue) > Number(appliedFilters.maxCarpetArea)) {
+      if (
+        appliedFilters.maxCarpetArea &&
+        Number(reraCarpetValue) > Number(appliedFilters.maxCarpetArea)
+      ) {
         return false;
+      }
+
+      // Schemes filter
+      if (appliedFilters.schemes && appliedFilters.schemes.length > 0) {
+        const sheetSchemes =
+          sheet.paymentSchemes?.map((s: any) => s.schemeName?.trim()) || [];
+        const hasMatchingScheme = appliedFilters.schemes.some(
+          (selectedScheme) => sheetSchemes.includes(selectedScheme)
+        );
+        if (!hasMatchingScheme) {
+          return false;
+        }
       }
 
       return true;
@@ -1508,8 +1789,12 @@ const Dashboard = () => {
   // Clear selected properties when filtered data changes
   useEffect(() => {
     if (propertyCategory !== "New") {
-      const currentFilteredIds = new Set(filteredResaleRentalProperties.map(p => p.docId));
-      setSelectedProperties(prev => prev.filter(p => currentFilteredIds.has(p.docId)));
+      const currentFilteredIds = new Set(
+        filteredResaleRentalProperties.map((p) => p.docId)
+      );
+      setSelectedProperties((prev) =>
+        prev.filter((p) => currentFilteredIds.has(p.docId))
+      );
     }
   }, [filteredResaleRentalProperties, propertyCategory]);
 
@@ -1538,11 +1823,14 @@ const Dashboard = () => {
         const filtered = costSheets.filter((sheet) => {
           // Handle both old and new data structures
           const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
-          const availability = sheet.availability || sheet.typologies?.[0]?.availability;
+          const availability =
+            sheet.availability || sheet.typologies?.[0]?.availability;
           const stationToCheck = sheet.station || sheet.location;
-          const totalPackage = sheet.totalPackage || sheet.typologies?.[0]?.totalPackage;
-          const possession = sheet.possession || sheet.typologies?.[0]?.developerPossession;
-          
+          const totalPackage =
+            sheet.totalPackage || sheet.typologies?.[0]?.totalPackage;
+          const possession =
+            sheet.possession || sheet.typologies?.[0]?.developerPossession;
+
           // Filter out "Sold Out" properties
           if (availability === "Sold Out") return false;
 
@@ -1552,8 +1840,7 @@ const Dashboard = () => {
           // 1) BHK filter (unchanged)
           const matchesBHK =
             !currentFilters.bhkType ||
-            flatType?.toLowerCase() ===
-              currentFilters.bhkType.toLowerCase();
+            flatType?.toLowerCase() === currentFilters.bhkType.toLowerCase();
 
           // 2) Station filter (location dropdown)
           let matchesStation = true;
@@ -1566,16 +1853,62 @@ const Dashboard = () => {
               filterStation.toLowerCase().trim();
           }
 
-          // 3) Possession filter (as before)
+          // 3) Possession filter - check all subTabData developerPossession dates
           let matchesPossession = true;
           if (currentFilters.possession) {
-            if (currentFilters.possession === "Ready to Move") {
-              matchesPossession =
-                possession?.toLowerCase() === "ready to move";
-            } else {
-              matchesPossession =
-                possession?.endsWith(currentFilters.possession) ?? false;
+            const now = new Date();
+            const currentDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate()
+            );
+
+            // Collect all unique developerPossession dates from subTabData
+            const possessionDates = new Set<string>();
+            if (sheet.subTabData) {
+              Object.values(sheet.subTabData).forEach((tabData: any) => {
+                if (tabData.developerPossession) {
+                  possessionDates.add(tabData.developerPossession);
+                }
+              });
             }
+            // Also check typologies array
+            if (sheet.typologies && Array.isArray(sheet.typologies)) {
+              sheet.typologies.forEach((typology) => {
+                if (typology.developerPossession) {
+                  possessionDates.add(typology.developerPossession);
+                }
+              });
+            }
+
+            // Check if any possession date matches the filter
+            matchesPossession = Array.from(possessionDates).some(
+              (possessionDate) => {
+                if (currentFilters.possession === "Ready to Move") {
+                  return possessionDate?.toLowerCase() === "ready to move";
+                }
+
+                // Parse the date
+                const possDate = new Date(possessionDate);
+                if (isNaN(possDate.getTime())) return false;
+
+                // Calculate months from current date
+                const monthsDiff =
+                  (possDate.getFullYear() - currentDate.getFullYear()) * 12 +
+                  (possDate.getMonth() - currentDate.getMonth());
+
+                if (currentFilters.possession === "1-2yrs") {
+                  return monthsDiff >= 0 && monthsDiff <= 24;
+                } else if (currentFilters.possession === "2-3yrs") {
+                  return monthsDiff >= 13 && monthsDiff <= 36;
+                } else if (currentFilters.possession === "3-4yrs") {
+                  return monthsDiff >= 25 && monthsDiff <= 48;
+                } else if (currentFilters.possession === "4+yrs") {
+                  return monthsDiff >= 37;
+                }
+                return false;
+              }
+            );
           }
 
           // 4) Sub Location/Society filter
@@ -1583,7 +1916,7 @@ const Dashboard = () => {
           if (currentFilters.subLocation.length > 0) {
             const fieldValue =
               locationFilterType === "subLocation"
-                ? (sheet.subLocation || sheet.road)
+                ? sheet.subLocation || sheet.road
                 : sheet.projectName;
             matchesSubLocation = currentFilters.subLocation.some(
               (loc) => loc.toLowerCase() === (fieldValue || "").toLowerCase()
@@ -1630,11 +1963,21 @@ const Dashboard = () => {
 
           // 9) Carpet Area filter for New properties - use reraCarpet field from various data structures
           let matchesCarpetArea = true;
-          const reraCarpetValue = sheet.reraCarpet || sheet.typologies?.[0]?.reraCarpet || sheet.subTabData?.[0]?.pricingConfigs?.[0]?.reraCarpet || 0;
-          if (currentFilters.minCarpetArea && Number(reraCarpetValue) < Number(currentFilters.minCarpetArea)) {
+          const reraCarpetValue =
+            sheet.reraCarpet ||
+            sheet.typologies?.[0]?.reraCarpet ||
+            sheet.subTabData?.[0]?.pricingConfigs?.[0]?.reraCarpet ||
+            0;
+          if (
+            currentFilters.minCarpetArea &&
+            Number(reraCarpetValue) < Number(currentFilters.minCarpetArea)
+          ) {
             matchesCarpetArea = false;
           }
-          if (currentFilters.maxCarpetArea && Number(reraCarpetValue) > Number(currentFilters.maxCarpetArea)) {
+          if (
+            currentFilters.maxCarpetArea &&
+            Number(reraCarpetValue) > Number(currentFilters.maxCarpetArea)
+          ) {
             matchesCarpetArea = false;
           }
 
@@ -1772,7 +2115,8 @@ const Dashboard = () => {
 
         // 10) Parking filter
         if (currentFilters.parking !== undefined) {
-          const hasParking = property.parking === "Open" || property.parking === "Covered";
+          const hasParking =
+            property.parking === "Open" || property.parking === "Covered";
           if (hasParking !== currentFilters.parking) {
             return false;
           }
@@ -1841,8 +2185,15 @@ const Dashboard = () => {
       if (!target.closest(".sublocation-dropdown")) {
         setShowSubLocationDropdown(false);
       }
+      if (!target.closest(".schemes-dropdown")) {
+        setShowSchemesDropdown(false);
+      }
       // Close sidebar when clicking outside (but not on property category buttons)
-      if (showFilters && !target.closest(".sidebar-container") && !target.closest("[data-property-category]")) {
+      if (
+        showFilters &&
+        !target.closest(".sidebar-container") &&
+        !target.closest("[data-property-category]")
+      ) {
         setShowFilters(false);
       }
     };
@@ -1864,40 +2215,53 @@ const Dashboard = () => {
   // Global keyboard handler for sublocation dropdown
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (showSubLocationDropdown && (e.key === 'Tab' || e.key === 'Escape')) {
-        if (e.key === 'Tab') {
+      if (showSubLocationDropdown && (e.key === "Tab" || e.key === "Escape")) {
+        if (e.key === "Tab") {
           e.preventDefault();
         }
         setShowSubLocationDropdown(false);
         setSelectedSubLocationIndex(-1);
         setSubLocationSearchTerm("");
       }
+      if (showSchemesDropdown && (e.key === "Tab" || e.key === "Escape")) {
+        if (e.key === "Tab") {
+          e.preventDefault();
+        }
+        setShowSchemesDropdown(false);
+        setSelectedSchemesIndex(-1);
+        setSchemesSearchTerm("");
+      }
     };
 
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showSubLocationDropdown]);
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [showSubLocationDropdown, showSchemesDropdown]);
 
   // Keyboard navigation for full viewer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!fullViewer.isOpen) return;
-      
-      if (e.key === 'ArrowLeft') {
+
+      if (e.key === "ArrowLeft") {
         e.preventDefault();
-        navigateMedia('prev');
-      } else if (e.key === 'ArrowRight') {
+        navigateMedia("prev");
+      } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        navigateMedia('next');
-      } else if (e.key === 'Escape') {
+        navigateMedia("next");
+      } else if (e.key === "Escape") {
         e.preventDefault();
-        setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+        setFullViewer({
+          isOpen: false,
+          files: [],
+          currentIndex: 0,
+          type: "image",
+        });
       }
     };
 
     if (fullViewer.isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [fullViewer.isOpen]);
 
@@ -1918,6 +2282,7 @@ const Dashboard = () => {
       petFriendly: undefined,
       furnishing: undefined,
       ocRed: undefined,
+      schemes: [],
     };
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
@@ -2122,7 +2487,10 @@ const Dashboard = () => {
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               Property Category
             </label>
-            <div className="flex border border-neutral-300 rounded-md overflow-hidden w-full max-w-xs" data-property-category>
+            <div
+              className="flex border border-neutral-300 rounded-md overflow-hidden w-full max-w-xs"
+              data-property-category
+            >
               <button
                 className={`flex-1 py-2 ${
                   propertyCategory === "Resale"
@@ -2187,14 +2555,15 @@ const Dashboard = () => {
                       setSelectedQuickSendIndex(-1);
                     }}
                     onKeyDown={(e) => {
-                      const filteredProjects = [...new Set(
+                      const filteredProjects = [
+                        ...new Set(
                           costSheets
-                            .filter(
-                              (sheet) => {
-                                const availability = sheet.availability || sheet.typologies?.[0]?.availability;
-                                return availability !== "Sold Out";
-                              }
-                            )
+                            .filter((sheet) => {
+                              const availability =
+                                sheet.availability ||
+                                sheet.typologies?.[0]?.availability;
+                              return availability !== "Sold Out";
+                            })
                             .map((sheet) => sheet.projectName?.trim())
                             .filter(
                               (projectName) =>
@@ -2203,13 +2572,18 @@ const Dashboard = () => {
                                   .toLowerCase()
                                   .includes(quickSendSearch.toLowerCase())
                             )
-                        )].sort((a, b) => {
+                        ),
+                      ].sort((a, b) => {
                         const aStartsWithNumber = /^\d/.test(a);
                         const bStartsWithNumber = /^\d/.test(b);
                         if (aStartsWithNumber && !bStartsWithNumber) return -1;
                         if (!aStartsWithNumber && bStartsWithNumber) return 1;
-                        const aClean = a.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        const bClean = b.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const aClean = a
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]/g, "");
+                        const bClean = b
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]/g, "");
                         return aClean < bClean ? -1 : aClean > bClean ? 1 : 0;
                       });
 
@@ -2286,14 +2660,15 @@ const Dashboard = () => {
                   />
                   {showQuickSendDropdown && (
                     <div className="absolute z-[60] w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                      {[...new Set(
+                      {[
+                        ...new Set(
                           costSheets
-                            .filter(
-                              (sheet) => {
-                                const availability = sheet.availability || sheet.typologies?.[0]?.availability;
-                                return availability !== "Sold Out";
-                              }
-                            )
+                            .filter((sheet) => {
+                              const availability =
+                                sheet.availability ||
+                                sheet.typologies?.[0]?.availability;
+                              return availability !== "Sold Out";
+                            })
                             .map((sheet) => sheet.projectName?.trim())
                             .filter(
                               (projectName) =>
@@ -2302,14 +2677,20 @@ const Dashboard = () => {
                                   .toLowerCase()
                                   .includes(quickSendSearch.toLowerCase())
                             )
-                        )]
+                        ),
+                      ]
                         .sort((a, b) => {
                           const aStartsWithNumber = /^\d/.test(a);
                           const bStartsWithNumber = /^\d/.test(b);
-                          if (aStartsWithNumber && !bStartsWithNumber) return -1;
+                          if (aStartsWithNumber && !bStartsWithNumber)
+                            return -1;
                           if (!aStartsWithNumber && bStartsWithNumber) return 1;
-                          const aClean = a.toLowerCase().replace(/[^a-z0-9]/g, '');
-                          const bClean = b.toLowerCase().replace(/[^a-z0-9]/g, '');
+                          const aClean = a
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, "");
+                          const bClean = b
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, "");
                           return aClean < bClean ? -1 : aClean > bClean ? 1 : 0;
                         })
                         .map((projectName, index) => {
@@ -2335,14 +2716,15 @@ const Dashboard = () => {
                             </div>
                           );
                         })}
-                      {[...new Set(
+                      {[
+                        ...new Set(
                           costSheets
-                            .filter(
-                              (sheet) => {
-                                const availability = sheet.availability || sheet.typologies?.[0]?.availability;
-                                return availability !== "Sold Out";
-                              }
-                            )
+                            .filter((sheet) => {
+                              const availability =
+                                sheet.availability ||
+                                sheet.typologies?.[0]?.availability;
+                              return availability !== "Sold Out";
+                            })
                             .map((sheet) => sheet.projectName?.trim())
                             .filter(
                               (projectName) =>
@@ -2351,13 +2733,18 @@ const Dashboard = () => {
                                   .toLowerCase()
                                   .includes(quickSendSearch.toLowerCase())
                             )
-                        )].sort((a, b) => {
+                        ),
+                      ].sort((a, b) => {
                         const aStartsWithNumber = /^\d/.test(a);
                         const bStartsWithNumber = /^\d/.test(b);
                         if (aStartsWithNumber && !bStartsWithNumber) return -1;
                         if (!aStartsWithNumber && bStartsWithNumber) return 1;
-                        const aClean = a.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        const bClean = b.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const aClean = a
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]/g, "");
+                        const bClean = b
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]/g, "");
                         return aClean < bClean ? -1 : aClean > bClean ? 1 : 0;
                       }).length === 0 && (
                         <div className="px-3 py-2 text-neutral-500">
@@ -2531,7 +2918,9 @@ const Dashboard = () => {
                   </div>
                   <div className="space-y-4">
                     <div className="mb-2">
-                      <label className="block text-xs font-medium text-neutral-700 mb-1">Prefix</label>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Prefix
+                      </label>
                       <select
                         id="receiverPrefix"
                         value={receiverPrefix}
@@ -2548,7 +2937,9 @@ const Dashboard = () => {
                     </div>
 
                     <div className="mb-2">
-                      <label className="block text-xs font-medium text-neutral-700 mb-1">Client Name</label>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Client Name
+                      </label>
                       <input
                         id="receiverName"
                         placeholder="Enter client name"
@@ -2559,10 +2950,16 @@ const Dashboard = () => {
                         }}
                         className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
                       />
-                      {nameError && <div className="text-xs text-red-600 mt-1">{nameError}</div>}
+                      {nameError && (
+                        <div className="text-xs text-red-600 mt-1">
+                          {nameError}
+                        </div>
+                      )}
                     </div>
                     <div className="mb-2">
-                      <label className="block text-xs font-medium text-neutral-700 mb-1">Client WhatsApp Number</label>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Client WhatsApp Number
+                      </label>
                       <input
                         id="receiverWhatsApp"
                         placeholder="Enter client WhatsApp number"
@@ -2573,7 +2970,11 @@ const Dashboard = () => {
                         }}
                         className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
                       />
-                      {whatsAppError && <div className="text-xs text-red-600 mt-1">{whatsAppError}</div>}
+                      {whatsAppError && (
+                        <div className="text-xs text-red-600 mt-1">
+                          {whatsAppError}
+                        </div>
+                      )}
                     </div>
                     {/* <Button
                   variant="primary"
@@ -2723,11 +3124,15 @@ const Dashboard = () => {
                     </div>
                     {filterConfig.showPropertyType && (
                       <div className="mb-2">
-                        <label className="block text-xs font-medium text-neutral-700 mb-1">Property Type</label>
+                        <label className="block text-xs font-medium text-neutral-700 mb-1">
+                          Property Type
+                        </label>
                         <select
                           id="bhkType"
                           value={filters.bhkType}
-                          onChange={(e) => handleFilterChange("bhkType", e.target.value)}
+                          onChange={(e) =>
+                            handleFilterChange("bhkType", e.target.value)
+                          }
                           className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-xs focus:outline-none focus:ring-1"
                         >
                           <option value="">Select property type</option>
@@ -2743,7 +3148,9 @@ const Dashboard = () => {
                       <div className="flex gap-1">
                         <div className="w-[120px]">
                           <div className="mb-2">
-                            <label className="block text-xs font-medium text-neutral-700 mb-1">Min. Area</label>
+                            <label className="block text-xs font-medium text-neutral-700 mb-1">
+                              Min. Area
+                            </label>
                             <input
                               id="minArea"
                               placeholder="Min. Area"
@@ -2751,14 +3158,18 @@ const Dashboard = () => {
                               inputMode="numeric"
                               pattern="[0-9]*"
                               value={filters.minBudget}
-                              onChange={(e) => handleFilterChange("minBudget", e.target.value)}
+                              onChange={(e) =>
+                                handleFilterChange("minBudget", e.target.value)
+                              }
                               className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
                             />
                           </div>
                         </div>
                         <div className="w-[120px]">
                           <div className="mb-2">
-                            <label className="block text-xs font-medium text-neutral-700 mb-1">Max. Area</label>
+                            <label className="block text-xs font-medium text-neutral-700 mb-1">
+                              Max. Area
+                            </label>
                             <input
                               id="maxArea"
                               placeholder="Max. Area"
@@ -2766,7 +3177,9 @@ const Dashboard = () => {
                               inputMode="numeric"
                               pattern="[0-9]*"
                               value={filters.maxBudget}
-                              onChange={(e) => handleFilterChange("maxBudget", e.target.value)}
+                              onChange={(e) =>
+                                handleFilterChange("maxBudget", e.target.value)
+                              }
                               className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
                             />
                           </div>
@@ -2776,7 +3189,9 @@ const Dashboard = () => {
                     <div className="flex gap-1">
                       <div className="w-[120px]">
                         <div className="mb-2">
-                          <label className="block text-xs font-medium text-neutral-700 mb-1">Min. Budget</label>
+                          <label className="block text-xs font-medium text-neutral-700 mb-1">
+                            Min. Budget
+                          </label>
                           <input
                             id="minBudget"
                             placeholder="Min. Budget"
@@ -2813,7 +3228,9 @@ const Dashboard = () => {
                       </div>
                       <div className="w-[120px]">
                         <div className="mb-2">
-                          <label className="block text-xs font-medium text-neutral-700 mb-1">Max. Budget</label>
+                          <label className="block text-xs font-medium text-neutral-700 mb-1">
+                            Max. Budget
+                          </label>
                           <input
                             id="maxBudget"
                             placeholder="Max. Budget"
@@ -2854,7 +3271,9 @@ const Dashboard = () => {
                       <div className="flex gap-1">
                         <div className="w-[120px]">
                           <div className="mb-2">
-                            <label className="block text-xs font-medium text-neutral-700 mb-1">Min. Carpet</label>
+                            <label className="block text-xs font-medium text-neutral-700 mb-1">
+                              Min. Carpet
+                            </label>
                             <input
                               id="minCarpetArea"
                               placeholder="Area (sq ft)"
@@ -2863,7 +3282,10 @@ const Dashboard = () => {
                               pattern="[0-9]*"
                               value={filters.minCarpetArea}
                               onChange={(e) =>
-                                handleFilterChange("minCarpetArea", e.target.value)
+                                handleFilterChange(
+                                  "minCarpetArea",
+                                  e.target.value
+                                )
                               }
                               onKeyDown={(e) => {
                                 if (
@@ -2886,7 +3308,9 @@ const Dashboard = () => {
                         </div>
                         <div className="w-[120px]">
                           <div className="mb-2">
-                            <label className="block text-xs font-medium text-neutral-700 mb-1">Max. Carpet</label>
+                            <label className="block text-xs font-medium text-neutral-700 mb-1">
+                              Max. Carpet
+                            </label>
                             <input
                               id="maxCarpetArea"
                               placeholder="Area (sq ft)"
@@ -2895,7 +3319,10 @@ const Dashboard = () => {
                               pattern="[0-9]*"
                               value={filters.maxCarpetArea}
                               onChange={(e) =>
-                                handleFilterChange("maxCarpetArea", e.target.value)
+                                handleFilterChange(
+                                  "maxCarpetArea",
+                                  e.target.value
+                                )
                               }
                               onKeyDown={(e) => {
                                 if (
@@ -3058,7 +3485,10 @@ const Dashboard = () => {
                               // Move focus to next field
                               setTimeout(() => {
                                 const currentElement = e.target as HTMLElement;
-                                const nextElement = currentElement.parentElement?.parentElement?.nextElementSibling?.querySelector('input, select, button') as HTMLElement;
+                                const nextElement =
+                                  currentElement.parentElement?.parentElement?.nextElementSibling?.querySelector(
+                                    "input, select, button"
+                                  ) as HTMLElement;
                                 if (nextElement) {
                                   nextElement.focus();
                                 }
@@ -3137,11 +3567,15 @@ const Dashboard = () => {
                     </div>
                     {filterConfig.showPossession && (
                       <div className="mb-2">
-                        <label className="block text-xs font-medium text-neutral-700 mb-1">Possession by</label>
+                        <label className="block text-xs font-medium text-neutral-700 mb-1">
+                          Possession by
+                        </label>
                         <select
                           id="possession"
                           value={filters.possession}
-                          onChange={(e) => handleFilterChange("possession", e.target.value)}
+                          onChange={(e) =>
+                            handleFilterChange("possession", e.target.value)
+                          }
                           className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
                         >
                           <option value="">Select possession</option>
@@ -3156,17 +3590,21 @@ const Dashboard = () => {
                     {filterConfig.showCosmo && (
                       <div className="border border-neutral-200 rounded-lg p-2">
                         <div className="flex items-center space-x-4">
-                          <span className="text-xs font-medium text-neutral-700 w-[86px]">Cosmo:</span>
+                          <span className="text-xs font-medium text-neutral-700 w-[86px]">
+                            Cosmo:
+                          </span>
                           <div className="flex items-center space-x-3">
                             <label className="flex items-center space-x-1">
                               <input
                                 type="radio"
                                 name="lookingForCosmo"
                                 checked={filters.lookingForCosmo === true}
-                                onClick={() =>
+                                onChange={() =>
                                   handleFilterChange(
                                     "lookingForCosmo",
-                                    filters.lookingForCosmo === true ? undefined : true
+                                    filters.lookingForCosmo === true
+                                      ? undefined
+                                      : true
                                   )
                                 }
                                 className="text-primary focus:ring-primary"
@@ -3178,10 +3616,12 @@ const Dashboard = () => {
                                 type="radio"
                                 name="lookingForCosmo"
                                 checked={filters.lookingForCosmo === false}
-                                onClick={() =>
+                                onChange={() =>
                                   handleFilterChange(
                                     "lookingForCosmo",
-                                    filters.lookingForCosmo === false ? undefined : false
+                                    filters.lookingForCosmo === false
+                                      ? undefined
+                                      : false
                                   )
                                 }
                                 className="text-primary focus:ring-primary"
@@ -3196,17 +3636,21 @@ const Dashboard = () => {
                     {filterConfig.showGalleryTerrace && (
                       <div className="border border-neutral-200 rounded-lg p-2">
                         <div className="flex items-center space-x-4">
-                          <span className="text-xs font-medium text-neutral-700 w-[84px]">BA / TA:</span>
+                          <span className="text-xs font-medium text-neutral-700 w-[84px]">
+                            BA / TA:
+                          </span>
                           <div className="flex items-center space-x-3">
                             <label className="flex items-center space-x-1">
                               <input
                                 type="radio"
                                 name="balconyTerrace"
                                 checked={filters.BalconyorTerrace === "Balcony"}
-                                onClick={() =>
+                                onChange={() =>
                                   handleFilterChange(
                                     "BalconyorTerrace",
-                                    filters.BalconyorTerrace === "Balcony" ? undefined : "Balcony"
+                                    filters.BalconyorTerrace === "Balcony"
+                                      ? undefined
+                                      : "Balcony"
                                   )
                                 }
                                 className="text-primary focus:ring-primary"
@@ -3218,10 +3662,12 @@ const Dashboard = () => {
                                 type="radio"
                                 name="balconyTerrace"
                                 checked={filters.BalconyorTerrace === "Terrace"}
-                                onClick={() =>
+                                onChange={() =>
                                   handleFilterChange(
                                     "BalconyorTerrace",
-                                    filters.BalconyorTerrace === "Terrace" ? undefined : "Terrace"
+                                    filters.BalconyorTerrace === "Terrace"
+                                      ? undefined
+                                      : "Terrace"
                                   )
                                 }
                                 className="text-primary focus:ring-primary"
@@ -3229,6 +3675,200 @@ const Dashboard = () => {
                               <span className="text-xs">Terrace</span>
                             </label>
                           </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {propertyCategory === "New" && (
+                      <div className="schemes-dropdown">
+                        <label className="block text-xs font-medium text-neutral-700 mb-1">
+                          Schemes
+                        </label>
+                        {filters.schemes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {filters.schemes.map((scheme) => (
+                              <span
+                                key={scheme}
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary text-white"
+                              >
+                                {scheme}
+                                <button
+                                  type="button"
+                                  className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-primary-dark"
+                                  onClick={() => {
+                                    const newSchemes = filters.schemes.filter(
+                                      (s) => s !== scheme
+                                    );
+                                    handleFilterChange("schemes", newSchemes);
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="relative">
+                          <input
+                            type="text"
+                            className="w-full rounded-md border border-neutral-300 focus:border-primary focus:ring-primary px-2 py-1 text-sm focus:outline-none focus:ring-1"
+                            placeholder="Search schemes..."
+                            value={schemesSearchTerm}
+                            onChange={(e) => {
+                              setSchemesSearchTerm(e.target.value);
+                              setSelectedSchemesIndex(-1);
+                              setShowSchemesDropdown(true);
+                            }}
+                            onFocus={() => {
+                              setShowSchemesDropdown(true);
+                              setSelectedSchemesIndex(-1);
+                            }}
+                            onKeyDown={(e) => {
+                              const schemesSet = new Set<string>();
+                              costSheets.forEach((sheet) => {
+                                if (
+                                  sheet.paymentSchemes &&
+                                  Array.isArray(sheet.paymentSchemes)
+                                ) {
+                                  sheet.paymentSchemes.forEach(
+                                    (scheme: any) => {
+                                      if (scheme.schemeName)
+                                        schemesSet.add(
+                                          scheme.schemeName.trim()
+                                        );
+                                    }
+                                  );
+                                }
+                              });
+                              const filteredOptions = Array.from(schemesSet)
+                                .sort()
+                                .filter(
+                                  (scheme) =>
+                                    scheme
+                                      .toLowerCase()
+                                      .includes(
+                                        schemesSearchTerm.toLowerCase()
+                                      ) && !filters.schemes.includes(scheme)
+                                );
+                              if (e.key === "ArrowDown") {
+                                e.preventDefault();
+                                setSelectedSchemesIndex((prev) =>
+                                  prev < filteredOptions.length - 1
+                                    ? prev + 1
+                                    : prev
+                                );
+                                if (!showSchemesDropdown)
+                                  setShowSchemesDropdown(true);
+                              } else if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                setSelectedSchemesIndex((prev) =>
+                                  prev > 0 ? prev - 1 : -1
+                                );
+                                if (!showSchemesDropdown)
+                                  setShowSchemesDropdown(true);
+                              } else if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (
+                                  selectedSchemesIndex >= 0 &&
+                                  filteredOptions[selectedSchemesIndex]
+                                ) {
+                                  const newSchemes = [
+                                    ...filters.schemes,
+                                    filteredOptions[selectedSchemesIndex],
+                                  ];
+                                  handleFilterChange("schemes", newSchemes);
+                                  setSchemesSearchTerm("");
+                                  setSelectedSchemesIndex(-1);
+                                }
+                              } else if (e.key === "Escape") {
+                                setShowSchemesDropdown(false);
+                                setSelectedSchemesIndex(-1);
+                              } else if (e.key === "Tab") {
+                                e.preventDefault();
+                                setShowSchemesDropdown(false);
+                                setSelectedSchemesIndex(-1);
+                                setSchemesSearchTerm("");
+                              }
+                            }}
+                          />
+                          {showSchemesDropdown && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                              {(() => {
+                                const schemesSet = new Set<string>();
+                                costSheets.forEach((sheet) => {
+                                  if (
+                                    sheet.paymentSchemes &&
+                                    Array.isArray(sheet.paymentSchemes)
+                                  ) {
+                                    sheet.paymentSchemes.forEach(
+                                      (scheme: any) => {
+                                        if (scheme.schemeName)
+                                          schemesSet.add(
+                                            scheme.schemeName.trim()
+                                          );
+                                      }
+                                    );
+                                  }
+                                });
+                                const filteredOptions = Array.from(schemesSet)
+                                  .sort()
+                                  .filter(
+                                    (scheme) =>
+                                      scheme
+                                        .toLowerCase()
+                                        .includes(
+                                          schemesSearchTerm.toLowerCase()
+                                        ) && !filters.schemes.includes(scheme)
+                                  );
+                                return filteredOptions.length > 0 ? (
+                                  filteredOptions.map((scheme, index) => (
+                                    <div
+                                      key={scheme}
+                                      className={`px-3 py-2 cursor-pointer ${
+                                        index === selectedSchemesIndex
+                                          ? "bg-primary text-white"
+                                          : "hover:bg-neutral-100"
+                                      }`}
+                                      onClick={() => {
+                                        const newSchemes = [
+                                          ...filters.schemes,
+                                          scheme,
+                                        ];
+                                        handleFilterChange(
+                                          "schemes",
+                                          newSchemes
+                                        );
+                                        setSchemesSearchTerm("");
+                                        setSelectedSchemesIndex(-1);
+                                      }}
+                                    >
+                                      {scheme}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="px-3 py-2 text-neutral-500">
+                                    {filters.schemes.length ===
+                                    Array.from(schemesSet).length
+                                      ? "All schemes selected"
+                                      : "No schemes found"}
+                                  </div>
+                                );
+                              })()}
+                              {filters.schemes.length > 0 && (
+                                <div
+                                  className="px-3 py-2 hover:bg-neutral-100 cursor-pointer border-t border-neutral-200 text-red-600"
+                                  onClick={() => {
+                                    handleFilterChange("schemes", []);
+                                    setSchemesSearchTerm("");
+                                    setShowSchemesDropdown(false);
+                                    setSelectedSchemesIndex(-1);
+                                  }}
+                                >
+                                  Clear all selections
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -3250,17 +3890,23 @@ const Dashboard = () => {
                         {propertyCategory !== "New" && (
                           <div className="border border-neutral-200 rounded-lg p-2">
                             <div className="flex items-center space-x-4">
-                              <span className="text-xs font-medium text-neutral-700 w-[86px]">Furnishing:</span>
+                              <span className="text-xs font-medium text-neutral-700 w-[86px]">
+                                Furnishing:
+                              </span>
                               <div className="flex items-center space-x-3">
                                 <label className="flex items-center space-x-1">
                                   <input
                                     type="radio"
                                     name="furnishing"
-                                    checked={filters.furnishing === "Fully Furnished"}
-                                    onClick={() =>
+                                    checked={
+                                      filters.furnishing === "Fully Furnished"
+                                    }
+                                    onChange={() =>
                                       handleFilterChange(
                                         "furnishing",
-                                        filters.furnishing === "Fully Furnished" ? undefined : "Fully Furnished"
+                                        filters.furnishing === "Fully Furnished"
+                                          ? undefined
+                                          : "Fully Furnished"
                                       )
                                     }
                                     className="text-primary focus:ring-primary"
@@ -3271,11 +3917,15 @@ const Dashboard = () => {
                                   <input
                                     type="radio"
                                     name="furnishing"
-                                    checked={filters.furnishing === "Semi-Furnished"}
-                                    onClick={() =>
+                                    checked={
+                                      filters.furnishing === "Semi-Furnished"
+                                    }
+                                    onChange={() =>
                                       handleFilterChange(
                                         "furnishing",
-                                        filters.furnishing === "Semi-Furnished" ? undefined : "Semi-Furnished"
+                                        filters.furnishing === "Semi-Furnished"
+                                          ? undefined
+                                          : "Semi-Furnished"
                                       )
                                     }
                                     className="text-primary focus:ring-primary"
@@ -3289,17 +3939,21 @@ const Dashboard = () => {
                         {propertyCategory !== "New" && (
                           <div className="border border-neutral-200 rounded-lg p-2">
                             <div className="flex items-center space-x-4">
-                              <span className="text-xs font-medium text-neutral-700 w-[86px]">Parking:</span>
+                              <span className="text-xs font-medium text-neutral-700 w-[86px]">
+                                Parking:
+                              </span>
                               <div className="flex items-center space-x-3">
                                 <label className="flex items-center space-x-1">
                                   <input
                                     type="radio"
                                     name="parking"
                                     checked={filters.parking === true}
-                                    onClick={() =>
+                                    onChange={() =>
                                       handleFilterChange(
                                         "parking",
-                                        filters.parking === true ? undefined : true
+                                        filters.parking === true
+                                          ? undefined
+                                          : true
                                       )
                                     }
                                     className="text-primary focus:ring-primary"
@@ -3311,10 +3965,12 @@ const Dashboard = () => {
                                     type="radio"
                                     name="parking"
                                     checked={filters.parking === false}
-                                    onClick={() =>
+                                    onChange={() =>
                                       handleFilterChange(
                                         "parking",
-                                        filters.parking === false ? undefined : false
+                                        filters.parking === false
+                                          ? undefined
+                                          : false
                                       )
                                     }
                                     className="text-primary focus:ring-primary"
@@ -3325,20 +3981,24 @@ const Dashboard = () => {
                             </div>
                           </div>
                         )}
-                        {propertyCategory !== "New" && (
+                        {propertyCategory === "Resale" && (
                           <div className="border border-neutral-200 rounded-lg p-2">
                             <div className="flex items-center space-x-4">
-                              <span className="text-xs font-medium text-neutral-700 w-[88px]">OC Received:</span>
+                              <span className="text-xs font-medium text-neutral-700 w-[88px]">
+                                OC Received:
+                              </span>
                               <div className="flex items-center space-x-3">
                                 <label className="flex items-center space-x-1">
                                   <input
                                     type="radio"
                                     name="ocReceived"
                                     checked={filters.ocRed === "OC"}
-                                    onClick={() =>
+                                    onChange={() =>
                                       handleFilterChange(
                                         "ocRed",
-                                        filters.ocRed === "OC" ? undefined : "OC"
+                                        filters.ocRed === "OC"
+                                          ? undefined
+                                          : "OC"
                                       )
                                     }
                                     className="text-primary focus:ring-primary"
@@ -3350,10 +4010,12 @@ const Dashboard = () => {
                                     type="radio"
                                     name="ocReceived"
                                     checked={filters.ocRed === "Red"}
-                                    onClick={() =>
+                                    onChange={() =>
                                       handleFilterChange(
                                         "ocRed",
-                                        filters.ocRed === "Red" ? undefined : "Red"
+                                        filters.ocRed === "Red"
+                                          ? undefined
+                                          : "Red"
                                       )
                                     }
                                     className="text-primary focus:ring-primary"
@@ -3367,17 +4029,21 @@ const Dashboard = () => {
                         {propertyCategory === "Rental" && (
                           <div className="border border-neutral-200 rounded-lg p-3">
                             <div className="flex items-center space-x-4">
-                              <span className="text-xs font-medium text-neutral-700 w-[86px]">Pet friendly:</span>
+                              <span className="text-xs font-medium text-neutral-700 w-[86px]">
+                                Pet friendly:
+                              </span>
                               <div className="flex items-center space-x-3">
                                 <label className="flex items-center space-x-1">
                                   <input
                                     type="radio"
                                     name="petFriendly"
                                     checked={filters.petFriendly === true}
-                                    onClick={() =>
+                                    onChange={() =>
                                       handleFilterChange(
                                         "petFriendly",
-                                        filters.petFriendly === true ? undefined : true
+                                        filters.petFriendly === true
+                                          ? undefined
+                                          : true
                                       )
                                     }
                                     className="text-primary focus:ring-primary"
@@ -3389,10 +4055,12 @@ const Dashboard = () => {
                                     type="radio"
                                     name="petFriendly"
                                     checked={filters.petFriendly === false}
-                                    onClick={() =>
+                                    onChange={() =>
                                       handleFilterChange(
                                         "petFriendly",
-                                        filters.petFriendly === false ? undefined : false
+                                        filters.petFriendly === false
+                                          ? undefined
+                                          : false
                                       )
                                     }
                                     className="text-primary focus:ring-primary"
@@ -3414,7 +4082,9 @@ const Dashboard = () => {
                               "Club House",
                               "Kid's Play Area",
                               "Modular Kitchen",
-                              ...(propertyCategory !== "New" ? ["Gas Pipeline", "Security"] : []),
+                              ...(propertyCategory !== "New"
+                                ? ["Gas Pipeline", "Security"]
+                                : []),
                             ].map((amenity) => (
                               <label
                                 key={amenity}
@@ -3442,7 +4112,6 @@ const Dashboard = () => {
                             ))}
                           </div>
                         </div>
-
                       </>
                     )}
                     <Button
@@ -3457,10 +4126,14 @@ const Dashboard = () => {
                           setSelectedCostSheets([]);
                         }
                         setShowFilters(false);
-                        
+
                         // Clear URL parameters when applying new filters
                         if (location.search) {
-                          window.history.replaceState({}, '', window.location.pathname);
+                          window.history.replaceState(
+                            {},
+                            "",
+                            window.location.pathname
+                          );
                         }
                       }}
                       disabled={selectedCategory !== "residential"}
@@ -3531,263 +4204,29 @@ const Dashboard = () => {
               ) : (
                 <>
                   {/* Action Bar for New Properties */}
-                  {selectedCostSheets.length > 0 && (
-                    <div className="bg-white rounded-lg shadow-md p-4 mb-4 flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center">
-                          <CheckCheck className="h-5 w-5 text-primary mr-2" />
-                          <span className="font-medium">
-                            {selectedCostSheets.length} properties selected
-                          </span>
-                        </div>
-                        {selectedCostSheets.length > 1 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedCostSheets([])}
-                          >
-                            Clear selection
-                          </Button>
-                        )}
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (!appliedFilters.bhkType) {
-                              toast.error(
-                                "Please select a Configuration (BHK type) first."
-                              );
-                              return;
-                            }
-
-                            if (!hasFiltered) {
-                              toast.error(
-                                "Please apply filters before comparing."
-                              );
-                              return;
-                            }
-
-                            if (selectedCostSheets.length < 1) {
-                              toast.error(
-                                "Please select at least one property to compare."
-                              );
-                              return;
-                            }
-
-                            if (selectedCostSheets.length > 5) {
-                              toast.error(
-                                "You can compare only up to 5 properties. Please deselect some properties."
-                              );
-                              return;
-                            }
-
-                            handleCompare();
-                          }}
-                        >
-                          Compare
-                        </Button>
-
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          icon={<Share2 className="h-4 w-4 mr-1" />}
-                          onClick={sendWhatsAppToInput}
-                        >
-                          Share on WhatsApp
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-
+                  {selectedCostSheets.length > 0 &&
+                    newPropertiesActionBar(
+                      selectedCostSheets,
+                      setSelectedCostSheets,
+                      appliedFilters,
+                      hasFiltered,
+                      handleCompare,
+                      sendWhatsAppToInput
+                    )}
 
                   {/* Updated Cost Sheets Table */}
-                  <div className="overflow-x-auto max-w-full max-h-screen overflow-y-auto sticky top-0 z-40 bg-white">
-                    <table
-                      className="min-w-full divide-y divide-neutral-200 table-auto select-none"
-                      style={{
-                        userSelect: "none",
-                        WebkitUserSelect: "none",
-                        MozUserSelect: "none",
-                        msUserSelect: "none",
-                      }}
-                    >
-                      <thead className="bg-blue-100 border-b-2 border-blue-200 sticky top-0 z-50">
-                        <tr>
-                          <th className="px-4 py-4 text-center text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Sr. No.
-                          </th>
-                          <th className="px-4 py-4 text-center text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Select
-                          </th>
-                          <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Building / Society name
-                          </th>
-                          <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Road / Location
-                          </th>
-                          <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Total Package
-                          </th>
-                          <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Possession Date
-                          </th>
-                          <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Brochure
-                          </th>
-                          <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Image
-                          </th>
-                          <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
-                            Video
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-neutral-200">
-                        {Object.values(
-                          filteredNewProperties.reduce((acc, sheet) => {
-                            const projectName = sheet.projectName;
-                            const totalPackage = sheet.totalPackage || sheet.typologies?.[0]?.totalPackage || 0;
-                            if (
-                              !acc[projectName] ||
-                              totalPackage < (acc[projectName].totalPackage || acc[projectName].typologies?.[0]?.totalPackage || 0)
-                            ) {
-                              acc[projectName] = sheet;
-                            }
-                            return acc;
-                          }, {} as Record<string, (typeof filteredCostSheets)[0]>)
-                        )
-                          .sort((a, b) => {
-                            // Get price from pricingConfigs first, then fallback to typologies
-                            const getPriceForSort = (sheet: any) => {
-                              if (sheet.pricingConfigs && sheet.pricingConfigs.length > 0) {
-                                const firstConfig = sheet.pricingConfigs[0];
-                                if (firstConfig.totalPackage) {
-                                  const cleanPrice = firstConfig.totalPackage.toString().replace(/[₹,]/g, '');
-                                  return Number(cleanPrice) || 0;
-                                }
-                              }
-                              return sheet.totalPackage || sheet.typologies?.[0]?.totalPackage || 0;
-                            };
-                            return getPriceForSort(a) - getPriceForSort(b);
-                          })
-                          .map((sheet, idx) => {
-                            // Handle both data structures for display
-                            const totalPackage = sheet.totalPackage || sheet.typologies?.[0]?.totalPackage;
-                            const subLocation = sheet.subLocation || sheet.road;
-                            const possession = sheet.possession || sheet.typologies?.[0]?.developerPossession;
-                            
-                            return (
-                            <tr key={sheet.id} className="hover:bg-neutral-50">
-                              <td className="px-4 py-4 text-center text-sm text-neutral-500">
-                                {idx + 1}
-                              </td>
-                              <td className="px-4 py-4 text-center">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
-                                  checked={selectedCostSheets.some(
-                                    (cs) => cs.id === sheet.id
-                                  )}
-                                  onChange={() =>
-                                    toggleCostSheetSelection(sheet)
-                                  }
-                                />
-                              </td>
-                              <td
-                                className="px-4 py-4 whitespace-nowrap text-sm text-primary cursor-pointer hover:underline"
-                                onClick={() => handleProjectClick(sheet)}
-                              >
-                                {sheet.projectName}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {subLocation}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-neutral-900">
-                                {(() => {
-                                  // First priority: subTabData total package
-                                  if (sheet.subTabData && sheet.subTabData[0] && sheet.subTabData[0].pricingConfigs && sheet.subTabData[0].pricingConfigs.length > 0) {
-                                    const firstConfig = sheet.subTabData[0].pricingConfigs[0];
-                                    if (firstConfig.totalPackage) {
-                                      const cleanPrice = firstConfig.totalPackage.toString().replace(/[₹,]/g, '');
-                                      const numPrice = Number(cleanPrice);
-                                      return numPrice ? `₹${numPrice.toLocaleString("en-IN")}` : firstConfig.totalPackage;
-                                    }
-                                  }
-                                  // Second priority: pricingConfigs
-                                  if (sheet.pricingConfigs && sheet.pricingConfigs.length > 0) {
-                                    const firstConfig = sheet.pricingConfigs[0];
-                                    if (firstConfig.totalPackage) {
-                                      const cleanPrice = firstConfig.totalPackage.toString().replace(/[₹,]/g, '');
-                                      const numPrice = Number(cleanPrice);
-                                      return numPrice ? `₹${numPrice.toLocaleString("en-IN")}` : firstConfig.totalPackage;
-                                    }
-                                  }
-                                  // Fallback: typologies
-                                  const totalPackage = sheet.totalPackage || sheet.typologies?.[0]?.totalPackage;
-                                  return totalPackage ? `₹${Number(totalPackage).toLocaleString("en-IN")}` : "N/A";
-                                })()}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {(() => {
-                                  if (possession === "Ready to Move" || possession?.toLowerCase() === "ready to move") {
-                                    return "Ready to Move";
-                                  }
-                                  if (possession && possession.includes('-')) {
-                                    try {
-                                      const date = new Date(possession);
-                                      if (!isNaN(date.getTime())) {
-                                        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                                      }
-                                    } catch {}
-                                  }
-                                  return possession || "Ready to Move";
-                                })()}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {sheet.mediaFiles?.brochure ? (
-                                  <button
-                                    onClick={() => openMediaModal('Brochure', [sheet.mediaFiles.brochure], 'pdf')}
-                                    className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-none p-0"
-                                  >
-                                    Available
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-gray-500">-</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {getMediaSections(sheet.mediaFiles).filter(section => section.type === 'image').length > 0 ? (
-                                  <button
-                                    onClick={() => handleImageClick(sheet)}
-                                    className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-none p-0"
-                                  >
-                                    Available
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-gray-500">-</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                                {getMediaSections(sheet.mediaFiles).filter(section => section.type === 'video').length > 0 ? (
-                                  <button
-                                    onClick={() => handleVideoClick(sheet)}
-                                    className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-none p-0"
-                                  >
-                                    Available
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-gray-500">-</span>
-                                )}
-                              </td>
-                            </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
+                  {newPropertiesTable(
+                    filteredNewProperties,
+                    appliedFilters,
+                    selectedCostSheets,
+                    toggleCostSheetSelection,
+                    handleProjectClick,
+                    setSelectedMediaProjectData,
+                    openMediaModal,
+                    getMediaSections,
+                    handleImageClick,
+                    handleVideoClick
+                  )}
                 </>
               )
             ) : !inventoryLoaded ? (
@@ -4130,17 +4569,27 @@ const Dashboard = () => {
       </div>
       {selectedProjectData && (
         <NewPropertyModal
-          Section={({ title, children }: { title: string; children: React.ReactNode }) => (
+          Section={({
+            title,
+            children,
+          }: {
+            title: string;
+            children: React.ReactNode;
+          }) => (
             <div className="mb-6">
-              <h4 className="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">{title}</h4>
+              <h4 className="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                {title}
+              </h4>
               <div className="grid grid-cols-2 gap-4">{children}</div>
             </div>
           )}
           Field={({ label, value }: { label: string; value: any }) => (
             <div>
-              {label && <div className="text-sm text-neutral-500 mb-1">{label}</div>}
+              {label && (
+                <div className="text-sm text-neutral-500 mb-1">{label}</div>
+              )}
               <div className="text-sm font-medium text-neutral-900">
-                {Array.isArray(value) ? value.join(", ") : (value || "-")}
+                {Array.isArray(value) ? value.join(", ") : value || "-"}
               </div>
             </div>
           )}
@@ -4298,185 +4747,30 @@ const Dashboard = () => {
       )}
 
       {/* Message Preview Modal */}
-      {showPreviewModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div
-            className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] flex flex-col mx-4 select-none"
-            style={{
-              userSelect: "none",
-              WebkitUserSelect: "none",
-              MozUserSelect: "none",
-              msUserSelect: "none",
-            }}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Message Preview
-                </h2>
-                <p className="text-sm text-gray-500">
-                  To: {receiverName || "Customer"}
-                </p>
-              </div>
-              <button onClick={() => setShowPreviewModal(false)}>
-                <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-              </button>
-            </div>
-
-            {/* Message Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
-                  {previewText}
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 p-6 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={() => setShowPreviewModal(false)}
-                className="flex-1"
-              >
-                Close
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  openWhatsApp(receiverWhatsApp, previewText);
-                  setShowPreviewModal(false);
-                  setSelectedQuickSendProperty(null);
-                }}
-                className="flex-1"
-              >
-                Send to WhatsApp
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showPreviewModal &&
+        displayWhatsAppPreview(
+          receiverName,
+          setShowPreviewModal,
+          previewText,
+          receiverWhatsApp,
+          setSelectedQuickSendProperty
+        )}
 
       {/* Media Modal */}
-      {mediaModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
-              <h3 className="text-lg font-semibold">{mediaModal.title}</h3>
-              <button onClick={() => setMediaModal({isOpen: false, title: '', files: [], type: 'image'})} className="text-gray-500 hover:text-gray-700">
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4" style={{maxHeight: 'calc(90vh - 80px)'}}>
-              {(() => {
-                // Get the selected sheet from the current context
-                const currentSheet = selectedProjectData || filteredNewProperties.find(sheet => 
-                  sheet.mediaFiles?.brochure || 
-                  sheet.mediaFiles?.elevationImages?.length > 0 || 
-                  sheet.mediaFiles?.projectWalkthrough?.length > 0
-                );
-                
-                if (!currentSheet?.mediaFiles) {
-                  return <div className="text-center text-gray-500 py-8">No media files available</div>;
-                }
-                
-                const mediaSections = getMediaSections(currentSheet.mediaFiles);
-                const filteredSections = mediaModal.type === 'image' 
-                  ? mediaSections.filter(section => section.type === 'image')
-                  : mediaModal.type === 'video'
-                  ? mediaSections.filter(section => section.type === 'video')
-                  : mediaSections;
-                
-                return (
-                  <div className="space-y-6">
-                    {filteredSections.map((section, sectionIndex) => (
-                      <div key={sectionIndex}>
-                        <h4 className="text-md font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">
-                          {section.name}
-                        </h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                          {section.files.map((file, index) => {
-                            const isPdf = file.toLowerCase().includes('.pdf') || file.includes('pdf');
-                            const isVideo = file.toLowerCase().includes('.mp4') || file.toLowerCase().includes('.mov') || file.includes('video');
-                            
-                            return (
-                              <div key={index} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openFullViewer(section.files, index, isPdf ? 'pdf' : isVideo ? 'video' : 'image')}>
-                                {isPdf ? (
-                                  <div className="aspect-square relative overflow-hidden bg-white">
-                                    <iframe src={`${file}#toolbar=0&navpanes=0&scrollbar=0`} className="w-full h-full border-0 transform scale-[0.2] origin-top-left pointer-events-none" style={{width: '500%', height: '500%'}} />
-                                    <div className="absolute bottom-1 right-1 pointer-events-none">
-                                      <svg className="w-4 h-4 text-red-600 bg-white/90 rounded p-0.5" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                ) : isVideo ? (
-                                  <div className="aspect-square relative overflow-hidden">
-                                    <video src={file} className="w-full h-full object-cover" muted />
-                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                                      <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M8 5v14l11-7z" />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <img src={file} alt={`${section.name} ${index + 1}`} className="w-full aspect-square object-cover" />
-                                )}
-                                <div className="p-1">
-                                  <p className="text-xs text-gray-600 truncate" title={getFileName(file)}>{getFileName(file)}</p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
+      {mediaModal.isOpen &&
+        mediaPreviewGridModal(
+          mediaModal,
+          setMediaModal,
+          openFullViewer,
+          selectedMediaProjectData,
+          filteredNewProperties,
+          getMediaSections,
+          getFileName
+        )}
 
       {/* Full Size Media Viewer */}
-      {fullViewer.isOpen && (
-        <div className="fixed inset-0 bg-black/90 flex justify-center items-center z-[9999]">
-          <div className="relative w-full h-full flex items-center justify-center">
-            <button onClick={() => setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'})} className="absolute top-4 right-4 text-white hover:text-gray-300 text-2xl z-10">
-              ✕
-            </button>
-            
-            {fullViewer.files.length > 1 && (
-              <>
-                <button onClick={() => navigateMedia('prev')} className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 text-3xl z-10">
-                  ‹
-                </button>
-                <button onClick={() => navigateMedia('next')} className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 text-3xl z-10">
-                  ›
-                </button>
-              </>
-            )}
-            
-            <div className="w-full h-full flex items-center justify-center p-4">
-              {fullViewer.type === 'pdf' ? (
-                <iframe src={fullViewer.files[fullViewer.currentIndex]} className="w-[90vw] h-[90vh] bg-white rounded" />
-              ) : fullViewer.type === 'video' ? (
-                <video controls className="max-w-[90vw] max-h-[90vh]" src={fullViewer.files[fullViewer.currentIndex]} />
-              ) : (
-                <img src={fullViewer.files[fullViewer.currentIndex]} alt="Full size media" className="max-w-[90vw] max-h-[90vh] object-contain" />
-              )}
-            </div>
-            
-            {fullViewer.files.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded">
-                {fullViewer.currentIndex + 1} / {fullViewer.files.length}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {fullViewer.isOpen &&
+        mediaDisplayComponent(setFullViewer, fullViewer, navigateMedia)}
     </div>
   );
 };

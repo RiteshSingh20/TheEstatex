@@ -1,29 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../utils/firebase';
-import { StampDutyRate } from '../pages/Compare';
+import React, { useState, useEffect } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../utils/firebase";
+import { StampDutyRate } from "./CompareComponents/Compare";
 
 interface StampDutyDebuggerProps {
   district?: string;
   onClose: () => void;
 }
 
-const StampDutyDebugger: React.FC<StampDutyDebuggerProps> = ({ district, onClose }) => {
+const StampDutyDebugger: React.FC<StampDutyDebuggerProps> = ({
+  district,
+  onClose,
+}) => {
   const [stampRates, setStampRates] = useState<StampDutyRate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [testDistrict, setTestDistrict] = useState(district || 'Thane');
+  const [testDistrict, setTestDistrict] = useState(district || "Thane");
 
   useEffect(() => {
     const fetchStampDutyRates = async () => {
       try {
-        const snapshot = await getDocs(collection(db, 'stampDutyRates'));
+        const snapshot = await getDocs(collection(db, "stampDutyRates"));
         const rates: StampDutyRate[] = snapshot.docs.map((doc) => ({
           id: doc.id,
-          ...(doc.data() as Omit<StampDutyRate, 'id'>),
+          ...(doc.data() as Omit<StampDutyRate, "id">),
         }));
         setStampRates(rates);
       } catch (error) {
-        console.error('Failed to fetch stamp duty rates:', error);
+        console.error("Failed to fetch stamp duty rates:", error);
       } finally {
         setLoading(false);
       }
@@ -34,12 +37,14 @@ const StampDutyDebugger: React.FC<StampDutyDebuggerProps> = ({ district, onClose
 
   const findMatchingRate = (districtName: string) => {
     const normalizedDistrict = districtName.trim().toLowerCase();
-    
+
     return stampRates.find((rate) => {
-      const jurisdiction = (rate.jurisdiction || '').trim().toLowerCase();
-      const location = (rate.location || '').trim().toLowerCase();
-      
-      return jurisdiction === normalizedDistrict || location === normalizedDistrict;
+      const jurisdiction = (rate.jurisdiction || "").trim().toLowerCase();
+      const location = (rate.location || "").trim().toLowerCase();
+
+      return (
+        jurisdiction === normalizedDistrict || location === normalizedDistrict
+      );
     });
   };
 
@@ -69,7 +74,9 @@ const StampDutyDebugger: React.FC<StampDutyDebuggerProps> = ({ district, onClose
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Test District:</label>
+          <label className="block text-sm font-medium mb-2">
+            Test District:
+          </label>
           <input
             type="text"
             value={testDistrict}
@@ -80,7 +87,9 @@ const StampDutyDebugger: React.FC<StampDutyDebuggerProps> = ({ district, onClose
         </div>
 
         <div className="mb-6 p-4 bg-gray-50 rounded">
-          <h3 className="font-semibold mb-2">Matching Result for "{testDistrict}":</h3>
+          <h3 className="font-semibold mb-2">
+            Matching Result for "{testDistrict}":
+          </h3>
           {matchingRate ? (
             <div className="text-green-600">
               ✅ Found match: {matchingRate.jurisdiction} - {matchingRate.rate}%
@@ -95,33 +104,50 @@ const StampDutyDebugger: React.FC<StampDutyDebuggerProps> = ({ district, onClose
         </div>
 
         <div>
-          <h3 className="font-semibold mb-3">All Available Stamp Duty Rates ({stampRates.length}):</h3>
+          <h3 className="font-semibold mb-3">
+            All Available Stamp Duty Rates ({stampRates.length}):
+          </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full border border-gray-300">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="border border-gray-300 px-3 py-2 text-left">ID</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left">Jurisdiction</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left">Location</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left">Rate (%)</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left">Match Test</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left">
+                    ID
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left">
+                    Jurisdiction
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left">
+                    Location
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left">
+                    Rate (%)
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left">
+                    Match Test
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {stampRates.map((rate) => {
-                  const isMatch = findMatchingRate(testDistrict)?.id === rate.id;
+                  const isMatch =
+                    findMatchingRate(testDistrict)?.id === rate.id;
                   return (
-                    <tr key={rate.id} className={isMatch ? 'bg-green-100' : ''}>
-                      <td className="border border-gray-300 px-3 py-2 text-sm">{rate.id}</td>
-                      <td className="border border-gray-300 px-3 py-2">
-                        {rate.jurisdiction || 'N/A'}
+                    <tr key={rate.id} className={isMatch ? "bg-green-100" : ""}>
+                      <td className="border border-gray-300 px-3 py-2 text-sm">
+                        {rate.id}
                       </td>
                       <td className="border border-gray-300 px-3 py-2">
-                        {rate.location || 'N/A'}
+                        {rate.jurisdiction || "N/A"}
                       </td>
-                      <td className="border border-gray-300 px-3 py-2">{rate.rate}%</td>
                       <td className="border border-gray-300 px-3 py-2">
-                        {isMatch ? '✅ Match' : ''}
+                        {rate.location || "N/A"}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {rate.rate}%
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {isMatch ? "✅ Match" : ""}
                       </td>
                     </tr>
                   );
@@ -134,9 +160,15 @@ const StampDutyDebugger: React.FC<StampDutyDebuggerProps> = ({ district, onClose
         <div className="mt-6 p-4 bg-blue-50 rounded">
           <h4 className="font-semibold mb-2">Debug Info:</h4>
           <ul className="text-sm space-y-1">
-            <li>• Search term: "{testDistrict}" (normalized: "{testDistrict.trim().toLowerCase()}")</li>
+            <li>
+              • Search term: "{testDistrict}" (normalized: "
+              {testDistrict.trim().toLowerCase()}")
+            </li>
             <li>• Total rates in database: {stampRates.length}</li>
-            <li>• Matching logic: Compares with both jurisdiction and location fields (case-insensitive)</li>
+            <li>
+              • Matching logic: Compares with both jurisdiction and location
+              fields (case-insensitive)
+            </li>
           </ul>
         </div>
       </div>

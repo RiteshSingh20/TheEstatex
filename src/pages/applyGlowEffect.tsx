@@ -5,7 +5,10 @@ import { FormDataType } from "./CostSheetFormProps";
 import { getDocs, collection } from "firebase/firestore";
 import { fetchStates, fetchCities } from "../utils/api";
 import { db } from "../utils/firebase";
-import { StampDutyRate, CostSheet } from "./Compare";
+import {
+  StampDutyRate,
+  CostSheet,
+} from "../components/CompareComponents/Compare";
 
 export function applyGlowEffect() {
   useEffect(() => {
@@ -86,9 +89,7 @@ export function initializeStampRatesAndStates(
           ...(doc.data() as Omit<StampDutyRate, "id">),
         }));
         setStampRates(rates);
-      } catch (error) {
-        
-      }
+      } catch (error) {}
     };
 
     const loadStates = async () => {
@@ -103,12 +104,12 @@ export function initializeStampRatesAndStates(
           );
           if (stateObj) {
             setSelectedStateCode(stateObj.iso2);
-            fetchCities(stateObj.iso2).then(setCities).catch(() => {});
+            fetchCities(stateObj.iso2)
+              .then(setCities)
+              .catch(() => {});
           }
         }
-      } catch (error) {
-        
-      }
+      } catch (error) {}
     };
 
     fetchStampDutyRates();

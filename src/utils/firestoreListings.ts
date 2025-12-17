@@ -15,7 +15,10 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { CostSheet, StampDutyRate } from "../../src/pages/Compare";
+import {
+  CostSheet,
+  StampDutyRate,
+} from "../components/CompareComponents/Compare";
 import { UserRole } from "../../src/types";
 import { toast } from "react-toastify";
 import { ResaleFormData } from "../utils/api";
@@ -386,9 +389,7 @@ export const getCostSheets = async (): Promise<any[]> => {
   const querySnapshot = await getDocs(costSheetCollection);
   return querySnapshot.docs.map((doc) => {
     const data = doc.data();
-    
 
-    
     // Ensure all fields are properly retrieved - preserve original values
     return {
       id: doc.id,
@@ -403,11 +404,15 @@ export const getCostSheets = async (): Promise<any[]> => {
 
 export const updateCostSheet = async (id: string, data: any) => {
   const docRef = doc(db, "TestingCostSheets", id);
-  
+
   // Exclude createdAt and other timestamp fields from updates to preserve original timestamps
   const { createdAt, editedAt, updatedAt, ...updateData } = data;
-  
-  await updateDoc(docRef, { ...updateData, editedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+
+  await updateDoc(docRef, {
+    ...updateData,
+    editedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 };
 
 export const deleteCostSheet = async (id: string) => {

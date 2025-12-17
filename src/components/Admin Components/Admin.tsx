@@ -19,11 +19,7 @@ import { useAuth } from "../../utils/authContext";
 import CostSheetForm from "./CostSheetForm";
 import { useForm } from "react-hook-form";
 // import TagInput from "../utils/rrAmenitiesInput";
-import {
-  ResaleFormData,
-  RentalFormData,
-  fetchStates,
-} from "../../utils/api";
+import { ResaleFormData, RentalFormData, fetchStates } from "../../utils/api";
 import { State, City } from "../../types";
 import {
   onSnapshot,
@@ -39,7 +35,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../utils/firebase";
-import { StampDutyRate } from "../../pages/Compare";
+import { StampDutyRate } from "../CompareComponents/Compare";
 import { UserRole } from "../../types";
 import { usePermissions } from "../../hooks/usePermissions";
 import { stations } from "../../utils/stations";
@@ -2066,35 +2062,51 @@ const Admin = () => {
   const [showNewPropertyModal, setShowNewPropertyModal] = useState<any>(null);
 
   // Media modal states for property details
-  const [mediaModal, setMediaModal] = useState<{isOpen: boolean, title: string, files: string[], type: 'image' | 'video' | 'pdf'}>({isOpen: false, title: '', files: [], type: 'image'});
-  const [fullViewer, setFullViewer] = useState<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+  const [mediaModal, setMediaModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    files: string[];
+    type: "image" | "video" | "pdf";
+  }>({ isOpen: false, title: "", files: [], type: "image" });
+  const [fullViewer, setFullViewer] = useState<{
+    isOpen: boolean;
+    files: string[];
+    currentIndex: number;
+    type: "image" | "video" | "pdf";
+  }>({ isOpen: false, files: [], currentIndex: 0, type: "image" });
 
   // Keyboard navigation for full viewer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!fullViewer.isOpen) return;
-      
-      if (e.key === 'ArrowLeft') {
+
+      if (e.key === "ArrowLeft") {
         e.preventDefault();
-        setFullViewer(prev => ({
+        setFullViewer((prev) => ({
           ...prev,
-          currentIndex: (prev.currentIndex - 1 + prev.files.length) % prev.files.length
+          currentIndex:
+            (prev.currentIndex - 1 + prev.files.length) % prev.files.length,
         }));
-      } else if (e.key === 'ArrowRight') {
+      } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        setFullViewer(prev => ({
+        setFullViewer((prev) => ({
           ...prev,
-          currentIndex: (prev.currentIndex + 1) % prev.files.length
+          currentIndex: (prev.currentIndex + 1) % prev.files.length,
         }));
-      } else if (e.key === 'Escape') {
+      } else if (e.key === "Escape") {
         e.preventDefault();
-        setFullViewer({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+        setFullViewer({
+          isOpen: false,
+          files: [],
+          currentIndex: 0,
+          type: "image",
+        });
       }
     };
 
     if (fullViewer.isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [fullViewer.isOpen]);
 
@@ -2277,7 +2289,13 @@ const Admin = () => {
       {/* New Property Modal */}
       {showNewPropertyModal && (
         <NewPropertyModal
-          Section={({ title, children }: { title: string; children: React.ReactNode }) => (
+          Section={({
+            title,
+            children,
+          }: {
+            title: string;
+            children: React.ReactNode;
+          }) => (
             <div className="mb-6">
               <h4 className="text-lg font-semibold mb-4 text-neutral-800 border-b border-neutral-200 pb-2">
                 {title}

@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../utils/firebase";
 import toast from "react-hot-toast";
-import { StampDutyRate } from "../../pages/Compare";
+import { StampDutyRate } from "../CompareComponents/Compare";
 
 export const StampDutyTab = () => {
   const [rates, setRates] = useState<StampDutyRate[]>([]);
@@ -94,7 +94,6 @@ export const StampDutyTab = () => {
       setRates(updatedRates);
     } catch (err) {
       toast.error("Failed to save rate");
-      
     }
   };
 
@@ -105,7 +104,6 @@ export const StampDutyTab = () => {
       const updatedRates = await getStampDutyRates();
       setRates(updatedRates);
     } catch (error) {
-      
       toast.error("Failed to delete stamp duty rate");
     }
   };
