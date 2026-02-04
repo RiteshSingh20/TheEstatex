@@ -7,8 +7,9 @@ import { useAuth } from "./utils/authContext";
 const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
-const Dashboard = lazy(() => import("./pages/DashboardComponents/Dashboard"));
+const Dashboard = lazy(() => import("./pages/DashboardComponents/Dashboard/Dashboard"));
 const Inventory = lazy(() => import("./pages/Inventory"));
+const PropertyManagement = lazy(() => import("./pages/brokerInventory/PropertyFormSelector"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Subscription = lazy(() => import("./pages/Subscription"));
 const SubscriptionCheckout = lazy(() => import("./pages/SubscriptionCheckout"));
@@ -55,8 +56,12 @@ const AdminRoute = ({ children }: { children: JSX.Element }) => {
     return <Loading />;
   }
 
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
   // Allow admin, manager, and executive roles to access admin panel
-  if (!user || !["admin", "manager", "executive"].includes(user.role)) {
+  if (!["admin", "manager", "executive"].includes(user.role)) {
     return <Navigate to="/dashboard" state={{ from: location }} replace />;
   }
 
@@ -66,11 +71,13 @@ const AdminRoute = ({ children }: { children: JSX.Element }) => {
 // New component for login route to fix hook order violation
 const LoginRoute = () => {
   const { user, loading } = useAuth();
-  const location = useLocation();
 
   if (loading) return <Loading />;
-  if (user)
-    return <Navigate to="/subscription" state={{ from: location }} replace />;
+  
+  // If user is authenticated, show dashboard content instead of redirecting
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return <Login />;
 };
@@ -82,7 +89,7 @@ const SignupRoute = () => {
 
   if (loading) return <Loading />;
   if (user) {
-    // Check if just completed signup
+    // For signup, redirect to subscription for new users
     const from = location.state?.from?.pathname || "/subscription";
     return <Navigate to={from} replace />;
   }
@@ -123,6 +130,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Inventory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="property-management"
+            element={
+              <ProtectedRoute>
+                <PropertyManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="brokerInventory"
+            element={
+              <ProtectedRoute>
+                <PropertyManagement />
               </ProtectedRoute>
             }
           />

@@ -255,8 +255,6 @@ export function handleNewEntryForm(
                       states,
                       selectedStateCode,
                       handleStateChange,
-                      stampRates,
-                      setShowJurisdictionModal,
                       cities,
                       handleInputChange,
                       locationData

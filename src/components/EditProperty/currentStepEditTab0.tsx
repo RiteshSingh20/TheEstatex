@@ -1,7 +1,6 @@
 import React from "react";
 import { FormDataType, toTitleCase } from "../../pages/CostSheetFormProps";
 import { State, City } from "../../types";
-import { StampDutyRate } from "../CompareModal";
 import LocationDropdown from "../ui/LocationDropdown";
 import { useLocationData } from "../../hooks/useLocationData";
 
@@ -11,8 +10,6 @@ export function currentStepEditTab0(
   states: State[],
   selectedStateCode: string,
   handleStateChange: (e: React.ChangeEvent<HTMLSelectElement>) => Promise<void>,
-  stampRates: StampDutyRate[],
-
   cities: City[],
   handleInputChange: (
     e: React.ChangeEvent<
@@ -46,7 +43,6 @@ export function currentStepEditTab0(
     searchLandmarks = () => {},
   } = locationData || {};
   return (
-    <>
     <div className="space-y-4">
       {/* Project Basic Information Section */}
       <div className="bg-neutral-50 p-4 rounded-lg border">
@@ -392,58 +388,5 @@ export function currentStepEditTab0(
         </div>
       </div>
     </div>
-
-    {/* Jurisdiction Modal */}
-    {formData.district && stampRates.length > 0 && !stampRates.some(rate => rate.jurisdiction?.toLowerCase() === formData.district.toLowerCase()) && (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-white shadow-2xl rounded-2xl p-6 sm:p-8 w-full max-w-md mx-4 animate-in fade-in zoom-in">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6 text-red-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L4.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg sm:text-xl font-semibold text-red-600">
-              Jurisdiction Data Missing
-            </h3>
-          </div>
-
-          <p className="text-gray-700 mb-3">
-            We couldn't find jurisdiction data required to calculate the Stamp
-            Duty for the selected district:
-            <span className="font-medium text-gray-900 ml-1">
-              {formData.district}
-            </span>
-            .
-          </p>
-
-          <p className="text-gray-600 mb-6">
-            Please verify the district selection or contact your administrator
-            to update the jurisdiction details.
-          </p>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => setFormData(prev => ({ ...prev, district: '' }))}
-              className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-    </>
   );
 }

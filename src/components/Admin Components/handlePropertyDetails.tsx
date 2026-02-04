@@ -13,6 +13,7 @@ import Button from "../ui/Button";
 import Input from "../ui/Input";
 import SearchableDropdown from "../ui/SearchableDropdown";
 import { Property } from "./helperFunctions";
+import { TYPOLOGIES } from "../../constants/typologies";
 
 interface ShowPropertyDetails extends Property {
   category?: string;
@@ -299,46 +300,52 @@ export function handlePropertyDetails(
                 {(() => {
                   // Helper function to format possession dates by RERA number
                   const formatPossessionDates = (dateField: string) => {
-                    const typologies = showPropertyDetails.typologies;
-                    if (!typologies || !Array.isArray(typologies)) {
+                    const subTabData = showPropertyDetails.subTabData;
+                    if (!subTabData) {
                       return dateField === 'reraPossession' ? showPropertyDetails.reraPossession || "-" : "-";
                     }
                     
-                    const reraDateMap = new Map();
-                    typologies.forEach((t: any) => {
-                      const reraNumber = t.mahaReraNumber;
-                      const date = t[dateField];
-                      if (reraNumber && date) {
+                    // Use subTabData sequence (sorted by keys)
+                    const orderedDates: string[] = [];
+                    Object.keys(subTabData).sort().forEach(key => {
+                      const tabData = subTabData[key];
+                      const date = tabData[dateField];
+                      if (date) {
                         try {
                           const formattedDate = new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                          reraDateMap.set(reraNumber, formattedDate);
+                          if (!orderedDates.includes(formattedDate)) {
+                            orderedDates.push(formattedDate);
+                          }
                         } catch {}
                       }
                     });
                     
-                    const uniqueDates = Array.from(reraDateMap.values());
-                    return uniqueDates.length > 0 ? uniqueDates.join(' | ') : (dateField === 'reraPossession' ? showPropertyDetails.reraPossession || "-" : "-");
+                    return orderedDates.length > 0 ? orderedDates.join(' | ') : (dateField === 'reraPossession' ? showPropertyDetails.reraPossession || "-" : "-");
                   };
 
                   // Helper function to format RERA numbers
                   const formatReraNumbers = () => {
-                    const typologies = showPropertyDetails.typologies;
-                    if (!typologies || !Array.isArray(typologies)) {
+                    const subTabData = showPropertyDetails.subTabData;
+                    if (!subTabData) {
                       return showPropertyDetails.mahaReraNumber || "-";
                     }
                     
-                    const reraMap = new Map();
-                    typologies.forEach((t: any) => {
-                      if (t.mahaReraNumber) {
-                        reraMap.set(t.mahaReraNumber, t.mahaReraLink);
+                    // Use subTabData sequence (sorted by keys)
+                    const orderedReraEntries: Array<[string, string]> = [];
+                    Object.keys(subTabData).sort().forEach(key => {
+                      const tabData = subTabData[key];
+                      const reraNumber = tabData.mahaReraNumber;
+                      const reraLink = tabData.mahaReraLink;
+                      if (reraNumber && !orderedReraEntries.some(([num]) => num === reraNumber)) {
+                        orderedReraEntries.push([reraNumber, reraLink]);
                       }
                     });
                     
-                    if (reraMap.size === 0) return showPropertyDetails.mahaReraNumber || "-";
+                    if (orderedReraEntries.length === 0) return showPropertyDetails.mahaReraNumber || "-";
                     
                     return (
                       <span>
-                        {Array.from(reraMap.entries()).map(([reraNumber, reraLink], index) => (
+                        {orderedReraEntries.map(([reraNumber, reraLink], index) => (
                           <span key={reraNumber}>
                             {index > 0 && " | "}
                             {reraLink ? (
@@ -383,6 +390,8 @@ export function handlePropertyDetails(
                   };
 
                   const typologies = showPropertyDetails.typologies;
+                  const subTabData = showPropertyDetails.subTabData;
+                  
                   const groupedByWing = typologies ? typologies.reduce((acc: any, typology: any) => {
                     const wingNumber = typology.wingBuildingNo || typology.mahaReraNumber || 'No Wing';
                     if (!acc[wingNumber]) acc[wingNumber] = [];
@@ -390,7 +399,13 @@ export function handlePropertyDetails(
                     return acc;
                   }, {}) : {};
                   
-                  const wingNumbers = Object.keys(groupedByWing);
+                  // Use subTabData for tab ordering if available, otherwise fallback to typologies order
+                  const wingNumbers = subTabData 
+                    ? Object.keys(subTabData).sort().map(key => {
+                        const tabData = subTabData[key];
+                        return tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
+                      })
+                    : Object.keys(groupedByWing);
                   
                   // Create a simple component for the pricing section with tabs
                   const PricingSection = () => {
@@ -490,28 +505,70 @@ export function handlePropertyDetails(
                         
                         {/* Flats per Floor field below the table */}
                         <div className="mt-4 p-3 bg-blue-50 rounded border">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-neutral-700">Flats per Floor:</span>
-                            <span className="text-sm text-neutral-800">
-                            {(() => {
-                              // Check if new format (subTabData) exists
-                              if (showPropertyDetails.subTabData) {
-                                const subTabData = showPropertyDetails.subTabData;
-                                // Find the flatsPerFloor for the current active tab
-                                const activeTabData = Object.entries(subTabData).find(([_, tabData]: [string, any]) => {
-                                  const wingName = tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
-                                  return wingName === activeTab;
-                                });
-                                
-                                if (activeTabData && activeTabData[1]?.flatsPerFloor) {
-                                  return activeTabData[1].flatsPerFloor;
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-neutral-700">Flats per Floor:</span>
+                              <span className="text-sm text-neutral-800">
+                              {(() => {
+                                // Check if new format (subTabData) exists
+                                if (showPropertyDetails.subTabData) {
+                                  const subTabData = showPropertyDetails.subTabData;
+                                  // Find the flatsPerFloor for the current active tab
+                                  const activeTabData = Object.entries(subTabData).find(([_, tabData]: [string, any]) => {
+                                    const wingName = tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
+                                    return wingName === activeTab;
+                                  });
+                                  
+                                  if (activeTabData && activeTabData[1]?.flatsPerFloor) {
+                                    return activeTabData[1].flatsPerFloor;
+                                  }
                                 }
-                              }
-                              
-                              // Fallback to old format
-                              return showPropertyDetails.flatsPerFloor || "Not specified";
-                            })()} 
-                            </span>
+                                
+                                // Fallback to old format
+                                return showPropertyDetails.flatsPerFloor || "Not specified";
+                              })()} 
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-neutral-700">Parking Charges:</span>
+                              <span className="text-sm text-neutral-800">
+                              {(() => {
+                                if (showPropertyDetails.subTabData) {
+                                  const subTabData = showPropertyDetails.subTabData;
+                                  const activeTabData = Object.entries(subTabData).find(([_, tabData]: [string, any]) => {
+                                    const wingName = tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
+                                    return wingName === activeTab;
+                                  });
+                                  
+                                  if (activeTabData && activeTabData[1]) {
+                                    const tabData = activeTabData[1];
+                                    
+                                    // Check if parking is included in PSF
+                                    if (tabData.psfIncludesParking && tabData.numberOfParkingIncluded && parseInt(tabData.numberOfParkingIncluded) > 0) {
+                                      return `${tabData.numberOfParkingIncluded} Parking included in the cost`;
+                                    }
+                                    
+                                    // Show parking charges if available
+                                    if (tabData.parkingCharges) {
+                                      const parkingAmount = `₹${parseFloat(tabData.parkingCharges).toLocaleString('en-IN')}`;
+                                      const mandatoryTypologies = tabData.mandatoryParkingTypologies;
+                                      
+                                      if (mandatoryTypologies && Array.isArray(mandatoryTypologies) && mandatoryTypologies.length > 0) {
+                                        const sortedTypologies = mandatoryTypologies.sort((a, b) => {
+                                          const indexA = TYPOLOGIES.indexOf(a);
+                                          const indexB = TYPOLOGIES.indexOf(b);
+                                          return indexA - indexB;
+                                        });
+                                        return `${parkingAmount} included in ${sortedTypologies.join(' | ')}`;
+                                      }
+                                      return parkingAmount;
+                                    }
+                                  }
+                                }
+                                return "Not specified";
+                              })()} 
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -538,17 +595,31 @@ export function handlePropertyDetails(
                             const updateDate = getValidDate(showPropertyDetails.dateUpdateCostSheet);
                             return updateDate ? updateDate.toLocaleDateString('en-GB') : showPropertyDetails.dateUpdateCostSheet || "-";
                           })()} />
-                          <Field label="Location" value={showPropertyDetails.location} />
                           <Field label="Developer Name" value={showPropertyDetails.developerName} />
                           <Field label="Project Name" value={showPropertyDetails.projectName} />
                           <Field label="Sub-Location" value={showPropertyDetails.subLocation} />
+                          <Field label="Road" value={showPropertyDetails.road} />
                           <Field label="Landmark" value={showPropertyDetails.landmark} />
-                          <Field label="Pin Code" value={showPropertyDetails.pinCode} />
-                          <Field label="District" value={showPropertyDetails.district} />
+                          <Field label="Location" value={showPropertyDetails.location} />
+                          <Field label="District" value={`${showPropertyDetails.district || "-"}${showPropertyDetails.pinCode ? ` - ${showPropertyDetails.pinCode}` : ""}`} />
                           <Field label="State" value={showPropertyDetails.state} />
                           <Field label="Land Parcel" value={showPropertyDetails.landParcel} />
                           <Field label="Total Towers" value={showPropertyDetails.towers} />
-                          <Field label="Total Storey" value={showPropertyDetails.storey} />
+                          <Field label="Total Storey" value={(() => {
+                            const formatStorey = (storey: string) => {
+                              if (!storey) return "-";
+                              const mapping = {
+                                'B': 'Basement',
+                                'P': 'Level Podium',
+                                'H': 'Habitable',
+                                'Comm': 'Commercial',
+                                'Stilt': 'Stilt',
+                                'G': 'Ground',
+                              };
+                              return storey.replace(/(\d*)(B|P|H|Comm|Stilt|G)\b/g, (match, num, abbr) => num + ' ' + (mapping[abbr as keyof typeof mapping] || abbr));
+                            };
+                            return formatStorey(showPropertyDetails.storey);
+                          })()} />
                         </div>
                       </div>
 

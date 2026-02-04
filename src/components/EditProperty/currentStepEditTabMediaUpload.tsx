@@ -80,6 +80,59 @@ export function currentStepEditTabMediaUpload(
   projectMessage?: string,
   setProjectMessage?: React.Dispatch<React.SetStateAction<string>>
 ): React.ReactNode {
+  const openPreview = (images: string[], index: number) => {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75';
+    modal.onclick = () => modal.remove();
+    
+    let currentIndex = index;
+    
+    const updateImage = () => {
+      modal.innerHTML = `
+        <div class="relative" onclick="event.stopPropagation()">
+          <img src="${images[currentIndex]}" alt="Preview" class="max-w-screen max-h-screen object-contain" />
+          ${images.length > 1 ? `
+            <button onclick="event.stopPropagation(); this.parentElement.parentElement.previousImage()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button onclick="event.stopPropagation(); this.parentElement.parentElement.nextImage()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ` : ''}
+        </div>
+      `;
+    };
+    
+    (modal as any).nextImage = () => {
+      currentIndex = (currentIndex + 1) % images.length;
+      updateImage();
+    };
+    
+    (modal as any).previousImage = () => {
+      currentIndex = currentIndex === 0 ? images.length - 1 : currentIndex - 1;
+      updateImage();
+    };
+    
+    updateImage();
+    
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        modal.remove();
+        document.removeEventListener('keydown', handleEsc);
+      } else if (e.key === 'ArrowLeft') {
+        (modal as any).previousImage();
+      } else if (e.key === 'ArrowRight') {
+        (modal as any).nextImage();
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    
+    document.body.appendChild(modal);
+  };
   return (
     <div className="space-y-4">
       {/* Contact Information Section */}
@@ -291,22 +344,44 @@ export function currentStepEditTabMediaUpload(
                   <div className="h-full flex items-center justify-center">
                     {mediaFiles.brochure || existingMedia.brochure ? (
                       <div className="h-full flex items-center justify-center p-4">
-                        <div className="relative">
+                        <div className="relative cursor-pointer group" onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (existingMedia.brochure) {
+                            window.open(existingMedia.brochure, '_blank');
+                          }
+                        }}>
                           {typeof mediaFiles.brochure !== 'string' && mediaFiles.brochure && pdfThumbnail ? (
-                            <img
-                              src={pdfThumbnail}
-                              alt="PDF Preview"
-                              className="w-20 h-24 object-cover rounded border"
-                            />
-                          ) : existingMedia.brochure ? (
-                            <div className="w-20 h-24 relative overflow-hidden bg-white rounded border">
-                              <iframe src={`${existingMedia.brochure}#toolbar=0&navpanes=0&scrollbar=0`} className="w-full h-full border-0 transform scale-[0.2] origin-top-left pointer-events-none" style={{width: '500%', height: '500%'}} />
-                              <div className="absolute bottom-1 right-1 pointer-events-none">
-                                <svg className="w-3 h-3 text-red-600 bg-white/90 rounded p-0.5" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                            <>
+                              <img
+                                src={pdfThumbnail}
+                                alt="PDF Preview"
+                                className="w-20 h-24 object-cover rounded border"
+                              />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
                               </div>
-                            </div>
+                            </>
+                          ) : existingMedia.brochure ? (
+                            <>
+                              <div className="w-20 h-24 relative overflow-hidden bg-white rounded border">
+                                <iframe src={`${existingMedia.brochure}#toolbar=0&navpanes=0&scrollbar=0`} className="w-full h-full border-0 transform scale-[0.2] origin-top-left pointer-events-none" style={{width: '500%', height: '500%'}} />
+                                <div className="absolute bottom-1 right-1 pointer-events-none">
+                                  <svg className="w-3 h-3 text-red-600 bg-white/90 rounded p-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </div>
+                            </>
                           ) : (
                             <div className="w-20 h-24 bg-red-100 rounded border flex items-center justify-center">
                               <svg
@@ -406,7 +481,11 @@ export function currentStepEditTabMediaUpload(
                     {(existingMedia.elevationImages.length > 0 || mediaFiles.elevationImages.length > 0) ? (
                       <div className="grid grid-cols-5 gap-1 h-full">
                         {existingMedia.elevationImages.slice(0, 10).map((url, index) => (
-                          <div key={`existing-${index}`} className="relative">
+                          <div key={`existing-${index}`} className="relative group cursor-pointer" onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openPreview(existingMedia.elevationImages, index);
+                          }}>
                             <img
                               src={url}
                               alt={`Elevation ${index + 1}`}
@@ -416,6 +495,12 @@ export function currentStepEditTabMediaUpload(
                                 e.currentTarget.style.display = "none";
                               }}
                             />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </div>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -426,7 +511,7 @@ export function currentStepEditTabMediaUpload(
                                   elevationImages: prev.elevationImages.filter((_, i) => i !== index),
                                 }));
                               }}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600 z-10"
                             >
                               ×
                             </button>
@@ -510,7 +595,11 @@ export function currentStepEditTabMediaUpload(
                     {(existingMedia.amenitiesImages.length > 0 || mediaFiles.amenitiesImages.length > 0) ? (
                       <div className="grid grid-cols-5 gap-1 h-full">
                         {existingMedia.amenitiesImages.slice(0, 10).map((url, index) => (
-                          <div key={`existing-${index}`} className="relative">
+                          <div key={`existing-${index}`} className="relative group cursor-pointer" onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openPreview(existingMedia.amenitiesImages, index);
+                          }}>
                             <img
                               src={url}
                               alt={`Amenity ${index + 1}`}
@@ -520,6 +609,12 @@ export function currentStepEditTabMediaUpload(
                                 e.currentTarget.style.display = "none";
                               }}
                             />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </div>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -530,7 +625,7 @@ export function currentStepEditTabMediaUpload(
                                   amenitiesImages: prev.amenitiesImages.filter((_, i) => i !== index),
                                 }));
                               }}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600 z-10"
                             >
                               ×
                             </button>
@@ -616,7 +711,11 @@ export function currentStepEditTabMediaUpload(
                     {(existingMedia.floorPlanImages.length > 0 || mediaFiles.floorPlanImages.length > 0) ? (
                       <div className="grid grid-cols-5 gap-1 h-full">
                         {existingMedia.floorPlanImages.slice(0, 10).map((url, index) => (
-                          <div key={`existing-${index}`} className="relative">
+                          <div key={`existing-${index}`} className="relative group cursor-pointer" onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openPreview(existingMedia.floorPlanImages, index);
+                          }}>
                             <img
                               src={url}
                               alt={`Floor plan ${index + 1}`}
@@ -626,6 +725,12 @@ export function currentStepEditTabMediaUpload(
                                 e.currentTarget.style.display = "none";
                               }}
                             />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </div>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -636,7 +741,7 @@ export function currentStepEditTabMediaUpload(
                                   floorPlanImages: prev.floorPlanImages.filter((_, i) => i !== index),
                                 }));
                               }}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600 z-10"
                             >
                               ×
                             </button>
@@ -722,7 +827,11 @@ export function currentStepEditTabMediaUpload(
                     {(existingMedia.projectWalkthrough.length > 0 || mediaFiles.projectWalkthrough.length > 0) ? (
                       <div className="flex gap-4 h-full items-center justify-center">
                         {existingMedia.projectWalkthrough.map((url, index) => (
-                          <div key={`existing-${index}`} className="relative">
+                          <div key={`existing-${index}`} className="relative cursor-pointer group" onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(url, '_blank');
+                          }}>
                             <video
                               src={url}
                               className="w-24 h-24 object-cover rounded border aspect-square"
@@ -737,6 +846,12 @@ export function currentStepEditTabMediaUpload(
                                 <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                               </svg>
                             </div>
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </div>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -747,7 +862,7 @@ export function currentStepEditTabMediaUpload(
                                   projectWalkthrough: prev.projectWalkthrough.filter((_, i) => i !== index),
                                 }));
                               }}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600 z-20"
                             >
                               ×
                             </button>
@@ -876,12 +991,22 @@ export function currentStepEditTabMediaUpload(
                                 {((existingMedia.typologyImages[typology]?.length || 0) + (mediaFiles.typologyImages[typology]?.length || 0)) > 0 ? (
                                   <div className="grid grid-cols-8 gap-1 h-full">
                                     {(existingMedia.typologyImages[typology] || []).slice(0, 8).map((url, index) => (
-                                      <div key={`existing-${index}`} className="relative">
+                                      <div key={`existing-${index}`} className="relative group cursor-pointer" onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        openPreview(existingMedia.typologyImages[typology] || [], index);
+                                      }}>
                                         <img
                                           src={url}
                                           alt={`${typology} ${index + 1}`}
                                           className="w-full h-12 object-cover rounded aspect-square"
                                         />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                          </svg>
+                                        </div>
                                         <button
                                           type="button"
                                           onClick={(e) => {
@@ -895,7 +1020,7 @@ export function currentStepEditTabMediaUpload(
                                               },
                                             }));
                                           }}
-                                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 text-xs flex items-center justify-center hover:bg-red-600"
+                                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 text-xs flex items-center justify-center hover:bg-red-600 z-10"
                                         >
                                           ×
                                         </button>
@@ -1045,6 +1170,12 @@ export function currentStepEditTabMediaUpload(
                                             },
                                           }));
                                         }
+                                      }}
+                                      onClick={() => {
+                                        const videoUrl = typeof existingMedia.typologyVideos[typology] === 'string' 
+                                          ? existingMedia.typologyVideos[typology] 
+                                          : URL.createObjectURL(mediaFiles.typologyVideos[typology] as File);
+                                        window.open(videoUrl, '_blank');
                                       }}
                                     />
                                   </div>
@@ -1214,7 +1345,8 @@ const TypologyFilePreview: React.FC<{
 const TypologyVideoPreview: React.FC<{
   file: File | string;
   onRemove: () => void;
-}> = ({ file, onRemove }) => {
+  onClick?: () => void;
+}> = ({ file, onRemove, onClick }) => {
   const [videoUrl, setVideoUrl] = useState<string>("");
 
   useEffect(() => {
@@ -1228,7 +1360,11 @@ const TypologyVideoPreview: React.FC<{
   }, [file]);
 
   return (
-    <div className="relative">
+    <div className="relative cursor-pointer" onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick?.() || window.open(videoUrl, '_blank');
+    }}>
       <video
         src={videoUrl}
         className="w-16 h-16 object-cover rounded border aspect-square"

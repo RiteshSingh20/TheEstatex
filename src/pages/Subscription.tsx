@@ -395,7 +395,11 @@ const Subscription = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!loading && !user) navigate("/login");
+    // Only redirect to login if we're certain the user is not authenticated
+    // and we're not in a loading state
+    if (!loading && !user && !localStorage.getItem('justSignedUp')) {
+      navigate("/login");
+    }
     if (user) localStorage.removeItem("justSignedUp");
   }, [user, loading, navigate]);
 

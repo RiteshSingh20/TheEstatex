@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FormDataType } from "../../pages/CostSheetFormProps";
 import { StampDutyRate } from "../CompareModal";
+import { TYPOLOGIES } from "../../constants/typologies";
 
 import { calculatePricingTotal } from "../../lib/propertyFormLogic";
 import { calculateBaseAmountWithFixedComponent } from "../../lib/fixedComponentLogic";
@@ -16,10 +17,9 @@ const calculateTotalPackageEnhanced = (
   tabData: any,
   formData: FormDataType,
   parseIndianCurrency: (value: string) => string,
-  formatIndianCurrency: (value: string | number) => string,
-  stampRates?: any[]
+  formatIndianCurrency: (value: string | number) => string
 ): number => {
-  return calculateUniversalTotalPackage(config, tabData, formData, parseIndianCurrency, formatIndianCurrency, stampRates);
+  return calculateUniversalTotalPackage(config, tabData, formData, parseIndianCurrency, formatIndianCurrency);
 };
 
 interface CurrentStepEditTab1Props {
@@ -120,7 +120,18 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
   const [isLoadingReraData, setIsLoadingReraData] = useState(false);
   const [fixedComponentVisibility, setFixedComponentVisibility] = useState<Record<number, boolean>>({});
   const objectUrlsRef = React.useRef<Record<string, string>>({});
-  const [objectUrls, setObjectUrls] = React.useState<Record<string, string>>({});
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewImage(null);
+    };
+    if (previewImage) {
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
+    }
+  }, [previewImage]);
 
   // Enhanced total package calculation function - EXACT SAME LOGIC AS HTML
   const calculateTotalPackage = (
@@ -151,6 +162,29 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
       stampRates
     );
   };
+
+  // Initialize tab names on component load
+  useEffect(() => {
+    Object.entries(subTabData).forEach(([tabId, tabData]) => {
+      const wingBuildingNo = tabData?.wingBuildingNo?.trim();
+      const reraNumber = tabData?.mahaReraNumber?.trim();
+      
+      let tabName;
+      if (wingBuildingNo) {
+        tabName = wingBuildingNo;
+      } else if (reraNumber) {
+        tabName = reraNumber;
+      } else {
+        tabName = "Pre-launch";
+      }
+      
+      setSubTabs((prev) =>
+        prev.map((t) =>
+          t.id === parseInt(tabId) ? { ...t, name: tabName } : t
+        )
+      );
+    });
+  }, [subTabData]);
 
   // Extract tab name update logic to avoid duplication
   const updateTabName = (tabId: number, value: string) => {
@@ -202,8 +236,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
           prev[tabId],
           formData,
           parseIndianCurrency,
-          formatIndianCurrency,
-          stampRates
+          formatIndianCurrency
         );
         // Ensure totalPackage is always stored as formatted currency
         newConfigs[configIndex].totalPackage = calculatedTotal;
@@ -227,6 +260,16 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
         [tabId]: {
           ...prev[tabId],
           [field]: value,
+          // Clear parking data when psfIncludesParking is ticked
+          ...(field === 'psfIncludesParking' && value && {
+            parkingCharges: null,
+            mandatoryParkingTypologies: null,
+            numberOfParkingIncluded: null,
+          }),
+          // Clear numberOfParkingIncluded when psfIncludesParking is unticked
+          ...(field === 'psfIncludesParking' && !value && {
+            numberOfParkingIncluded: null,
+          }),
         },
       };
 
@@ -239,8 +282,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
           { ...updatedData[tabId], [field]: value },
           formData,
           parseIndianCurrency,
-          formatIndianCurrency,
-          stampRates
+          formatIndianCurrency
         )
       })) || [];
 
@@ -287,8 +329,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
             tabData,
             formData,
             parseIndianCurrency,
-            formatIndianCurrency,
-            stampRates
+            formatIndianCurrency
           );
           return { ...config, totalPackage: newTotal };
         });
@@ -329,7 +370,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
     
     // Global function to fix totalPackage in any data structure
     (window as any).fixTotalPackageInFormData = (data: any) => {
-      return fixTotalPackageInData(data, formData, parseIndianCurrency, formatIndianCurrency, stampRates);
+      return fixTotalPackageInData(data, formData, parseIndianCurrency, formatIndianCurrency);
     };
     
     // Force fix typologies totalPackage to match subTabData
@@ -468,7 +509,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
 
                 {/* Header Row */}
                 <div className="bg-neutral-100 p-2 rounded-t border">
-                  <div className="grid grid-cols-8 gap-4 text-sm font-medium text-neutral-700">
+                  <div className="grid grid-cols-9 gap-4 text-sm font-medium text-neutral-700">
                     <div>Bldg No./Phase</div>
                     <div>Project Type</div>
                     <div>Project Status</div>
@@ -476,13 +517,14 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                     <div>RERA Number</div>
                     <div>RERA Possession</div>
                     <div>RERA URL</div>
+                    <div>SD Rate</div>
                     <div>Flats per Floor *</div>
                   </div>
                 </div>
 
                 {/* Data Row */}
                 <div className="bg-white border-x border-b rounded-b p-2">
-                  <div className="grid grid-cols-8 gap-4">
+                  <div className="grid grid-cols-9 gap-4">
                     <div>
                       <input
                         type="text"
@@ -514,10 +556,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               )
                             );
                           } else {
-                            const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
                             setSubTabs((prev) =>
                               prev.map((t) =>
-                                t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                                t.id === tab.id ? { ...t, name: "Pre-launch" } : t
                               )
                             );
                           }
@@ -554,8 +595,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 { ...subTabData[tab.id], type: newValue },
                                 formData,
                                 parseIndianCurrency,
-                                formatIndianCurrency,
-                                stampRates
+                                formatIndianCurrency
                               )
                             }));
                             setSubTabData(prev => ({
@@ -604,8 +644,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 { ...subTabData[tab.id], projectStatus: newValue },
                                 formData,
                                 parseIndianCurrency,
-                                formatIndianCurrency,
-                                stampRates
+                                formatIndianCurrency
                               )
                             }));
                             setSubTabData(prev => ({
@@ -681,10 +720,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               )
                             );
                           } else {
-                            const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
                             setSubTabs((prev) =>
                               prev.map((t) =>
-                                t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                                t.id === tab.id ? { ...t, name: "Pre-launch" } : t
                               )
                             );
                           }
@@ -707,10 +745,9 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                 )
                               );
                             } else {
-                              const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
                               setSubTabs((prev) =>
                                 prev.map((t) =>
-                                  t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                                  t.id === tab.id ? { ...t, name: "Pre-launch" } : t
                                 )
                               );
                             }
@@ -758,6 +795,35 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                           }));
                         }}
                         disabled={!isAdmin || subTabData[tab.id]?.type === "Pre-launch"}
+                        className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={subTabData[tab.id]?.sdRate || ""}
+                        onChange={(e) => {
+                          const numericValue = e.target.value.replace(/[^0-9.]/g, "");
+                          setSubTabData((prev) => ({
+                            ...prev,
+                            [tab.id]: {
+                              ...prev[tab.id],
+                              sdRate: numericValue,
+                            },
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value && !e.target.value.includes('%')) {
+                            e.target.value = e.target.value + '%';
+                          }
+                        }}
+                        onFocus={(e) => {
+                          if (e.target.value.includes('%')) {
+                            e.target.value = e.target.value.replace('%', '');
+                          }
+                        }}
+                        placeholder="e.g., 6"
+                        disabled={!isAdmin}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
@@ -852,25 +918,11 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
                               <option value="">Select</option>
-                              <option value="1 RK">1 RK</option>
-                              <option value="1 BHK">1 BHK</option>
-                              <option value="1.5 BHK">1.5 BHK</option>
-                              <option value="2 BHK">2 BHK</option>
-                              <option value="2.5 BHK">2.5 BHK</option>
-                              <option value="3 BHK">3 BHK</option>
-                              <option value="3.5 BHK">3.5 BHK</option>
-                              <option value="4 BHK">4 BHK</option>
-                              <option value="4.5 BHK">4.5 BHK</option>
-                              <option value="5 BHK">5 BHK</option>
-                              <option value="1 + 1 Jodi">1 + 1 Jodi</option>
-                              <option value="1 + 2 Jodi">1 + 2 Jodi</option>
-                              <option value="2 + 2 Jodi">2 + 2 Jodi</option>
-                              <option value="2 + 3 Jodi">2 + 3 Jodi</option>
-                              <option value="3 + 3 Jodi">3 + 3 Jodi</option>
-                              <option value="Penthouse / Duplex">Penthouse / Duplex</option>
-                              <option value="Row House">Row House</option>
-                              <option value="Bungalow">Bungalow</option>
-                              <option value="Villa">Villa</option>
+                              {TYPOLOGIES.map((typology) => (
+                                <option key={typology} value={typology}>
+                                  {typology}
+                                </option>
+                              ))}
                             </select>
                           </div>
                           <div>
@@ -1063,25 +1115,75 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                     alt="Unit plan"
                                     className="w-12 h-12 object-cover rounded border"
                                   />
-                                ) : /* If existing URL present, render image using URL */
-                                (config.unitPlanUrl ? (
-                                  <img
-                                    src={config.unitPlanUrl}
-                                    alt="Unit plan"
-                                    className="w-12 h-12 object-cover rounded border"
-                                  />
-                                ) : (
-                                  <div className="w-12 h-12 bg-red-100 rounded border flex items-center justify-center">
-                                    <svg
-                                      width="20"
-                                      height="20"
-                                      viewBox="0 0 24 24"
-                                      fill="#dc2626"
+                                ) : config.unitPlanUrl ? (
+                                  <div className="relative">
+                                    <img
+                                      src={config.unitPlanUrl}
+                                      alt="Unit plan"
+                                      className="w-12 h-12 object-cover rounded border"
+                                      onError={(e) => {
+                                        // Fallback to document icon if image fails to load
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewImage(config.unitPlanUrl!)}
+                                      className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center hover:bg-opacity-70"
                                     >
-                                      <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-                                    </svg>
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
+                                        <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" />
+                                      </svg>
+                                    </button>
                                   </div>
-                                ))}
+                                ) : (() => {
+                                  // Try to find unitPlanUrl from formData.typologies matching this config
+                                  const matchingTypology = formData.typologies?.find(t => 
+                                    t.typology === config.typology && 
+                                    t.saleableArea === config.saleableArea
+                                  );
+                                  return matchingTypology?.unitPlanUrl ? (
+                                    <div className="relative">
+                                      <img
+                                        src={matchingTypology.unitPlanUrl}
+                                        alt="Unit plan"
+                                        className="w-12 h-12 object-cover rounded border"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                          e.currentTarget.nextElementSibling.style.display = 'flex';
+                                        }}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewImage(matchingTypology.unitPlanUrl!)}
+                                      className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center hover:bg-opacity-70"
+                                      >
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
+                                          <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  ) : null;
+                                })()}
+                                {/* Fallback document icon */}
+                                <div 
+                                  className="w-12 h-12 bg-gray-100 rounded border flex items-center justify-center"
+                                  style={{ 
+                                    display: (config.unitPlanUrl || formData.typologies?.find(t => 
+                                      t.typology === config.typology && t.saleableArea === config.saleableArea
+                                    )?.unitPlanUrl) ? 'none' : 'flex' 
+                                  }}
+                                >
+                                  <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="#6b7280"
+                                  >
+                                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                                  </svg>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1277,8 +1379,7 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
                                   updatedData[tab.id],
                                   formData,
                                   parseIndianCurrency,
-                                  formatIndianCurrency,
-                                  stampRates
+                                  formatIndianCurrency
                                 )
                               })) || [];
                               
@@ -1518,6 +1619,21 @@ export const CurrentStepEditTab1: React.FC<CurrentStepEditTab1Props> = ({
           Add New Section
         </button>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" onClick={() => setPreviewImage(null)}>
+          <div className="relative bg-white rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <img src={previewImage} alt="Unit plan preview" className="rounded-lg" />
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-2 right-2 w-6 h-6 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full flex items-center justify-center text-white"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

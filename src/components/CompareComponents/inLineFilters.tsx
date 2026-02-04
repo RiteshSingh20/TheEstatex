@@ -1,3 +1,4 @@
+import React from "react";
 import { CostSheet } from "./Compare";
 
 export function inLineFilters(
@@ -8,9 +9,46 @@ export function inLineFilters(
   setFilterLocation,
   setFilteredSheets,
   setFiltersApplied,
-  setCostSheets,
   filtersApplied: boolean
 ) {
+  // Auto-apply filters when they are set from Dashboard
+  React.useEffect(() => {
+    if ((filterPropertyType || filterLocation) && !filtersApplied) {
+      const filtered = allCostSheets.filter((sheet) => {
+        const isApproved = sheet.isApproved === true || sheet.approvalStatus === "approved";
+        if (!isApproved) return false;
+
+        if (filterLocation) {
+          const locations = [sheet.station, sheet.location].filter(Boolean);
+          const hasMatchingLocation = locations.some(
+            (loc) => loc.toLowerCase().trim() === filterLocation.toLowerCase().trim()
+          );
+          if (!hasMatchingLocation) return false;
+        }
+
+        if (filterPropertyType) {
+          let hasMatchingTypology = false;
+          if (sheet.typologies && Array.isArray(sheet.typologies)) {
+            hasMatchingTypology = sheet.typologies.some((typology) => {
+              if (typology.availability === "Sold Out") return false;
+              return typology.typology?.toLowerCase() === filterPropertyType.toLowerCase();
+            });
+          }
+          if (!hasMatchingTypology) {
+            const flatType = sheet.flatType || sheet.typologies?.[0]?.typology;
+            const availability = sheet.availability || sheet.typologies?.[0]?.availability;
+            if (availability === "Sold Out") return false;
+            hasMatchingTypology = flatType?.toLowerCase() === filterPropertyType.toLowerCase();
+          }
+          if (!hasMatchingTypology) return false;
+        }
+
+        return true;
+      });
+      setFilteredSheets(filtered);
+      setFiltersApplied(true);
+    }
+  }, [filterPropertyType, filterLocation, allCostSheets, filtersApplied]);
   return (
     <div className="flex items-center gap-3">
       <select
@@ -214,12 +252,6 @@ export function inLineFilters(
           // Set filtered sheets and mark filters as applied
           setFilteredSheets(filtered);
           setFiltersApplied(true);
-
-          // Clear the table - show 5 empty columns
-          const emptySheets = Array.from({ length: 5 }, (_, index) => ({
-            id: `empty-${index}`,
-          }));
-          setCostSheets(emptySheets);
         }}
         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm transition-colors"
       >
@@ -229,17 +261,11 @@ export function inLineFilters(
       {filtersApplied && (
         <button
           onClick={() => {
-            // Clear filters and reset table
+            // Clear filters
             setFilterPropertyType("");
             setFilterLocation("");
             setFiltersApplied(false);
             setFilteredSheets([]);
-
-            // Reset to original state with empty columns
-            const emptySheets = Array.from({ length: 5 }, (_, index) => ({
-              id: `empty-${index}`,
-            }));
-            setCostSheets(emptySheets);
           }}
           className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1 rounded text-sm transition-colors"
         >

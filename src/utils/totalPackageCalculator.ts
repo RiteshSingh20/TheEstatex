@@ -4,8 +4,7 @@ export const calculateUniversalTotalPackage = (
   tabData: any,
   formData: any,
   parseIndianCurrency: (value: string) => string,
-  formatIndianCurrency: (value: string | number) => string,
-  stampRates?: any[]
+  formatIndianCurrency: (value: string | number) => string
 ): number => {
   const saleableArea = parseFloat(config.saleableArea) || 0;
   const psfRate = parseFloat(parseIndianCurrency(config.psfRate || "")) || 0;
@@ -34,19 +33,8 @@ export const calculateUniversalTotalPackage = (
       baseAmount += parkingCharges;
     }
     
-    // Find matching stamp duty rate based on district/jurisdiction
-    let stampDutyRate = 0.07; // Default 7%
-    if (stampRates && formData?.district) {
-      const matchedRate = stampRates.find(
-        (r) =>
-          (r.location || "").toLowerCase() === (formData.district || "").toLowerCase() ||
-          (r.jurisdiction || "").toLowerCase() === (formData.district || "").toLowerCase()
-      );
-      if (matchedRate?.rate) {
-        stampDutyRate = matchedRate.rate / 100; // Convert percentage to decimal
-      }
-    }
-    
+    // Use SD Rate from config or tabData if available, otherwise default to 7%
+    const stampDutyRate = (parseFloat(config?.sdRate || tabData?.sdRate) || 7) / 100;
     const stampDuty = Math.ceil((baseAmount * stampDutyRate) / 100) * 100;
     
     let gst = 0;
@@ -122,8 +110,7 @@ export const fixTotalPackageInData = (
               tabData,
               formData,
               parseIndianCurrency,
-              formatIndianCurrency,
-              stampRates
+              formatIndianCurrency
             );
             masterCalculation.set(key, calculatedTotal);
             return { ...config, totalPackage: calculatedTotal };
@@ -139,8 +126,7 @@ export const fixTotalPackageInData = (
           typology,
           formData,
           parseIndianCurrency,
-          formatIndianCurrency,
-          stampRates
+          formatIndianCurrency
         );
         return { ...typology, totalPackage: calculatedTotal };
       });
@@ -156,8 +142,7 @@ export const fixTotalPackageInData = (
               tabData,
               formData,
               parseIndianCurrency,
-              formatIndianCurrency,
-              stampRates
+              formatIndianCurrency
             );
             return { ...config, totalPackage: calculatedTotal };
           });
@@ -172,8 +157,7 @@ export const fixTotalPackageInData = (
           typology,
           formData,
           parseIndianCurrency,
-          formatIndianCurrency,
-          stampRates
+          formatIndianCurrency
         );
         return { ...typology, totalPackage: calculatedTotal };
       });
@@ -186,15 +170,14 @@ export const fixTotalPackageInData = (
         fixedData,
         formData,
         parseIndianCurrency,
-        formatIndianCurrency,
-        stampRates
+        formatIndianCurrency
       );
     }
 
     // Recursively fix nested objects
     Object.keys(fixedData).forEach(key => {
       if (typeof fixedData[key] === 'object') {
-        fixedData[key] = fixTotalPackageInData(fixedData[key], formData, parseIndianCurrency, formatIndianCurrency, stampRates);
+        fixedData[key] = fixTotalPackageInData(fixedData[key], formData, parseIndianCurrency, formatIndianCurrency);
       }
     });
 

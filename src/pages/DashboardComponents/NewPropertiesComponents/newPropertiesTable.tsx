@@ -41,7 +41,7 @@ export function newPropertiesTable(
   return (
     <div className="overflow-x-auto max-w-full max-h-screen overflow-y-auto sticky top-0 z-40 bg-white">
       <table
-        className="min-w-full divide-y divide-neutral-200 table-auto select-none"
+        className="min-w-full divide-y divide-neutral-200 table-fixed select-none"
         style={{
           userSelect: "none",
           WebkitUserSelect: "none",
@@ -51,31 +51,34 @@ export function newPropertiesTable(
       >
         <thead className="bg-blue-100 border-b-2 border-blue-200 sticky top-0 z-50">
           <tr>
-            <th className="px-4 py-4 text-center text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-16 px-3 py-3 text-center text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Sr. No.
             </th>
-            <th className="px-4 py-4 text-center text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-16 px-3 py-3 text-center text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Select
             </th>
-            <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-48 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Building / Society name
             </th>
-            <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-40 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Road / Location
             </th>
-            <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
+              Area (Sq.ft)
+            </th>
+            <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Total Package
             </th>
-            <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-28 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Possession Date
             </th>
-            <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-20 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Brochure
             </th>
-            <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-20 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Image
             </th>
-            <th className="px-4 py-4 text-left text-sm font-bold text-blue-900 uppercase tracking-wide">
+            <th className="w-20 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
               Video
             </th>
           </tr>
@@ -213,13 +216,13 @@ export function newPropertiesTable(
                   }`}
                 >
                   <td
-                    className="px-4 py-4 text-center text-sm text-neutral-500"
+                    className="px-3 py-3 text-center text-xs text-neutral-600"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {idx + 1}
                   </td>
                   <td
-                    className="px-4 py-4 text-center"
+                    className="px-3 py-3 text-center"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input
@@ -232,19 +235,123 @@ export function newPropertiesTable(
                     />
                   </td>
                   <td
-                    className="px-4 py-4 whitespace-nowrap text-sm text-primary cursor-pointer hover:underline"
+                    className="px-3 py-3 text-xs text-primary cursor-pointer hover:underline truncate"
                     onClick={() => handleProjectClick(sheet)}
+                    title={sheet.projectName}
                   >
                     {sheet.projectName}
                   </td>
                   <td
-                    className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900"
+                    className="px-3 py-3 text-xs text-neutral-900 truncate"
                     onClick={(e) => e.stopPropagation()}
+                    title={subLocation}
                   >
                     {subLocation}
                   </td>
                   <td
-                    className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-neutral-900"
+                    className="px-3 py-3 text-xs text-neutral-900"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {(() => {
+                      // Find the same configuration that gave us the lowest package
+                      const selectedTypology = appliedFilters.bhkType;
+                      let matchingSaleableArea = "";
+                      let matchingReraCarpet = "";
+                      const lowestPackage = sheet._lowestPackage;
+
+                      if (selectedTypology) {
+                        // Find the exact config that matches the selected typology and lowest package
+                        // Check typologies array
+                        if (sheet.typologies && Array.isArray(sheet.typologies)) {
+                          const matchingConfig = sheet.typologies.find(
+                            (typology) => {
+                              if (typology.typology !== selectedTypology || typology.availability === "Sold Out") return false;
+                              const pkgValue = typology.totalPackage;
+                              const pkg = typeof pkgValue === "string" ? Number(pkgValue.replace(/[^0-9]/g, "")) : pkgValue || 0;
+                              return pkg === lowestPackage;
+                            }
+                          );
+                          if (matchingConfig) {
+                            matchingSaleableArea = matchingConfig.saleableArea || "";
+                            matchingReraCarpet = matchingConfig.reraCarpet || "";
+                          }
+                        }
+
+                        // Check subTabData if not found
+                        if (!matchingSaleableArea && sheet.subTabData) {
+                          Object.values(sheet.subTabData).forEach((tabData: any) => {
+                            if (tabData.pricingConfigs && Array.isArray(tabData.pricingConfigs)) {
+                              const matchingConfig = tabData.pricingConfigs.find(
+                                (config: any) => {
+                                  if (config.typology !== selectedTypology || config.availability === "Sold Out") return false;
+                                  const pkgValue = config.totalPackage;
+                                  const pkg = typeof pkgValue === "string" ? Number(pkgValue.replace(/[^0-9]/g, "")) : pkgValue || 0;
+                                  return pkg === lowestPackage;
+                                }
+                              );
+                              if (matchingConfig) {
+                                matchingSaleableArea = matchingConfig.saleableArea || "";
+                                matchingReraCarpet = matchingConfig.reraCarpet || "";
+                              }
+                            }
+                          });
+                        }
+                      } else {
+                        // No typology selected, find the config that gave us the lowest package
+                        // Check typologies array
+                        if (sheet.typologies && Array.isArray(sheet.typologies)) {
+                          const matchingConfig = sheet.typologies.find(
+                            (typology) => {
+                              if (typology.availability === "Sold Out") return false;
+                              const pkgValue = typology.totalPackage;
+                              const pkg = typeof pkgValue === "string" ? Number(pkgValue.replace(/[^0-9]/g, "")) : pkgValue || 0;
+                              return pkg === lowestPackage;
+                            }
+                          );
+                          if (matchingConfig) {
+                            matchingSaleableArea = matchingConfig.saleableArea || "";
+                            matchingReraCarpet = matchingConfig.reraCarpet || "";
+                          }
+                        }
+
+                        // Check subTabData if not found
+                        if (!matchingSaleableArea && sheet.subTabData) {
+                          Object.values(sheet.subTabData).forEach((tabData: any) => {
+                            if (tabData.pricingConfigs && Array.isArray(tabData.pricingConfigs)) {
+                              const matchingConfig = tabData.pricingConfigs.find(
+                                (config: any) => {
+                                  if (config.availability === "Sold Out") return false;
+                                  const pkgValue = config.totalPackage;
+                                  const pkg = typeof pkgValue === "string" ? Number(pkgValue.replace(/[^0-9]/g, "")) : pkgValue || 0;
+                                  return pkg === lowestPackage;
+                                }
+                              );
+                              if (matchingConfig) {
+                                matchingSaleableArea = matchingConfig.saleableArea || "";
+                                matchingReraCarpet = matchingConfig.reraCarpet || "";
+                              }
+                            }
+                          });
+                        }
+                      }
+
+                      if (matchingSaleableArea || matchingReraCarpet) {
+                        return (
+                          <div className="text-xs">
+                            {matchingSaleableArea && (
+                              <div className="text-gray-700">Saleable: {matchingSaleableArea}</div>
+                            )}
+                            {matchingReraCarpet && (
+                              <div className="text-gray-700">RERA: {matchingReraCarpet}</div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return "-";
+                    })()} 
+                  </td>
+                  <td
+                    className="px-3 py-3 text-xs font-semibold text-neutral-900"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {sheet._lowestPackage
@@ -254,7 +361,7 @@ export function newPropertiesTable(
                       : "N/A"}
                   </td>
                   <td
-                    className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900"
+                    className="px-3 py-3 text-xs text-neutral-900"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {(() => {
@@ -279,7 +386,7 @@ export function newPropertiesTable(
                     })()}
                   </td>
                   <td
-                    className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900"
+                    className="px-3 py-3 text-xs text-neutral-900"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {sheet.mediaFiles?.brochure ? (
@@ -301,7 +408,7 @@ export function newPropertiesTable(
                     )}
                   </td>
                   <td
-                    className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900"
+                    className="px-3 py-3 text-xs text-neutral-900"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {getMediaSections(sheet.mediaFiles).filter(
@@ -322,7 +429,7 @@ export function newPropertiesTable(
                     )}
                   </td>
                   <td
-                    className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900"
+                    className="px-3 py-3 text-xs text-neutral-900"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {getMediaSections(sheet.mediaFiles).filter(

@@ -16,7 +16,7 @@ export const useLocationData = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSuggestions = useCallback(async (searchTerm: string, field: keyof LocationData) => {
-    if (!searchTerm || searchTerm.length < 2) {
+    if (!searchTerm || searchTerm.length < 1) {
       return [];
     }
 

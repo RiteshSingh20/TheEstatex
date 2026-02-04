@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import { Building, Plus, Pencil, Eye } from "lucide-react";
 import { useForm, SubmitHandler } from "react-hook-form";
@@ -101,7 +102,12 @@ const plusPropertyOptions = [
 
 const Inventory = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("resale");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { activeTab?: string; activeSubTab?: string };
+  
+  const [activeTab, setActiveTab] = useState(state?.activeTab || "residential");
+  const [activeSubTab, setActiveSubTab] = useState(state?.activeSubTab || "resale");
   const [isLoading, setIsLoading] = useState(false);
   const [editProperty, setEditProperty] = useState<ResaleProperty | null>(null);
   const [editRentalProperty, setEditRentalProperty] =
@@ -356,93 +362,27 @@ const Inventory = () => {
 
   // Enhanced edit handler with proper type conversion
   const handleEdit = (property: ResaleProperty) => {
-    setShowPropertyList(false);
-    setActiveTab("resale");
-    setEditProperty(property);
-    setCurrentStep(0);
-
-    // Set station value
-    const stationValue = property.station || "";
-    setSelectedStation(stationValue);
-    setValueResale("station", stationValue);
-
-    // Set state and district for editing
-    if (property.state) {
-      const stateObj = states.find((state) => state.name === property.state);
-      if (stateObj) {
-        setSelectedStateCode(stateObj.iso2);
-        fetchCities(stateObj.iso2)
-          .then((citiesData) => {
-            setCities(citiesData);
-          })
-          .catch((error) => {
-            
-          });
-      }
-    }
-
-    // Prefill all form fields with proper type conversion
-    resetResale({
-      ...property,
-      terrace: property.terrace ? "true" : "false",
-      cosmoSociety: property.cosmoSociety ? "true" : "false",
-      ocAvailable: property.ocStatus === "Available" ? "true" : "false", // Map ocStatus to ocAvailable
-      negotiable: property.negotiable ? "true" : "false",
-      amenities: property.amenities || [],
-      masterBed: property.masterBed ? "true" : "false",
-      plusProperty: property.plusProperty || "",
-    } as unknown as ResaleFormData);
-
-    // Set premium checkbox state based on existing plusProperty value
-    setIsPremiumResale(!!property.plusProperty);
+    // Navigate to broker inventory with property data for editing
+    navigate('/property-management', { 
+      state: { 
+        editProperty: property,
+        formType: 'resale',
+        returnTab: activeTab,
+        returnSubTab: activeSubTab
+      } 
+    });
   };
 
   const handleEditRental = (property: RentalProperty) => {
-    setShowPropertyList(false);
-    setActiveTab("rental");
-    setEditRentalProperty(property);
-    setCurrentStep(0);
-
-    // Set station value
-    const stationValue = property.station || "";
-    setSelectedStation(stationValue);
-    setValueRental("station", stationValue);
-
-    // Set state and district for editing
-    if (property.state) {
-      const stateObj = states.find((state) => state.name === property.state);
-      if (stateObj) {
-        setSelectedStateCode(stateObj.iso2);
-        fetchCities(stateObj.iso2)
-          .then((citiesData) => {
-            setCities(citiesData);
-          })
-          .catch((error) => {
-            
-          });
-      }
-    }
-
-    // Prefill all form fields with proper type conversion
-    resetRental({
-      ...property,
-      expectedRent: property.rent,
-      securityDeposit: property.deposit,
-      cosmoSociety: property.cosmo ? "true" : "false",
-      negotiable: property.negotiable ? "true" : "false",
-      amenities: property.amenities || [],
-      masterBed: property.masterBed ? "true" : "false",
-      district: property.district || "",
-      state: property.state || "",
-      terraceGallery: property.terraceGallery || "",
-      ownerName: property.contactName || "",
-      ownerNumber: property.contactNumber || "",
-      availableImmediately: property.availableImmediately ? "true" : "false",
-      plusProperty: property.plusProperty || "",
-    } as RentalFormData);
-
-    // Set premium checkbox state based on existing plusProperty value
-    setIsPremiumRental(!!property.plusProperty);
+    // Navigate to broker inventory with property data for editing
+    navigate('/property-management', { 
+      state: { 
+        editProperty: property,
+        formType: 'rental',
+        returnTab: activeTab,
+        returnSubTab: activeSubTab
+      } 
+    });
   };
 
   const handleDelete = async (
@@ -2752,13 +2692,53 @@ const Inventory = () => {
   const fetchInventory = useCallback(async () => {
     if (!user) return;
     try {
+      // Determine propertyType based on activeTab
+      let propertyType: string | undefined;
+      if (activeTab === "commercial") {
+        propertyType = "Commercial";
+      } else if (activeTab === "plot") {
+        propertyType = "Plot";
+      } else {
+        // For residential tab, we want all old source properties + new source with propertyType "Residential"
+        propertyType = "Residential";
+      }
+
       const [resale, rental] = await Promise.all([
-        getResaleProperties(user.id),
-        getRentalProperties(user.id),
+        getResaleProperties(user.id, activeTab === "residential" ? undefined : propertyType),
+        getRentalProperties(user.id, activeTab === "residential" ? undefined : propertyType),
       ]);
 
+      // Filter properties based on tab
+      let filteredResale = resale;
+      let filteredRental = rental;
+
+      if (activeTab === "residential") {
+        // Show all old source + new source with propertyType "Residential" or undefined
+        filteredResale = resale.filter(property => {
+          // Old source properties (no propertyType field) should be shown
+          if (!property.propertyType) return true;
+          // New source properties with propertyType "Residential"
+          return property.propertyType === "Residential";
+        });
+        
+        filteredRental = rental.filter(property => {
+          // Old source properties (no propertyType field) should be shown
+          if (!property.propertyType) return true;
+          // New source properties with propertyType "Residential"
+          return property.propertyType === "Residential";
+        });
+      } else if (activeTab === "commercial") {
+        // Show only new source with propertyType "Commercial"
+        filteredResale = resale.filter(property => property.propertyType === "Commercial");
+        filteredRental = rental.filter(property => property.propertyType === "Commercial");
+      } else if (activeTab === "plot") {
+        // Show only new source with propertyType "Plot"
+        filteredResale = resale.filter(property => property.propertyType === "Plot");
+        filteredRental = rental.filter(property => property.propertyType === "Plot");
+      }
+
       const updatedResale = await Promise.all(
-        resale.map(async (property) => {
+        filteredResale.map(async (property) => {
           const updatedAt =
             typeof property.updatedAt?.toDate === "function"
               ? property.updatedAt.toDate()
@@ -2794,7 +2774,7 @@ const Inventory = () => {
       );
 
       const updatedRental = await Promise.all(
-        rental.map(async (property) => {
+        filteredRental.map(async (property) => {
           const updatedAt =
             typeof property.updatedAt?.toDate === "function"
               ? property.updatedAt.toDate()
@@ -2833,7 +2813,7 @@ const Inventory = () => {
     } catch (error) {
       
     }
-  }, [user]);
+  }, [user, activeTab]);
 
   useEffect(() => {
     fetchInventory();
@@ -2921,7 +2901,13 @@ const Inventory = () => {
                 <Building className="h-4 w-4 mr-1" />
               )
             }
-            onClick={toggleView}
+            onClick={() => {
+              // Original routing - commented for testing
+              // toggleView();
+              
+              // New routing to PropertyFormSelector - using React Router
+              navigate('/property-management');
+            }}
           >
             {showPropertyList ? "Add New Property" : "View My Properties"}
           </Button>
@@ -2932,563 +2918,1705 @@ const Inventory = () => {
           <Card>
             <Tabs
               activeTabId={activeTab}
-              onTabChange={setActiveTab}
+              onTabChange={(tabId) => {
+                setActiveTab(tabId);
+                // Set default sub-tab based on parent tab
+                if (tabId === 'plot') {
+                  setActiveSubTab('sale');
+                } else {
+                  setActiveSubTab('resale');
+                }
+              }}
               tabs={[
                 {
-                  id: "resale",
-                  label: "Resale Properties",
+                  id: "residential",
+                  label: "Residential",
                   content: (
                     <div className="space-y-4">
-                      {/* Search and Filter Bar */}
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                        <div className="flex flex-col md:flex-row gap-4">
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              placeholder="Search by society, location, station..."
-                              value={resaleSearchTerm}
-                              onChange={(e) =>
-                                setResaleSearchTerm(e.target.value)
-                              }
-                              className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <select
-                              value={resaleFilters.type}
-                              onChange={(e) =>
-                                setResaleFilters((prev) => ({
-                                  ...prev,
-                                  type: e.target.value,
-                                }))
-                              }
-                              className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white min-w-[120px]"
-                            >
-                              <option value="">All Types</option>
-                              {getAvailableResaleTypes().map((type, index) => (
-                                <option key={index} value={type}>
-                                  {type}
-                                </option>
-                              ))}
-                            </select>
-                            <select
-                              value={resaleFilters.sort}
-                              onChange={(e) =>
-                                setResaleFilters((prev) => ({
-                                  ...prev,
-                                  sort: e.target.value,
-                                }))
-                              }
-                              className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white min-w-[120px]"
-                            >
-                              <option value="">Sort By</option>
-                              <option value="date-desc">Newest First</option>
-                              <option value="date-asc">Oldest First</option>
-                              <option value="price-desc">
-                                Price High to Low
-                              </option>
-                              <option value="price-asc">
-                                Price Low to High
-                              </option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        {inventory.resale.length === 0 ? (
-                          <div className="text-center py-8">
-                            <Building className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-                            <p className="text-neutral-500">
-                              No resale properties added yet
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="overflow-x-auto rounded-lg border border-neutral-200">
-                            <table className="min-w-full divide-y divide-neutral-200 text-sm">
-                              <thead className="bg-neutral-100">
-                                <tr>
-                                  {[
-                                    "Date",
-                                    "Status",
-                                    "Listing State",
-                                    "Type",
-                                    "Terrace",
-                                    "Society",
-                                    "Road/Location",
-                                    "Station",
-                                    "Expected Price",
-                                    "Floor No",
-                                    "Flat No",
-                                    "Cosmo",
-                                    "Connected Person",
-                                    "Contact Name",
-                                    "Contact Number",
-                                    "Action",
-                                  ].map((title, i) => (
-                                    <th
-                                      key={i}
-                                      className="px-4 py-3 text-xs font-semibold text-neutral-600 uppercase text-center"
-                                    >
-                                      {title}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-
-                              <tbody className="divide-y divide-neutral-200 bg-white">
-                                {filterAndSortResale(inventory.resale).map(
-                                  (property: ResaleProperty, index) => (
-                                    <tr
-                                      key={property.docId || `resale-${index}`}
-                                      className="hover:bg-neutral-50 transition"
-                                    >
-                                      <td className="px-4 py-3 text-center">
-                                        {getDisplayDate(property.createdAt)}
-                                      </td>
-
-                                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                                        <span
-                                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                            property.rejectedAt
-                                              ? "text-red-700 bg-red-100"
-                                              : property.isApproved
-                                              ? "text-green-700 bg-green-100"
-                                              : "text-yellow-800 bg-yellow-100"
-                                          }`}
-                                          title={
-                                            property.rejectedAt
-                                              ? `Rejected by (${
-                                                  property.rejectorRole
-                                                })${
-                                                  property.rejectionReason
-                                                    ? ": " +
-                                                      property.rejectionReason
-                                                    : ""
-                                                }`
-                                              : undefined
-                                          }
-                                        >
-                                          {property.rejectedAt
-                                            ? "Rejected"
-                                            : property.isApproved
-                                            ? "Approved"
-                                            : "Pending Approval"}
-                                        </span>
-                                      </td>
-
-                                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                                        <select
-                                          value={
-                                            property.listingState || "Available"
-                                          }
-                                          onChange={async (e) => {
-                                            const newState = e.target.value;
-                                            if (!user) {
-                                              toast.error(
-                                                "User not found. Please login again."
-                                              );
-                                              return;
-                                            }
-                                            await updateResaleProperty(
-                                              user.id,
-                                              property.docId,
-                                              {
-                                                listingState: newState,
-                                                updatedAt:
-                                                  new Date().toISOString(),
-                                              },
-                                              {
-                                                skipApprovalReset: true,
-                                              }
-                                            );
-                                            setInventory((prev) => ({
-                                              ...prev,
-                                              resale: prev.resale.map((p) =>
-                                                p.docId === property.docId
-                                                  ? {
-                                                      ...p,
-                                                      listingState:
-                                                        newState as ListingState,
-                                                    }
-                                                  : p
-                                              ),
-                                            }));
-                                          }}
-                                          disabled={!property.isApproved}
-                                          className={`border rounded px-2 py-1 text-sm text-center min-w-[130px] ${
-                                            !property.isApproved
-                                              ? "bg-neutral-100 text-neutral-500"
-                                              : "bg-white"
-                                          }`}
-                                        >
-                                          <option value="Available">
-                                            Available
+                      <Tabs
+                        activeTabId={activeSubTab}
+                        onTabChange={setActiveSubTab}
+                        tabs={[
+                          {
+                            id: "resale",
+                            label: "Resale Properties",
+                            content: (
+                              <div className="space-y-4">
+                                {/* Search and Filter Bar */}
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                                  <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Search by society, location, station..."
+                                        value={resaleSearchTerm}
+                                        onChange={(e) =>
+                                          setResaleSearchTerm(e.target.value)
+                                        }
+                                        className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <select
+                                        value={resaleFilters.type}
+                                        onChange={(e) =>
+                                          setResaleFilters((prev) => ({
+                                            ...prev,
+                                            type: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">All Types</option>
+                                        {getAvailableResaleTypes().map((type, index) => (
+                                          <option key={index} value={type}>
+                                            {type}
                                           </option>
-                                          <option value="Hold">Hold</option>
-                                        </select>
-                                      </td>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={resaleFilters.sort}
+                                        onChange={(e) =>
+                                          setResaleFilters((prev) => ({
+                                            ...prev,
+                                            sort: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">Sort By</option>
+                                        <option value="date-desc">Newest First</option>
+                                        <option value="date-asc">Oldest First</option>
+                                        <option value="price-desc">
+                                          Price High to Low
+                                        </option>
+                                        <option value="price-asc">
+                                          Price Low to High
+                                        </option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
 
-                                      <td className="px-4 py-3 text-center">
-                                        {property.type}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.terrace ? "Yes" : "No"}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.society}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.sublocation}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.station}
-                                      </td>
-                                      <td className="px-4 py-3 text-right">
-                                        ₹
-                                        {property.expectedPrice?.toLocaleString(
-                                          "en-IN"
-                                        )}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.floorNo}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.flatNo}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.cosmoSociety ? "Yes" : "No"}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.connectedPerson}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.ownerName}
-                                      </td>
-                                      <td className="px-4 py-3 text-center font-mono">
-                                        {property.ownerNumber}
-                                      </td>
+                                <div className="overflow-x-auto">
+                                  {inventory.resale.length === 0 ? (
+                                    <div className="text-center py-8">
+                                      <Building className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                                      <p className="text-neutral-500">
+                                        No resale properties added yet
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+                                      <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                                        <thead className="bg-neutral-100">
+                                          <tr>
+                                            {[
+                                              "Date",
+                                              "Status",
+                                              "Listing State",
+                                              "Type",
+                                              "Terrace",
+                                              "Society",
+                                              "Road/Location",
+                                              "Station",
+                                              "Expected Price",
+                                              "Floor No",
+                                              "Flat No",
+                                              "Cosmo",
+                                              "Contact Name",
+                                              "Contact Number",
+                                              "Action",
+                                            ].map((title, i) => (
+                                              <th
+                                                key={i}
+                                                className="px-4 py-3 text-xs font-semibold text-neutral-600 uppercase text-center"
+                                              >
+                                                {title}
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
 
-                                      <td className="px-4 py-3 text-center space-x-2 flex justify-center">
-                                        <Button
-                                          size="sm"
-                                          variant="text"
-                                          icon={<Eye className="h-4 w-4" />}
-                                          onClick={() =>
-                                            setViewProperty(property)
-                                          }
-                                        >
-                                          View
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          icon={<Pencil className="h-4 w-4" />}
-                                          onClick={() => handleEdit(property)}
-                                        >
-                                          Edit
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="danger"
-                                          onClick={() =>
-                                            handleDelete(property.docId)
-                                          }
-                                        >
-                                          Delete
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  )
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
+                                        <tbody className="divide-y divide-neutral-200 bg-white">
+                                          {filterAndSortResale(inventory.resale).map(
+                                            (property: ResaleProperty, index) => (
+                                              <tr
+                                                key={property.docId || `resale-${index}`}
+                                                className="hover:bg-neutral-50 transition"
+                                              >
+                                                <td className="px-4 py-3 text-center">
+                                                  {getDisplayDate(property.createdAt)}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <span
+                                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                      property.rejectedAt
+                                                        ? "text-red-700 bg-red-100"
+                                                        : property.isApproved
+                                                        ? "text-green-700 bg-green-100"
+                                                        : "text-yellow-800 bg-yellow-100"
+                                                    }`}
+                                                    title={
+                                                      property.rejectedAt
+                                                        ? `Rejected by (${
+                                                            property.rejectorRole
+                                                          })${
+                                                            property.rejectionReason
+                                                              ? ": " +
+                                                                property.rejectionReason
+                                                              : ""
+                                                          }`
+                                                        : undefined
+                                                    }
+                                                  >
+                                                    {property.rejectedAt
+                                                      ? "Rejected"
+                                                      : property.isApproved
+                                                      ? "Approved"
+                                                      : "Pending Approval"}
+                                                  </span>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <select
+                                                    value={
+                                                      property.listingState || "Available"
+                                                    }
+                                                    onChange={async (e) => {
+                                                      const newState = e.target.value;
+                                                      if (!user) {
+                                                        toast.error(
+                                                          "User not found. Please login again."
+                                                        );
+                                                        return;
+                                                      }
+                                                      await updateResaleProperty(
+                                                        user.id,
+                                                        property.docId,
+                                                        {
+                                                          listingState: newState,
+                                                          updatedAt:
+                                                            new Date().toISOString(),
+                                                        },
+                                                        {
+                                                          skipApprovalReset: true,
+                                                        }
+                                                      );
+                                                      setInventory((prev) => ({
+                                                        ...prev,
+                                                        resale: prev.resale.map((p) =>
+                                                          p.docId === property.docId
+                                                            ? {
+                                                                ...p,
+                                                                listingState:
+                                                                  newState as ListingState,
+                                                              }
+                                                            : p
+                                                        ),
+                                                      }));
+                                                    }}
+                                                    disabled={!property.isApproved}
+                                                    className={`border rounded px-2 py-1 text-sm text-center min-w-[130px] ${
+                                                      !property.isApproved
+                                                        ? "bg-neutral-100 text-neutral-500"
+                                                        : "bg-white"
+                                                    }`}
+                                                  >
+                                                    <option value="Available">
+                                                      Available
+                                                    </option>
+                                                    <option value="Hold">Hold</option>
+                                                  </select>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.type}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.terrace ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.society}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.sublocation}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.station}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {property.expectedPrice?.toLocaleString(
+                                                    "en-IN"
+                                                  )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.floorNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.flatNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.cosmoSociety ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.ownerName}
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-mono">
+                                                  {property.ownerNumber}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center space-x-2 flex justify-center">
+                                                  <Button
+                                                    size="sm"
+                                                    variant="text"
+                                                    icon={<Eye className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      setViewProperty(property)
+                                                    }
+                                                  >
+                                                    View
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    icon={<Pencil className="h-4 w-4" />}
+                                                    onClick={() => handleEdit(property)}
+                                                  >
+                                                    Edit
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    onClick={() =>
+                                                      handleDelete(property.docId)
+                                                    }
+                                                  >
+                                                    Delete
+                                                  </Button>
+                                                </td>
+                                              </tr>
+                                            )
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ),
+                          },
+                          {
+                            id: "rental",
+                            label: "Rental Properties",
+                            content: (
+                              <div className="space-y-4">
+                                {/* Search and Filter Bar */}
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                                  <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Search by society, location, station..."
+                                        value={rentalSearchTerm}
+                                        onChange={(e) =>
+                                          setRentalSearchTerm(e.target.value)
+                                        }
+                                        className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <select
+                                        value={rentalFilters.type}
+                                        onChange={(e) =>
+                                          setRentalFilters((prev) => ({
+                                            ...prev,
+                                            type: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">All Types</option>
+                                        {getAvailableRentalTypes().map((type, index) => (
+                                          <option key={index} value={type}>
+                                            {type}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={rentalFilters.sort}
+                                        onChange={(e) =>
+                                          setRentalFilters((prev) => ({
+                                            ...prev,
+                                            sort: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">Sort By</option>
+                                        <option value="date-desc">Newest First</option>
+                                        <option value="date-asc">Oldest First</option>
+                                        <option value="rent-desc">
+                                          Rent High to Low
+                                        </option>
+                                        <option value="rent-asc">Rent Low to High</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                  {inventory.rental.length === 0 ? (
+                                    <div className="text-center py-8">
+                                      <Building className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                                      <p className="text-neutral-500">
+                                        No rental properties added yet
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+                                      <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                                        <thead className="bg-neutral-100">
+                                          <tr>
+                                            {[
+                                              "Date",
+                                              "Status",
+                                              "Listing State",
+                                              "Type",
+                                              "Terrace",
+                                              "Society",
+                                              "Road/Location",
+                                              "Station",
+                                              "Expected Rent",
+                                              "Security Deposit",
+                                              "Floor No",
+                                              "Flat No",
+                                              "Cosmo",
+                                              "Contact Name",
+                                              "Contact Number",
+                                              "Action",
+                                            ].map((title, i) => (
+                                              <th
+                                                key={i}
+                                                className="px-4 py-3 text-xs font-semibold text-neutral-600 uppercase text-center"
+                                              >
+                                                {title}
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+
+                                        <tbody className="divide-y divide-neutral-200 bg-white">
+                                          {filterAndSortRental(inventory.rental).map(
+                                            (property: RentalProperty, index) => (
+                                              <tr
+                                                key={property.docId || `rental-${index}`}
+                                                className="hover:bg-neutral-50 transition"
+                                              >
+                                                <td className="px-4 py-3 text-center">
+                                                  {getDisplayDate(property.createdAt)}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <span
+                                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                      property.rejectedAt
+                                                        ? "text-red-700 bg-red-100"
+                                                        : property.isApproved
+                                                        ? "text-green-700 bg-green-100"
+                                                        : "text-yellow-800 bg-yellow-100"
+                                                    }`}
+                                                    title={
+                                                      property.rejectedAt
+                                                        ? `Rejected by (${
+                                                            property.rejectorRole
+                                                          })${
+                                                            property.rejectionReason
+                                                              ? ": " +
+                                                                property.rejectionReason
+                                                              : ""
+                                                          }`
+                                                        : undefined
+                                                    }
+                                                  >
+                                                    {property.rejectedAt
+                                                      ? "Rejected"
+                                                      : property.isApproved
+                                                      ? "Approved"
+                                                      : "Pending Approval"}
+                                                  </span>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <select
+                                                    value={
+                                                      property.listingState || "Available"
+                                                    }
+                                                    onChange={async (e) => {
+                                                      const newState = e.target.value;
+                                                      if (!user) {
+                                                        toast.error(
+                                                          "User not found. Please login again."
+                                                        );
+                                                        return;
+                                                      }
+                                                      await updateRentalProperty(
+                                                        user.id,
+                                                        property.docId,
+                                                        {
+                                                          listingState: newState,
+                                                          updatedAt:
+                                                            new Date().toISOString(),
+                                                        },
+                                                        {
+                                                          skipApprovalReset: true,
+                                                        }
+                                                      );
+                                                      setInventory((prev) => ({
+                                                        ...prev,
+                                                        rental: prev.rental.map((p) =>
+                                                          p.docId === property.docId
+                                                            ? {
+                                                                ...p,
+                                                                listingState:
+                                                                  newState as ListingState,
+                                                              }
+                                                            : p
+                                                        ),
+                                                      }));
+                                                    }}
+                                                    disabled={!property.isApproved}
+                                                    className={`border rounded px-2 py-1 text-sm text-center min-w-[130px] ${
+                                                      !property.isApproved
+                                                        ? "bg-neutral-100 text-neutral-500"
+                                                        : "bg-white"
+                                                    }`}
+                                                  >
+                                                    <option value="Available">
+                                                      Available
+                                                    </option>
+                                                    <option value="Hold">Hold</option>
+                                                  </select>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.type}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.terrace ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.society}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.sublocation}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.station}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {(property.rent || property.expectedRent)?.toLocaleString("en-IN")}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {(property.deposit || property.securityDeposit)?.toLocaleString(
+                                                    "en-IN"
+                                                  )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.floorNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.flatNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.cosmo ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.contactName || property.ownerName}
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-mono">
+                                                  {property.contactNumber || property.ownerNumber}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center space-x-2 flex justify-center">
+                                                  <Button
+                                                    size="sm"
+                                                    variant="text"
+                                                    icon={<Eye className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      setViewRentalProperty(property)
+                                                    }
+                                                  >
+                                                    View
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    icon={<Pencil className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      handleEditRental(property)
+                                                    }
+                                                  >
+                                                    Edit
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    onClick={() =>
+                                                      handleDelete(
+                                                        property.docId,
+                                                        "rental"
+                                                      )
+                                                    }
+                                                  >
+                                                    Delete
+                                                  </Button>
+                                                </td>
+                                              </tr>
+                                            )
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ),
+                          },
+                        ]}
+                      />
                     </div>
                   ),
                 },
                 {
-                  id: "rental",
-                  label: "Rental Properties",
+                  id: "commercial",
+                  label: "Commercial",
                   content: (
                     <div className="space-y-4">
-                      {/* Search and Filter Bar */}
-                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
-                        <div className="flex flex-col md:flex-row gap-4">
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              placeholder="Search by society, location, station..."
-                              value={rentalSearchTerm}
-                              onChange={(e) =>
-                                setRentalSearchTerm(e.target.value)
-                              }
-                              className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <select
-                              value={rentalFilters.type}
-                              onChange={(e) =>
-                                setRentalFilters((prev) => ({
-                                  ...prev,
-                                  type: e.target.value,
-                                }))
-                              }
-                              className="px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white min-w-[120px]"
-                            >
-                              <option value="">All Types</option>
-                              {getAvailableRentalTypes().map((type, index) => (
-                                <option key={index} value={type}>
-                                  {type}
-                                </option>
-                              ))}
-                            </select>
-                            <select
-                              value={rentalFilters.sort}
-                              onChange={(e) =>
-                                setRentalFilters((prev) => ({
-                                  ...prev,
-                                  sort: e.target.value,
-                                }))
-                              }
-                              className="px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white min-w-[120px]"
-                            >
-                              <option value="">Sort By</option>
-                              <option value="date-desc">Newest First</option>
-                              <option value="date-asc">Oldest First</option>
-                              <option value="rent-desc">
-                                Rent High to Low
-                              </option>
-                              <option value="rent-asc">Rent Low to High</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        {inventory.rental.length === 0 ? (
-                          <div className="text-center py-8">
-                            <Building className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-                            <p className="text-neutral-500">
-                              No rental properties added yet
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="overflow-x-auto rounded-lg border border-neutral-200">
-                            <table className="min-w-full divide-y divide-neutral-200 text-sm">
-                              <thead className="bg-neutral-100">
-                                <tr>
-                                  {[
-                                    "Date",
-                                    "Status",
-                                    "Listing State",
-                                    "Type",
-                                    "Terrace",
-                                    "Society",
-                                    "Road/Location",
-                                    "Station",
-                                    "Expected Rent",
-                                    "Security Deposit",
-                                    "Floor No",
-                                    "Flat No",
-                                    "Cosmo",
-                                    "Connected Person",
-                                    "Contact Name",
-                                    "Contact Number",
-                                    "Action",
-                                  ].map((title, i) => (
-                                    <th
-                                      key={i}
-                                      className="px-4 py-3 text-xs font-semibold text-neutral-600 uppercase text-center"
-                                    >
-                                      {title}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-
-                              <tbody className="divide-y divide-neutral-200 bg-white">
-                                {filterAndSortRental(inventory.rental).map(
-                                  (property: RentalProperty, index) => (
-                                    <tr
-                                      key={property.docId || `rental-${index}`}
-                                      className="hover:bg-neutral-50 transition"
-                                    >
-                                      <td className="px-4 py-3 text-center">
-                                        {getDisplayDate(property.createdAt)}
-                                      </td>
-
-                                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                                        <span
-                                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                            property.rejectedAt
-                                              ? "text-red-700 bg-red-100"
-                                              : property.isApproved
-                                              ? "text-green-700 bg-green-100"
-                                              : "text-yellow-800 bg-yellow-100"
-                                          }`}
-                                          title={
-                                            property.rejectedAt
-                                              ? `Rejected by (${
-                                                  property.rejectorRole
-                                                })${
-                                                  property.rejectionReason
-                                                    ? ": " +
-                                                      property.rejectionReason
-                                                    : ""
-                                                }`
-                                              : undefined
-                                          }
-                                        >
-                                          {property.rejectedAt
-                                            ? "Rejected"
-                                            : property.isApproved
-                                            ? "Approved"
-                                            : "Pending Approval"}
-                                        </span>
-                                      </td>
-
-                                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                                        <select
-                                          value={
-                                            property.listingState || "Available"
-                                          }
-                                          onChange={async (e) => {
-                                            const newState = e.target.value;
-                                            if (!user) {
-                                              toast.error(
-                                                "User not found. Please login again."
-                                              );
-                                              return;
-                                            }
-                                            await updateRentalProperty(
-                                              user.id,
-                                              property.docId,
-                                              {
-                                                listingState: newState,
-                                                updatedAt:
-                                                  new Date().toISOString(),
-                                              },
-                                              {
-                                                skipApprovalReset: true,
-                                              }
-                                            );
-                                            setInventory((prev) => ({
-                                              ...prev,
-                                              rental: prev.rental.map((p) =>
-                                                p.docId === property.docId
-                                                  ? {
-                                                      ...p,
-                                                      listingState:
-                                                        newState as ListingState,
-                                                    }
-                                                  : p
-                                              ),
-                                            }));
-                                          }}
-                                          disabled={!property.isApproved}
-                                          className={`border rounded px-2 py-1 text-sm text-center min-w-[130px] ${
-                                            !property.isApproved
-                                              ? "bg-neutral-100 text-neutral-500"
-                                              : "bg-white"
-                                          }`}
-                                        >
-                                          <option value="Available">
-                                            Available
+                      <Tabs
+                        activeTabId={activeSubTab}
+                        onTabChange={setActiveSubTab}
+                        tabs={[
+                          {
+                            id: "resale",
+                            label: "Resale Properties",
+                            content: (
+                              <div className="space-y-4">
+                                {/* Search and Filter Bar */}
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                                  <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Search by society, location, station..."
+                                        value={resaleSearchTerm}
+                                        onChange={(e) =>
+                                          setResaleSearchTerm(e.target.value)
+                                        }
+                                        className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <select
+                                        value={resaleFilters.type}
+                                        onChange={(e) =>
+                                          setResaleFilters((prev) => ({
+                                            ...prev,
+                                            type: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">All Types</option>
+                                        {getAvailableResaleTypes().map((type, index) => (
+                                          <option key={index} value={type}>
+                                            {type}
                                           </option>
-                                          <option value="Hold">Hold</option>
-                                        </select>
-                                      </td>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={resaleFilters.sort}
+                                        onChange={(e) =>
+                                          setResaleFilters((prev) => ({
+                                            ...prev,
+                                            sort: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">Sort By</option>
+                                        <option value="date-desc">Newest First</option>
+                                        <option value="date-asc">Oldest First</option>
+                                        <option value="price-desc">
+                                          Price High to Low
+                                        </option>
+                                        <option value="price-asc">
+                                          Price Low to High
+                                        </option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
 
-                                      <td className="px-4 py-3 text-center">
-                                        {property.type}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.terrace ? "Yes" : "No"}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.society}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.sublocation}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.station}
-                                      </td>
-                                      <td className="px-4 py-3 text-right">
-                                        ₹
-                                        {property.rent?.toLocaleString("en-IN")}
-                                      </td>
-                                      <td className="px-4 py-3 text-right">
-                                        ₹
-                                        {property.deposit?.toLocaleString(
-                                          "en-IN"
-                                        )}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.floorNo}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.flatNo}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.cosmo ? "Yes" : "No"}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.connectedPerson}
-                                      </td>
-                                      <td className="px-4 py-3 text-center">
-                                        {property.contactName}
-                                      </td>
-                                      <td className="px-4 py-3 text-center font-mono">
-                                        {property.contactNumber}
-                                      </td>
+                                <div className="overflow-x-auto">
+                                  {inventory.resale.length === 0 ? (
+                                    <div className="text-center py-8">
+                                      <Building className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                                      <p className="text-neutral-500">
+                                        No commercial resale properties added yet
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+                                      <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                                        <thead className="bg-neutral-100">
+                                          <tr>
+                                            {[
+                                              "Date",
+                                              "Status",
+                                              "Listing State",
+                                              "Type",
+                                              "Terrace",
+                                              "Society",
+                                              "Road/Location",
+                                              "Station",
+                                              "Expected Price",
+                                              "Floor No",
+                                              "Flat No",
+                                              "Cosmo",
+                                              "Contact Name",
+                                              "Contact Number",
+                                              "Action",
+                                            ].map((title, i) => (
+                                              <th
+                                                key={i}
+                                                className="px-4 py-3 text-xs font-semibold text-neutral-600 uppercase text-center"
+                                              >
+                                                {title}
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
 
-                                      <td className="px-4 py-3 text-center space-x-2 flex justify-center">
-                                        <Button
-                                          size="sm"
-                                          variant="text"
-                                          icon={<Eye className="h-4 w-4" />}
-                                          onClick={() =>
-                                            setViewRentalProperty(property)
-                                          }
-                                        >
-                                          View
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          icon={<Pencil className="h-4 w-4" />}
-                                          onClick={() =>
-                                            handleEditRental(property)
-                                          }
-                                        >
-                                          Edit
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="danger"
-                                          onClick={() =>
-                                            handleDelete(
-                                              property.docId,
-                                              "rental"
+                                        <tbody className="divide-y divide-neutral-200 bg-white">
+                                          {filterAndSortResale(inventory.resale).map(
+                                            (property: ResaleProperty, index) => (
+                                              <tr
+                                                key={property.docId || `resale-${index}`}
+                                                className="hover:bg-neutral-50 transition"
+                                              >
+                                                <td className="px-4 py-3 text-center">
+                                                  {getDisplayDate(property.createdAt)}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <span
+                                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                      property.rejectedAt
+                                                        ? "text-red-700 bg-red-100"
+                                                        : property.isApproved
+                                                        ? "text-green-700 bg-green-100"
+                                                        : "text-yellow-800 bg-yellow-100"
+                                                    }`}
+                                                    title={
+                                                      property.rejectedAt
+                                                        ? `Rejected by (${
+                                                            property.rejectorRole
+                                                          })${
+                                                            property.rejectionReason
+                                                              ? ": " +
+                                                                property.rejectionReason
+                                                              : ""
+                                                          }`
+                                                        : undefined
+                                                    }
+                                                  >
+                                                    {property.rejectedAt
+                                                      ? "Rejected"
+                                                      : property.isApproved
+                                                      ? "Approved"
+                                                      : "Pending Approval"}
+                                                  </span>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <select
+                                                    value={
+                                                      property.listingState || "Available"
+                                                    }
+                                                    onChange={async (e) => {
+                                                      const newState = e.target.value;
+                                                      if (!user) {
+                                                        toast.error(
+                                                          "User not found. Please login again."
+                                                        );
+                                                        return;
+                                                      }
+                                                      await updateResaleProperty(
+                                                        user.id,
+                                                        property.docId,
+                                                        {
+                                                          listingState: newState,
+                                                          updatedAt:
+                                                            new Date().toISOString(),
+                                                        },
+                                                        {
+                                                          skipApprovalReset: true,
+                                                        }
+                                                      );
+                                                      setInventory((prev) => ({
+                                                        ...prev,
+                                                        resale: prev.resale.map((p) =>
+                                                          p.docId === property.docId
+                                                            ? {
+                                                                ...p,
+                                                                listingState:
+                                                                  newState as ListingState,
+                                                              }
+                                                            : p
+                                                        ),
+                                                      }));
+                                                    }}
+                                                    disabled={!property.isApproved}
+                                                    className={`border rounded px-2 py-1 text-sm text-center min-w-[130px] ${
+                                                      !property.isApproved
+                                                        ? "bg-neutral-100 text-neutral-500"
+                                                        : "bg-white"
+                                                    }`}
+                                                  >
+                                                    <option value="Available">
+                                                      Available
+                                                    </option>
+                                                    <option value="Hold">Hold</option>
+                                                  </select>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.type}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.terrace ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.society}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.sublocation}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.station}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {property.expectedPrice?.toLocaleString(
+                                                    "en-IN"
+                                                  )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.floorNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.flatNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.cosmoSociety ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.ownerName}
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-mono">
+                                                  {property.ownerNumber}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center space-x-2 flex justify-center">
+                                                  <Button
+                                                    size="sm"
+                                                    variant="text"
+                                                    icon={<Eye className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      setViewProperty(property)
+                                                    }
+                                                  >
+                                                    View
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    icon={<Pencil className="h-4 w-4" />}
+                                                    onClick={() => handleEdit(property)}
+                                                  >
+                                                    Edit
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    onClick={() =>
+                                                      handleDelete(property.docId)
+                                                    }
+                                                  >
+                                                    Delete
+                                                  </Button>
+                                                </td>
+                                              </tr>
                                             )
-                                          }
-                                        >
-                                          Delete
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  )
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ),
+                          },
+                          {
+                            id: "rental",
+                            label: "Rental Properties",
+                            content: (
+                              <div className="space-y-4">
+                                {/* Search and Filter Bar */}
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                                  <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Search by society, location, station..."
+                                        value={rentalSearchTerm}
+                                        onChange={(e) =>
+                                          setRentalSearchTerm(e.target.value)
+                                        }
+                                        className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <select
+                                        value={rentalFilters.type}
+                                        onChange={(e) =>
+                                          setRentalFilters((prev) => ({
+                                            ...prev,
+                                            type: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">All Types</option>
+                                        {getAvailableRentalTypes().map((type, index) => (
+                                          <option key={index} value={type}>
+                                            {type}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={rentalFilters.sort}
+                                        onChange={(e) =>
+                                          setRentalFilters((prev) => ({
+                                            ...prev,
+                                            sort: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">Sort By</option>
+                                        <option value="date-desc">Newest First</option>
+                                        <option value="date-asc">Oldest First</option>
+                                        <option value="rent-desc">
+                                          Rent High to Low
+                                        </option>
+                                        <option value="rent-asc">Rent Low to High</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                  {inventory.rental.length === 0 ? (
+                                    <div className="text-center py-8">
+                                      <Building className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                                      <p className="text-neutral-500">
+                                        No commercial rental properties added yet
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+                                      <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                                        <thead className="bg-neutral-100">
+                                          <tr>
+                                            {[
+                                              "Date",
+                                              "Status",
+                                              "Listing State",
+                                              "Type",
+                                              "Terrace",
+                                              "Society",
+                                              "Road/Location",
+                                              "Station",
+                                              "Expected Rent",
+                                              "Security Deposit",
+                                              "Floor No",
+                                              "Flat No",
+                                              "Cosmo",
+                                              "Contact Name",
+                                              "Contact Number",
+                                              "Action",
+                                            ].map((title, i) => (
+                                              <th
+                                                key={i}
+                                                className="px-4 py-3 text-xs font-semibold text-neutral-600 uppercase text-center"
+                                              >
+                                                {title}
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+
+                                        <tbody className="divide-y divide-neutral-200 bg-white">
+                                          {filterAndSortRental(inventory.rental).map(
+                                            (property: RentalProperty, index) => (
+                                              <tr
+                                                key={property.docId || `rental-${index}`}
+                                                className="hover:bg-neutral-50 transition"
+                                              >
+                                                <td className="px-4 py-3 text-center">
+                                                  {getDisplayDate(property.createdAt)}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <span
+                                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                      property.rejectedAt
+                                                        ? "text-red-700 bg-red-100"
+                                                        : property.isApproved
+                                                        ? "text-green-700 bg-green-100"
+                                                        : "text-yellow-800 bg-yellow-100"
+                                                    }`}
+                                                    title={
+                                                      property.rejectedAt
+                                                        ? `Rejected by (${
+                                                            property.rejectorRole
+                                                          })${
+                                                            property.rejectionReason
+                                                              ? ": " +
+                                                                property.rejectionReason
+                                                              : ""
+                                                          }`
+                                                        : undefined
+                                                    }
+                                                  >
+                                                    {property.rejectedAt
+                                                      ? "Rejected"
+                                                      : property.isApproved
+                                                      ? "Approved"
+                                                      : "Pending Approval"}
+                                                  </span>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <select
+                                                    value={
+                                                      property.listingState || "Available"
+                                                    }
+                                                    onChange={async (e) => {
+                                                      const newState = e.target.value;
+                                                      if (!user) {
+                                                        toast.error(
+                                                          "User not found. Please login again."
+                                                        );
+                                                        return;
+                                                      }
+                                                      await updateRentalProperty(
+                                                        user.id,
+                                                        property.docId,
+                                                        {
+                                                          listingState: newState,
+                                                          updatedAt:
+                                                            new Date().toISOString(),
+                                                        },
+                                                        {
+                                                          skipApprovalReset: true,
+                                                        }
+                                                      );
+                                                      setInventory((prev) => ({
+                                                        ...prev,
+                                                        rental: prev.rental.map((p) =>
+                                                          p.docId === property.docId
+                                                            ? {
+                                                                ...p,
+                                                                listingState:
+                                                                  newState as ListingState,
+                                                              }
+                                                            : p
+                                                        ),
+                                                      }));
+                                                    }}
+                                                    disabled={!property.isApproved}
+                                                    className={`border rounded px-2 py-1 text-sm text-center min-w-[130px] ${
+                                                      !property.isApproved
+                                                        ? "bg-neutral-100 text-neutral-500"
+                                                        : "bg-white"
+                                                    }`}
+                                                  >
+                                                    <option value="Available">
+                                                      Available
+                                                    </option>
+                                                    <option value="Hold">Hold</option>
+                                                  </select>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.type}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.terrace ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.society}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.sublocation}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.station}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {(property.rent || property.expectedRent)?.toLocaleString("en-IN")}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {(property.deposit || property.securityDeposit)?.toLocaleString(
+                                                    "en-IN"
+                                                  )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.floorNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.flatNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.cosmo ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.contactName || property.ownerName}
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-mono">
+                                                  {property.contactNumber || property.ownerNumber}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center space-x-2 flex justify-center">
+                                                  <Button
+                                                    size="sm"
+                                                    variant="text"
+                                                    icon={<Eye className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      setViewRentalProperty(property)
+                                                    }
+                                                  >
+                                                    View
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    icon={<Pencil className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      handleEditRental(property)
+                                                    }
+                                                  >
+                                                    Edit
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    onClick={() =>
+                                                      handleDelete(
+                                                        property.docId,
+                                                        "rental"
+                                                      )
+                                                    }
+                                                  >
+                                                    Delete
+                                                  </Button>
+                                                </td>
+                                              </tr>
+                                            )
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  id: "plot",
+                  label: "Plot",
+                  content: (
+                    <div className="space-y-4">
+                      <Tabs
+                        activeTabId={activeSubTab}
+                        onTabChange={setActiveSubTab}
+                        tabs={[
+                          {
+                            id: "sale",
+                            label: "Sale Plots",
+                            content: (
+                              <div className="space-y-4">
+                                {/* Search and Filter Bar */}
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                                  <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Search by society, location, station..."
+                                        value={resaleSearchTerm}
+                                        onChange={(e) =>
+                                          setResaleSearchTerm(e.target.value)
+                                        }
+                                        className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <select
+                                        value={resaleFilters.type}
+                                        onChange={(e) =>
+                                          setResaleFilters((prev) => ({
+                                            ...prev,
+                                            type: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">All Types</option>
+                                        {getAvailableResaleTypes().map((type, index) => (
+                                          <option key={index} value={type}>
+                                            {type}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={resaleFilters.sort}
+                                        onChange={(e) =>
+                                          setResaleFilters((prev) => ({
+                                            ...prev,
+                                            sort: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">Sort By</option>
+                                        <option value="date-desc">Newest First</option>
+                                        <option value="date-asc">Oldest First</option>
+                                        <option value="price-desc">
+                                          Price High to Low
+                                        </option>
+                                        <option value="price-asc">
+                                          Price Low to High
+                                        </option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                  {inventory.resale.length === 0 ? (
+                                    <div className="text-center py-8">
+                                      <Building className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                                      <p className="text-neutral-500">
+                                        No plot sale properties added yet
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+                                      <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                                        <thead className="bg-neutral-100">
+                                          <tr>
+                                            {[
+                                              "Date",
+                                              "Status",
+                                              "Listing State",
+                                              "Type",
+                                              "Terrace",
+                                              "Society",
+                                              "Road/Location",
+                                              "Station",
+                                              "Expected Price",
+                                              "Floor No",
+                                              "Flat No",
+                                              "Cosmo",
+                                              "Contact Name",
+                                              "Contact Number",
+                                              "Action",
+                                            ].map((title, i) => (
+                                              <th
+                                                key={i}
+                                                className="px-4 py-3 text-xs font-semibold text-neutral-600 uppercase text-center"
+                                              >
+                                                {title}
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+
+                                        <tbody className="divide-y divide-neutral-200 bg-white">
+                                          {filterAndSortResale(inventory.resale).map(
+                                            (property: ResaleProperty, index) => (
+                                              <tr
+                                                key={property.docId || `resale-${index}`}
+                                                className="hover:bg-neutral-50 transition"
+                                              >
+                                                <td className="px-4 py-3 text-center">
+                                                  {getDisplayDate(property.createdAt)}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <span
+                                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                      property.rejectedAt
+                                                        ? "text-red-700 bg-red-100"
+                                                        : property.isApproved
+                                                        ? "text-green-700 bg-green-100"
+                                                        : "text-yellow-800 bg-yellow-100"
+                                                    }`}
+                                                    title={
+                                                      property.rejectedAt
+                                                        ? `Rejected by (${
+                                                            property.rejectorRole
+                                                          })${
+                                                            property.rejectionReason
+                                                              ? ": " +
+                                                                property.rejectionReason
+                                                              : ""
+                                                          }`
+                                                        : undefined
+                                                    }
+                                                  >
+                                                    {property.rejectedAt
+                                                      ? "Rejected"
+                                                      : property.isApproved
+                                                      ? "Approved"
+                                                      : "Pending Approval"}
+                                                  </span>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <select
+                                                    value={
+                                                      property.listingState || "Available"
+                                                    }
+                                                    onChange={async (e) => {
+                                                      const newState = e.target.value;
+                                                      if (!user) {
+                                                        toast.error(
+                                                          "User not found. Please login again."
+                                                        );
+                                                        return;
+                                                      }
+                                                      await updateResaleProperty(
+                                                        user.id,
+                                                        property.docId,
+                                                        {
+                                                          listingState: newState,
+                                                          updatedAt:
+                                                            new Date().toISOString(),
+                                                        },
+                                                        {
+                                                          skipApprovalReset: true,
+                                                        }
+                                                      );
+                                                      setInventory((prev) => ({
+                                                        ...prev,
+                                                        resale: prev.resale.map((p) =>
+                                                          p.docId === property.docId
+                                                            ? {
+                                                                ...p,
+                                                                listingState:
+                                                                  newState as ListingState,
+                                                              }
+                                                            : p
+                                                        ),
+                                                      }));
+                                                    }}
+                                                    disabled={!property.isApproved}
+                                                    className={`border rounded px-2 py-1 text-sm text-center min-w-[130px] ${
+                                                      !property.isApproved
+                                                        ? "bg-neutral-100 text-neutral-500"
+                                                        : "bg-white"
+                                                    }`}
+                                                  >
+                                                    <option value="Available">
+                                                      Available
+                                                    </option>
+                                                    <option value="Hold">Hold</option>
+                                                  </select>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.type}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.terrace ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.society}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.sublocation}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.station}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {property.expectedPrice?.toLocaleString(
+                                                    "en-IN"
+                                                  )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.floorNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.flatNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.cosmoSociety ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.ownerName}
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-mono">
+                                                  {property.ownerNumber}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center space-x-2 flex justify-center">
+                                                  <Button
+                                                    size="sm"
+                                                    variant="text"
+                                                    icon={<Eye className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      setViewProperty(property)
+                                                    }
+                                                  >
+                                                    View
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    icon={<Pencil className="h-4 w-4" />}
+                                                    onClick={() => handleEdit(property)}
+                                                  >
+                                                    Edit
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    onClick={() =>
+                                                      handleDelete(property.docId)
+                                                    }
+                                                  >
+                                                    Delete
+                                                  </Button>
+                                                </td>
+                                              </tr>
+                                            )
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ),
+                          },
+                          {
+                            id: "rental",
+                            label: "Rental Plots",
+                            content: (
+                              <div className="space-y-4">
+                                {/* Search and Filter Bar */}
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                                  <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Search by society, location, station..."
+                                        value={rentalSearchTerm}
+                                        onChange={(e) =>
+                                          setRentalSearchTerm(e.target.value)
+                                        }
+                                        className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <select
+                                        value={rentalFilters.type}
+                                        onChange={(e) =>
+                                          setRentalFilters((prev) => ({
+                                            ...prev,
+                                            type: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">All Types</option>
+                                        {getAvailableRentalTypes().map((type, index) => (
+                                          <option key={index} value={type}>
+                                            {type}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={rentalFilters.sort}
+                                        onChange={(e) =>
+                                          setRentalFilters((prev) => ({
+                                            ...prev,
+                                            sort: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white min-w-[120px]"
+                                      >
+                                        <option value="">Sort By</option>
+                                        <option value="date-desc">Newest First</option>
+                                        <option value="date-asc">Oldest First</option>
+                                        <option value="rent-desc">
+                                          Rent High to Low
+                                        </option>
+                                        <option value="rent-asc">Rent Low to High</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                  {inventory.rental.length === 0 ? (
+                                    <div className="text-center py-8">
+                                      <Building className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                                      <p className="text-neutral-500">
+                                        No plot rental properties added yet
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+                                      <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                                        <thead className="bg-neutral-100">
+                                          <tr>
+                                            {[
+                                              "Date",
+                                              "Status",
+                                              "Listing State",
+                                              "Type",
+                                              "Terrace",
+                                              "Society",
+                                              "Road/Location",
+                                              "Station",
+                                              "Expected Rent",
+                                              "Security Deposit",
+                                              "Floor No",
+                                              "Flat No",
+                                              "Cosmo",
+                                              "Contact Name",
+                                              "Contact Number",
+                                              "Action",
+                                            ].map((title, i) => (
+                                              <th
+                                                key={i}
+                                                className="px-4 py-3 text-xs font-semibold text-neutral-600 uppercase text-center"
+                                              >
+                                                {title}
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+
+                                        <tbody className="divide-y divide-neutral-200 bg-white">
+                                          {filterAndSortRental(inventory.rental).map(
+                                            (property: RentalProperty, index) => (
+                                              <tr
+                                                key={property.docId || `rental-${index}`}
+                                                className="hover:bg-neutral-50 transition"
+                                              >
+                                                <td className="px-4 py-3 text-center">
+                                                  {getDisplayDate(property.createdAt)}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <span
+                                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                      property.rejectedAt
+                                                        ? "text-red-700 bg-red-100"
+                                                        : property.isApproved
+                                                        ? "text-green-700 bg-green-100"
+                                                        : "text-yellow-800 bg-yellow-100"
+                                                    }`}
+                                                    title={
+                                                      property.rejectedAt
+                                                        ? `Rejected by (${
+                                                            property.rejectorRole
+                                                          })${
+                                                            property.rejectionReason
+                                                              ? ": " +
+                                                                property.rejectionReason
+                                                              : ""
+                                                          }`
+                                                        : undefined
+                                                    }
+                                                  >
+                                                    {property.rejectedAt
+                                                      ? "Rejected"
+                                                      : property.isApproved
+                                                      ? "Approved"
+                                                      : "Pending Approval"}
+                                                  </span>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                                  <select
+                                                    value={
+                                                      property.listingState || "Available"
+                                                    }
+                                                    onChange={async (e) => {
+                                                      const newState = e.target.value;
+                                                      if (!user) {
+                                                        toast.error(
+                                                          "User not found. Please login again."
+                                                        );
+                                                        return;
+                                                      }
+                                                      await updateRentalProperty(
+                                                        user.id,
+                                                        property.docId,
+                                                        {
+                                                          listingState: newState,
+                                                          updatedAt:
+                                                            new Date().toISOString(),
+                                                        },
+                                                        {
+                                                          skipApprovalReset: true,
+                                                        }
+                                                      );
+                                                      setInventory((prev) => ({
+                                                        ...prev,
+                                                        rental: prev.rental.map((p) =>
+                                                          p.docId === property.docId
+                                                            ? {
+                                                                ...p,
+                                                                listingState:
+                                                                  newState as ListingState,
+                                                              }
+                                                            : p
+                                                        ),
+                                                      }));
+                                                    }}
+                                                    disabled={!property.isApproved}
+                                                    className={`border rounded px-2 py-1 text-sm text-center min-w-[130px] ${
+                                                      !property.isApproved
+                                                        ? "bg-neutral-100 text-neutral-500"
+                                                        : "bg-white"
+                                                    }`}
+                                                  >
+                                                    <option value="Available">
+                                                      Available
+                                                    </option>
+                                                    <option value="Hold">Hold</option>
+                                                  </select>
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.type}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.terrace ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.society}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.sublocation}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.station}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {(property.rent || property.expectedRent)?.toLocaleString("en-IN")}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                  ₹
+                                                  {(property.deposit || property.securityDeposit)?.toLocaleString(
+                                                    "en-IN"
+                                                  )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.floorNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.flatNo}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.cosmo ? "Yes" : "No"}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                  {property.contactName || property.ownerName}
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-mono">
+                                                  {property.contactNumber || property.ownerNumber}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-center space-x-2 flex justify-center">
+                                                  <Button
+                                                    size="sm"
+                                                    variant="text"
+                                                    icon={<Eye className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      setViewRentalProperty(property)
+                                                    }
+                                                  >
+                                                    View
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    icon={<Pencil className="h-4 w-4" />}
+                                                    onClick={() =>
+                                                      handleEditRental(property)
+                                                    }
+                                                  >
+                                                    Edit
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    onClick={() =>
+                                                      handleDelete(
+                                                        property.docId,
+                                                        "rental"
+                                                      )
+                                                    }
+                                                  >
+                                                    Delete
+                                                  </Button>
+                                                </td>
+                                              </tr>
+                                            )
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ),
+                          },
+                        ]}
+                      />
                     </div>
                   ),
                 },

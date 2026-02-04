@@ -18,6 +18,12 @@ import { inLineFilters } from "./inLineFilters";
 import { discountRow } from "./TableContainer/discountRow";
 import { selectPropertyRow } from "./TableContainer/selectPropertyRow";
 import { ReraCarpetRow } from "./TableContainer/CarpetAreaHandler/reraCarpetRow";
+import {
+  getLowestTotalPackageCarpetArea,
+  getCurrentTypology,
+  getTypologyCarpetAreas,
+} from "./TableContainer/CarpetAreaHandler/carpetAreaUtils";
+import { FloorRiseTooltip } from "./FloorRiseTooltip";
 
 export interface CostSheet {
   id: string;
@@ -166,6 +172,7 @@ export interface StampDutyRate {
   rate: number;
 }
 
+// amazonq-ignore-next-line
 const Compare = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -185,6 +192,7 @@ const Compare = () => {
   const [filterPropertyType, setFilterPropertyType] = useState("");
   const [filterLocation, setFilterLocation] = useState("");
   const [filtersApplied, setFiltersApplied] = useState(false);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [filteredSheets, setFilteredSheets] = useState<CostSheet[]>([]);
   const [searchTerms, setSearchTerms] = useState<string[]>(Array(5).fill(""));
   const [showDropdowns, setShowDropdowns] = useState<boolean[]>(
@@ -193,6 +201,7 @@ const Compare = () => {
   const [selectedIndices, setSelectedIndices] = useState<number[]>(
     Array(5).fill(-1)
   );
+  const [showNegotiationButtons, setShowNegotiationButtons] = useState(false);
   const safeNumber = (val: unknown, fallback = undefined) => {
     if (typeof val === "number" && !isNaN(val)) return val;
     if (typeof val === "string") {
@@ -202,23 +211,188 @@ const Compare = () => {
     return fallback;
   };
 
+  // Helper function to get saleable area for selected carpet area
+  const getSaleableAreaForCarpetArea = (
+    sheet: CostSheet,
+    carpetArea: number
+  ): number => {
+    if (!carpetArea) return 0;
+
+    // Search in subTabData first (most accurate)
+    if (sheet.subTabData) {
+      // amazonq-ignore-next-line
+      for (const tabData of Object.values(sheet.subTabData)) {
+        if (tabData.pricingConfigs) {
+          for (const config of tabData.pricingConfigs) {
+            if (safeNumber(config.reraCarpet) === carpetArea) {
+              return safeNumber(config.saleableArea) || 0;
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback to pricingConfigs
+    if (sheet.pricingConfigs) {
+      for (const config of sheet.pricingConfigs) {
+        if (safeNumber(config.reraCarpet) === carpetArea) {
+          return safeNumber(config.saleableArea) || 0;
+        }
+      }
+    }
+
+    // Fallback to typologies
+    if (sheet.typologies) {
+      for (const typology of sheet.typologies) {
+        if (safeNumber(typology.reraCarpet) === carpetArea) {
+          return safeNumber(typology.saleableArea) || 0;
+        }
+      }
+    }
+
+    // If no match found, return the original saleableArea as fallback
+    return safeNumber(sheet.saleableArea) || 0;
+  };
+
+  // Helper function to get typology for selected carpet area
+  const getTypologyForCarpetArea = (
+    sheet: CostSheet,
+    carpetArea: number
+  ): string => {
+    if (!carpetArea)
+      return sheet.typologies?.[0]?.typology || sheet.flatType || "";
+
+    // Search in subTabData first (most accurate)
+    if (sheet.subTabData) {
+      for (const tabData of Object.values(sheet.subTabData)) {
+        if (tabData.pricingConfigs) {
+          for (const config of tabData.pricingConfigs) {
+            if (safeNumber(config.reraCarpet) === carpetArea) {
+              return config.typology || "";
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback to pricingConfigs
+    if (sheet.pricingConfigs) {
+      for (const config of sheet.pricingConfigs) {
+        if (safeNumber(config.reraCarpet) === carpetArea) {
+          return config.typology || "";
+        }
+      }
+    }
+
+    // Fallback to typologies
+    if (sheet.typologies) {
+      for (const typology of sheet.typologies) {
+        if (safeNumber(typology.reraCarpet) === carpetArea) {
+          return typology.typology || "";
+        }
+      }
+    }
+
+    // If no match found, return the first typology as fallback
+    return sheet.typologies?.[0]?.typology || sheet.flatType || "";
+  };
+
   // Helper to get data from new typologies structure or legacy fields
-  const getFieldValue = (sheet: CostSheet, field: string) => {
-    // For possession charges, check typologies first
+  const getFieldValue = (
+    sheet: CostSheet,
+    field: string,
+    targetTypology?: string
+  ) => {
+    // Get selected carpet area for matching data
+    const selectedCarpetArea = safeNumber(sheet.reraCarpet);
+
+    // For possession charges, use selected carpet area data
     if (field === "possessionCharges") {
+      if (selectedCarpetArea) {
+        // Search in subTabData first (most accurate)
+        if (sheet.subTabData) {
+          for (const tabData of Object.values(sheet.subTabData)) {
+            if (tabData.pricingConfigs) {
+              for (const config of tabData.pricingConfigs) {
+                if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                  return safeNumber(config.possessionCharges);
+                }
+              }
+            }
+          }
+        }
+        // Fallback to pricingConfigs
+        if (sheet.pricingConfigs) {
+          for (const config of sheet.pricingConfigs) {
+            if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+              return safeNumber(config.possessionCharges);
+            }
+          }
+        }
+      }
+      // Fallback to original logic
       const typologyValue = sheet.typologies?.[0]?.possessionCharges;
       const subTabValue = safeNumber(sheet.subTabData?.possessionCharges);
       const legacyValue = safeNumber(sheet.possessionCharges);
       return safeNumber(typologyValue) || subTabValue || legacyValue;
     }
 
-    // For parking charges, check subTabData first
+    // For developer possession date, use selected carpet area data
+    if (field === "developerPossession") {
+      if (selectedCarpetArea) {
+        // Search in subTabData first (most accurate)
+        if (sheet.subTabData) {
+          for (const tabData of Object.values(sheet.subTabData)) {
+            if (tabData.pricingConfigs) {
+              for (const config of tabData.pricingConfigs) {
+                if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                  // Return developerPossession from the tab that contains this carpet area
+                  return tabData.developerPossession;
+                }
+              }
+            }
+          }
+        }
+      }
+      // Fallback: check subTabData for developerPossession
+      if (sheet.subTabData) {
+        for (const tabData of Object.values(sheet.subTabData)) {
+          if (tabData.developerPossession) {
+            return tabData.developerPossession;
+          }
+        }
+      }
+      // Fallback: check typologies for developerPossession
+      if (sheet.typologies) {
+        for (const typology of sheet.typologies) {
+          if (typology.developerPossession) {
+            return typology.developerPossession;
+          }
+        }
+      }
+      return "Ready to move";
+    }
+
+    // For parking charges, use selected carpet area data
     if (field === "parkingCharge") {
-      // subTabData is a map with numeric keys (0, 1764494130533, etc.)
-      // We need to find parkingCharges from any of these nested objects
+      if (selectedCarpetArea) {
+        // Search in subTabData first (most accurate)
+        if (sheet.subTabData) {
+          for (const tabData of Object.values(sheet.subTabData)) {
+            if (tabData.pricingConfigs) {
+              for (const config of tabData.pricingConfigs) {
+                if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                  // Get parking from the tab that contains this carpet area
+                  return safeNumber(tabData.parkingCharges);
+                }
+              }
+            }
+          }
+        }
+      }
+      // Fallback to original logic
       let parkingFromSubTab = undefined;
       if (sheet.subTabData && typeof sheet.subTabData === "object") {
-        // Iterate through all keys in subTabData to find parkingCharges
         for (const key in sheet.subTabData) {
           const tabData = sheet.subTabData[key];
           if (
@@ -227,16 +401,42 @@ const Compare = () => {
             "parkingCharges" in tabData
           ) {
             parkingFromSubTab = safeNumber(tabData.parkingCharges);
-            if (parkingFromSubTab) break; // Use first non-zero value found
+            if (parkingFromSubTab) break;
           }
         }
       }
       return parkingFromSubTab || safeNumber(sheet.parkingCharge);
     }
 
-    // For fixed component, check typologies first
+    // For fixed component, use selected carpet area data
     if (field === "fixedComponent") {
-      // Search through all typologies to find one with fixedComponent
+      if (selectedCarpetArea) {
+        // Search in subTabData first (most accurate)
+        if (sheet.subTabData) {
+          for (const tabData of Object.values(sheet.subTabData)) {
+            if (tabData.pricingConfigs) {
+              for (const config of tabData.pricingConfigs) {
+                if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                  // Return the exact value for this carpet area, even if it's empty/undefined
+                  return safeNumber(config.fixedComponent) || 0;
+                }
+              }
+            }
+          }
+        }
+        // Fallback to pricingConfigs
+        if (sheet.pricingConfigs) {
+          for (const config of sheet.pricingConfigs) {
+            if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+              // Return the exact value for this carpet area, even if it's empty/undefined
+              return safeNumber(config.fixedComponent) || 0;
+            }
+          }
+        }
+        // If selected carpet area is found but has no fixedComponent, return 0
+        return 0;
+      }
+      // Fallback to original logic only if no carpet area is selected
       let typologyValue;
       if (sheet.typologies) {
         for (const typology of sheet.typologies) {
@@ -249,8 +449,6 @@ const Compare = () => {
           }
         }
       }
-
-      // Search through all pricingConfigs to find one with fixedComponent
       let pricingValue;
       if (sheet.pricingConfigs) {
         for (const config of sheet.pricingConfigs) {
@@ -260,7 +458,6 @@ const Compare = () => {
           }
         }
       }
-
       const legacyValue = sheet.fixedComponent;
       return (
         safeNumber(typologyValue) ||
@@ -271,14 +468,31 @@ const Compare = () => {
 
     // For new structure with typologies
     if (sheet.typologies && sheet.typologies.length > 0) {
-      const typology = sheet.typologies[0];
+      // If targetTypology is specified, find the matching typology, otherwise use first
+      let typology = sheet.typologies[0];
+      if (targetTypology) {
+        const matchingTypology = sheet.typologies.find(
+          (t) => t.typology === targetTypology && t.availability !== "Sold Out"
+        );
+        if (matchingTypology) {
+          typology = matchingTypology;
+        }
+      }
       switch (field) {
         case "saleableArea":
+          // Use saleable area corresponding to selected carpet area
+          if (selectedCarpetArea) {
+            return getSaleableAreaForCarpetArea(sheet, selectedCarpetArea);
+          }
           return (
             safeNumber(typology.saleableArea) || safeNumber(sheet.saleableArea)
           );
         case "reraCarpet":
-          // Check all typologies for reraCarpet, not just the first one
+          // First check the main reraCarpet field (updated by our handlers)
+          if (sheet.reraCarpet) {
+            return safeNumber(sheet.reraCarpet);
+          }
+          // Check all typologies for reraCarpet
           let reraCarpetValue;
           if (sheet.typologies) {
             for (const t of sheet.typologies) {
@@ -297,11 +511,59 @@ const Compare = () => {
               }
             }
           }
-          return reraCarpetValue || safeNumber(sheet.reraCarpet);
-        case "psfRate":
+          return reraCarpetValue;
+        case "psfRate": {
+          // First check if we have a selected carpet area to find matching rates
+          if (selectedCarpetArea) {
+            // Search in subTabData first (most accurate)
+            if (sheet.subTabData) {
+              for (const tabData of Object.values(sheet.subTabData)) {
+                if (tabData.pricingConfigs) {
+                  for (const config of tabData.pricingConfigs) {
+                    if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                      return safeNumber(config.psfRate);
+                    }
+                  }
+                }
+              }
+            }
+            // Fallback to pricingConfigs
+            if (sheet.pricingConfigs) {
+              for (const config of sheet.pricingConfigs) {
+                if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                  return safeNumber(config.psfRate);
+                }
+              }
+            }
+          }
           return safeNumber(typology.psfRate) || safeNumber(sheet.psfRate);
-        case "avRate":
+        }
+        case "avRate": {
+          // First check if we have a selected carpet area to find matching rates
+          if (selectedCarpetArea) {
+            // Search in subTabData first (most accurate)
+            if (sheet.subTabData) {
+              for (const tabData of Object.values(sheet.subTabData)) {
+                if (tabData.pricingConfigs) {
+                  for (const config of tabData.pricingConfigs) {
+                    if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                      return safeNumber(config.avRate);
+                    }
+                  }
+                }
+              }
+            }
+            // Fallback to pricingConfigs
+            if (sheet.pricingConfigs) {
+              for (const config of sheet.pricingConfigs) {
+                if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                  return safeNumber(config.avRate);
+                }
+              }
+            }
+          }
           return safeNumber(typology.avRate) || safeNumber(sheet.avRate);
+        }
         case "flatType":
           return typology.typology || sheet.flatType;
         default:
@@ -351,8 +613,14 @@ const Compare = () => {
   const calculateFloorRise = (sheet: CostSheet, floor: number) => {
     if (!sheet.typologies || sheet.typologies.length === 0) return 0;
 
-    const typology = sheet.typologies[0];
-    const saleableArea = parseFloat(String(typology.saleableArea)) || 0;
+    // Get selected carpet area to determine the correct typology
+    const selectedCarpetArea = safeNumber(sheet.reraCarpet);
+    const selectedTypology = selectedCarpetArea
+      ? getTypologyForCarpetArea(sheet, selectedCarpetArea)
+      : sheet.typologies[0].typology || "";
+    const saleableArea = selectedCarpetArea
+      ? getSaleableAreaForCarpetArea(sheet, selectedCarpetArea)
+      : parseFloat(String(sheet.typologies[0].saleableArea)) || 0;
     const floorRiseConfig = sheet.floorRiseConfig || {};
     const floorRise = sheet.floorRise || "";
 
@@ -375,12 +643,12 @@ const Compare = () => {
         parseInt(floorRiseConfig.fixedRateStartsFrom || "0") || 0;
       return fixedRate;
     } else {
-      // Band Rate calculation
-      const bhkType = typology.typology || "";
+      // Band Rate calculation - use selected typology
+      const bhkType = selectedTypology;
       const bandRate = getFloorBandRate(
         actualFloor,
         bhkType,
-        typology.floorBandConfiguration || [],
+        sheet.typologies[0].floorBandConfiguration || [],
         sheet.typologyRates
       );
 
@@ -402,17 +670,51 @@ const Compare = () => {
     const typology = propertyData.typologies?.[selectedTypologyIndex];
     if (!typology) return 0;
 
-    const {
-      saleableArea = 0,
-      avRate = 0,
-      psfRate = 0,
-      typology: bhkType = "",
-      floorBandConfiguration = [],
-    } = typology;
+    // Use selected carpet area to get corresponding data
+    const selectedCarpetArea = safeNumber(propertyData.reraCarpet);
 
-    const area = parseFloat(String(saleableArea));
-    const av = parseFloat(String(avRate));
-    const psf = parseFloat(String(psfRate));
+    // Get PSF and AV rates from selected carpet area data
+    let psfRate = 0;
+    let avRate = 0;
+
+    if (selectedCarpetArea) {
+      // Search in subTabData first (most accurate)
+      if (propertyData.subTabData) {
+        for (const tabData of Object.values(propertyData.subTabData)) {
+          if (tabData.pricingConfigs) {
+            for (const config of tabData.pricingConfigs) {
+              if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                psfRate = safeNumber(config.psfRate) || 0;
+                avRate = safeNumber(config.avRate) || 0;
+                break;
+              }
+            }
+          }
+          if (psfRate && avRate) break;
+        }
+      }
+      // Fallback to pricingConfigs
+      if ((!psfRate || !avRate) && propertyData.pricingConfigs) {
+        for (const config of propertyData.pricingConfigs) {
+          if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+            psfRate = psfRate || safeNumber(config.psfRate) || 0;
+            avRate = avRate || safeNumber(config.avRate) || 0;
+            break;
+          }
+        }
+      }
+    }
+
+    // Fallback to typology rates if no carpet area selected
+    if (!psfRate || !avRate) {
+      psfRate = psfRate || parseFloat(String(typology.psfRate)) || 0;
+      avRate = avRate || parseFloat(String(typology.avRate)) || 0;
+    }
+
+    // Use saleable area corresponding to selected carpet area
+    const area = selectedCarpetArea
+      ? getSaleableAreaForCarpetArea(propertyData, selectedCarpetArea)
+      : parseFloat(String(typology.saleableArea));
     const floor = parseInt(String(floorNumber)) || 1;
 
     // Get discount rate (per sq ft)
@@ -423,6 +725,7 @@ const Compare = () => {
     let includeParkingInAgreement =
       propertyData.includeParkingInAgreement || false;
     let isMandatoryParking = false;
+    let psfIncludesParking = false;
 
     if (
       propertyData.subTabData &&
@@ -440,21 +743,29 @@ const Compare = () => {
         }
       }
 
-      // Check if parking is mandatory for this typology
+      // Check if parking is included in PSF for the selected carpet area
+      const selectedCarpetTypology = getTypologyForCarpetArea(
+        propertyData,
+        selectedCarpetArea
+      );
       for (const k in propertyData.subTabData) {
         const tabData = propertyData.subTabData[k];
         if (
           tabData?.psfIncludesParking === true ||
           tabData?.psfIncludesParking === "true"
         ) {
-          isMandatoryParking = true;
+          psfIncludesParking = true;
           break;
         }
+        // Check mandatoryParkingTypologies only if psfIncludesParking is false
         if (
+          !psfIncludesParking &&
           tabData?.mandatoryParkingTypologies &&
           Array.isArray(tabData.mandatoryParkingTypologies)
         ) {
-          if (tabData.mandatoryParkingTypologies.includes(bhkType)) {
+          if (
+            tabData.mandatoryParkingTypologies.includes(selectedCarpetTypology)
+          ) {
             isMandatoryParking = true;
             break;
           }
@@ -465,11 +776,14 @@ const Compare = () => {
       parkingCharges = safeNumber(propertyData.parkingCharge) || 0;
     }
 
-    // Only include parking if "Yes" and mandatory
-    const finalParkingCharges =
-      includeParkingInAgreement && isMandatoryParking ? parkingCharges : 0;
+    // Ignore parking charges completely if PSF includes parking
+    const finalParkingCharges = psfIncludesParking
+      ? 0
+      : includeParkingInAgreement && isMandatoryParking
+      ? parkingCharges
+      : 0;
 
-    // Get fixed component
+    // Get fixed component from selected carpet area data
     const fixedComponent =
       safeNumber(getFieldValue(propertyData, "fixedComponent")) || 0;
 
@@ -500,10 +814,13 @@ const Compare = () => {
       }
     }
 
-    // Calculate Floor Rise based on exact image logic
+    // Calculate Floor Rise based on exact image logic using selected carpet area
     let floorRiseAmount = 0;
     const floorRiseConfig = propertyData.floorRiseConfig || {};
     const floorRiseType = propertyData.floorRise || "";
+    const bhkType = selectedCarpetArea
+      ? getTypologyForCarpetArea(propertyData, selectedCarpetArea)
+      : typology.typology || "";
 
     if (floorRiseType === "Floor Rise") {
       // if floor rise then (Rise Rate * saleable Area) * ((floor - Floor Rise Starts from) + 1))
@@ -552,10 +869,10 @@ const Compare = () => {
       // Fallback to typology floorBandConfiguration
       if (
         !bandRate &&
-        floorBandConfiguration &&
-        floorBandConfiguration.length > 0
+        typology.floorBandConfiguration &&
+        typology.floorBandConfiguration.length > 0
       ) {
-        const matchingBand = floorBandConfiguration.find((band) => {
+        const matchingBand = typology.floorBandConfiguration.find((band) => {
           const fromFloor = parseInt(band.fromFloor || "1");
           const toFloor = parseInt(band.toFloor || "999");
           return actualFloor >= fromFloor && actualFloor <= toFloor;
@@ -581,11 +898,11 @@ const Compare = () => {
     // Main Agreement Value calculation per image
     let agreementValue = 0;
 
-    if (av === psf) {
+    if (avRate === psfRate) {
       // If AV Rate and PSF Rate same then
       // Agreement Value = (Saleable Area * AV Rate) + Floor Rise + Parking charges - (Saleable Area * Discount Rate) - Additional Fixed component
       agreementValue =
-        area * av +
+        area * avRate +
         floorRiseAmount +
         finalParkingCharges -
         area * discountRate -
@@ -595,10 +912,10 @@ const Compare = () => {
       if (psfIncludesFixedComponent) {
         agreementValue -= fixedComponent;
       }
-    } else if (av < psf) {
+    } else if (avRate < psfRate) {
       // If AV Rate less than PSF Rate then
       // Agreement Value = (Saleable Area * AV Rate) - Additional Fixed component
-      agreementValue = area * av - additionalFixedComponent;
+      agreementValue = area * avRate - additionalFixedComponent;
 
       // Subtract Fixed component if PSF Rate includes Fixed component
       if (psfIncludesFixedComponent) {
@@ -648,15 +965,52 @@ const Compare = () => {
         // New Firestore structure calculation (discount already handled inside)
         agreementValue = calculateAgreementValue(sheet, 0, floor);
 
-        // For display purposes, calculate legacy values
-        const typology = sheet.typologies[0];
-        const area = parseFloat(String(typology.saleableArea)) || 0;
-        const av = parseFloat(String(typology.avRate)) || 0;
-        flatCost = area * av;
+        // For display purposes, calculate legacy values using selected carpet area data
+        const selectedCarpetArea = safeNumber(sheet.reraCarpet);
+        const area = selectedCarpetArea
+          ? getSaleableAreaForCarpetArea(sheet, selectedCarpetArea)
+          : parseFloat(String(sheet.typologies[0].saleableArea)) || 0;
 
-        // Calculate floor rise for display
+        // Get AV rate from selected carpet area data
+        let avRateForCalc = 0;
+        if (selectedCarpetArea) {
+          // Search in subTabData first (most accurate)
+          if (sheet.subTabData) {
+            for (const tabData of Object.values(sheet.subTabData)) {
+              if (tabData.pricingConfigs) {
+                for (const config of tabData.pricingConfigs) {
+                  if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                    avRateForCalc = safeNumber(config.avRate) || 0;
+                    break;
+                  }
+                }
+              }
+              if (avRateForCalc) break;
+            }
+          }
+          // Fallback to pricingConfigs
+          if (!avRateForCalc && sheet.pricingConfigs) {
+            for (const config of sheet.pricingConfigs) {
+              if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                avRateForCalc = safeNumber(config.avRate) || 0;
+                break;
+              }
+            }
+          }
+        }
+        // Fallback to typology rate
+        if (!avRateForCalc) {
+          avRateForCalc = parseFloat(String(sheet.typologies[0].avRate)) || 0;
+        }
+
+        flatCost = area * avRateForCalc;
+
+        // Calculate floor rise for display using selected carpet area data
         const floorRiseConfig = sheet.floorRiseConfig || {};
         const floorRiseType = sheet.floorRise || "";
+        const selectedCarpetTypology = selectedCarpetArea
+          ? getTypologyForCarpetArea(sheet, selectedCarpetArea)
+          : sheet.typologies[0].typology || "";
 
         if (floorRiseType === "Floor Rise") {
           const riseRate = parseInt(floorRiseConfig.rate || "0") || 0;
@@ -670,9 +1024,9 @@ const Compare = () => {
         } else if (floorRiseType === "FR - Fixed Rate") {
           const fixedRateStartsFrom =
             parseInt(floorRiseConfig.fixedRateStartsFrom || "1") || 1;
-          const bhkType = typology.typology || "";
           const typologyRates = floorRiseConfig.typologyRates || {};
-          const fixedRate = parseInt(typologyRates[bhkType] || "0") || 0;
+          const fixedRate =
+            parseInt(typologyRates[selectedCarpetTypology] || "0") || 0;
 
           if (floor >= fixedRateStartsFrom) {
             const floorDifference = floor - fixedRateStartsFrom + 1;
@@ -681,10 +1035,7 @@ const Compare = () => {
             floorRisePerFloor = 0;
           }
         } else if (floorRiseType === "Floor Band") {
-          const bhkType = typology.typology || "";
           const actualFloor = floor || 1;
-
-          // Try root level floorBandConfig first
           let matchingBand = null;
           if (sheet.floorBandConfig && sheet.floorBandConfig.length > 0) {
             matchingBand = sheet.floorBandConfig.find((band) => {
@@ -696,9 +1047,11 @@ const Compare = () => {
             if (
               matchingBand &&
               matchingBand.rates &&
-              matchingBand.rates[bhkType]
+              matchingBand.rates[selectedCarpetTypology]
             ) {
-              const rate = parseInt(matchingBand.rates[bhkType] || "0") || 0;
+              const rate =
+                parseInt(matchingBand.rates[selectedCarpetTypology] || "0") ||
+                0;
               floorRisePerFloor = rate > 20000 ? rate : rate * area;
             }
           }
@@ -706,14 +1059,16 @@ const Compare = () => {
           // Fallback to typology floorBandConfiguration
           if (
             !matchingBand &&
-            typology.floorBandConfiguration &&
-            typology.floorBandConfiguration.length > 0
+            sheet.typologies[0].floorBandConfiguration &&
+            sheet.typologies[0].floorBandConfiguration.length > 0
           ) {
-            matchingBand = typology.floorBandConfiguration.find((band) => {
-              const fromFloor = parseInt(band.fromFloor || "1");
-              const toFloor = parseInt(band.toFloor || "999");
-              return actualFloor >= fromFloor && actualFloor <= toFloor;
-            });
+            matchingBand = sheet.typologies[0].floorBandConfiguration.find(
+              (band) => {
+                const fromFloor = parseInt(band.fromFloor || "1");
+                const toFloor = parseInt(band.toFloor || "999");
+                return actualFloor >= fromFloor && actualFloor <= toFloor;
+              }
+            );
 
             if (matchingBand) {
               const rate = parseInt(matchingBand.rate || "0") || 0;
@@ -721,11 +1076,10 @@ const Compare = () => {
             }
           }
         } else {
-          const bhkType = typology.typology || "";
           const bandRate = getFloorBandRate(
             floor,
-            bhkType,
-            typology.floorBandConfiguration || [],
+            selectedCarpetTypology,
+            sheet.typologies[0].floorBandConfiguration || [],
             sheet.typologyRates
           );
           if (bandRate > 20000) {
@@ -778,11 +1132,14 @@ const Compare = () => {
       let shouldIncludeParkingInAgreement =
         sheet.includeParkingInAgreement || false;
       let isParkingMandatoryOrIncluded = false;
+      let psfIncludesParking = false;
 
       // Also include parking if it's mandatory or included in PSF
       if (sheet.subTabData && typeof sheet.subTabData === "object") {
-        const currentTypology =
-          sheet.typologies?.[0]?.typology || sheet.flatType || "";
+        const carpetAreaForParking = safeNumber(sheet.reraCarpet);
+        const currentTypology = carpetAreaForParking
+          ? getTypologyForCarpetArea(sheet, carpetAreaForParking)
+          : sheet.typologies?.[0]?.typology || sheet.flatType || "";
         for (const k in sheet.subTabData) {
           const tabData = sheet.subTabData[k];
           // Check if parking is included in PSF
@@ -790,6 +1147,7 @@ const Compare = () => {
             tabData?.psfIncludesParking === true ||
             tabData?.psfIncludesParking === "true"
           ) {
+            psfIncludesParking = true;
             isParkingMandatoryOrIncluded = true;
             break;
           }
@@ -806,13 +1164,52 @@ const Compare = () => {
         }
       }
 
-      // Determine PSF and AV rates for comparison
-      const psfRate = sheet.typologies?.[0]
-        ? parseFloat(String(sheet.typologies[0].psfRate)) || 0
-        : safeNumber(sheet.psfRate) || 0;
-      const avRate = sheet.typologies?.[0]
-        ? parseFloat(String(sheet.typologies[0].avRate)) || 0
-        : safeNumber(sheet.avRate) || 0;
+      // Determine PSF and AV rates for comparison using selected carpet area data
+      const selectedCarpetArea = safeNumber(sheet.reraCarpet);
+      let psfRate = 0;
+      let avRate = 0;
+
+      if (selectedCarpetArea) {
+        // Search in subTabData first (most accurate)
+        if (sheet.subTabData) {
+          for (const tabData of Object.values(sheet.subTabData)) {
+            if (tabData.pricingConfigs) {
+              for (const config of tabData.pricingConfigs) {
+                if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                  psfRate = safeNumber(config.psfRate) || 0;
+                  avRate = safeNumber(config.avRate) || 0;
+                  break;
+                }
+              }
+            }
+            if (psfRate && avRate) break;
+          }
+        }
+        // Fallback to pricingConfigs
+        if ((!psfRate || !avRate) && sheet.pricingConfigs) {
+          for (const config of sheet.pricingConfigs) {
+            if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+              psfRate = psfRate || safeNumber(config.psfRate) || 0;
+              avRate = avRate || safeNumber(config.avRate) || 0;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback to typology rates if no carpet area selected or no match found
+      if (!psfRate || !avRate) {
+        psfRate =
+          psfRate ||
+          (sheet.typologies?.[0]
+            ? parseFloat(String(sheet.typologies[0].psfRate)) || 0
+            : safeNumber(sheet.psfRate) || 0);
+        avRate =
+          avRate ||
+          (sheet.typologies?.[0]
+            ? parseFloat(String(sheet.typologies[0].avRate)) || 0
+            : safeNumber(sheet.avRate) || 0);
+      }
 
       // Include parking in agreement only if AV >= PSF and parking is mandatory/included or user selected
       if (
@@ -826,8 +1223,58 @@ const Compare = () => {
       // No need to subtract again here
 
       // GST = if Agreement Value is less than 4500000 then 1% else 5% of agreement value
-      const gstRate = agreementValue < 4500000 ? 0.01 : 0.05;
-      const gst = Math.ceil(agreementValue * gstRate);
+      // But exclude GST if selected carpet area's projectStatus is "OC Received"
+      let gst = 0;
+      let shouldCalculateGST = true;
+
+      // Check if selected carpet area has projectStatus "OC Received"
+      if (selectedCarpetArea) {
+        // Search in subTabData first (most accurate)
+        if (sheet.subTabData) {
+          for (const tabData of Object.values(sheet.subTabData)) {
+            if (tabData.pricingConfigs) {
+              for (const config of tabData.pricingConfigs) {
+                if (
+                  safeNumber(config.reraCarpet) === selectedCarpetArea &&
+                  config.projectStatus === "OC Received"
+                ) {
+                  shouldCalculateGST = false;
+                  break;
+                }
+              }
+            }
+            if (!shouldCalculateGST) break;
+          }
+        }
+        // Fallback to pricingConfigs
+        if (shouldCalculateGST && sheet.pricingConfigs) {
+          for (const config of sheet.pricingConfigs) {
+            if (
+              safeNumber(config.reraCarpet) === selectedCarpetArea &&
+              config.projectStatus === "OC Received"
+            ) {
+              shouldCalculateGST = false;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback to typology projectStatus
+      if (shouldCalculateGST && sheet.typologies) {
+        for (const typology of sheet.typologies) {
+          if (typology.projectStatus === "OC Received") {
+            shouldCalculateGST = false;
+            break;
+          }
+        }
+      }
+
+      // Calculate GST only if not OC Received
+      if (shouldCalculateGST) {
+        const gstRate = agreementValue < 4500000 ? 0.01 : 0.05;
+        gst = Math.ceil(agreementValue * gstRate);
+      }
 
       // Stamp Duty = Rate to be captured from stored stamp duty rates
       const rateUsed = getStampDutyRate(
@@ -846,41 +1293,111 @@ const Compare = () => {
       const stampDuty =
         Math.ceil((agreementValue * rateUsed) / 100 / 100) * 100;
 
-      // Registration Fee = 1% of Agreement Value subject to maximum caps
-      const currentTypology =
-        sheet.typologies?.[0]?.typology || sheet.flatType || "";
+      // Registration Fee = 1% of Agreement Value subject to maximum caps (matching totalPackageCalculator logic)
+      const carpetAreaForRegistration = safeNumber(sheet.reraCarpet);
+      const currentTypology = carpetAreaForRegistration
+        ? getTypologyForCarpetArea(sheet, carpetAreaForRegistration)
+        : filterPropertyType ||
+          sheet.typologies?.[0]?.typology ||
+          sheet.flatType ||
+          "";
       const isJodiOption = currentTypology.toLowerCase().includes("jodi");
-      const maxRegistrationFee = isJodiOption ? 60000 : 30000;
 
-      // Calculate 1% of Agreement Value
-      const calculatedRegistrationFee = Math.ceil(agreementValue * 0.01);
+      let registrationFee = 0;
+      if (agreementValue > 0) {
+        if (isJodiOption) {
+          if (agreementValue <= 6000000) {
+            registrationFee = Math.max(100, agreementValue * 0.01);
+          } else {
+            registrationFee = 60000;
+          }
+        } else {
+          if (agreementValue < 3000000) {
+            registrationFee = Math.max(100, agreementValue * 0.01);
+          } else {
+            registrationFee = 30000;
+          }
+        }
+      }
 
-      // Apply maximum cap + any additional DB registration
-      const registrationFee =
-        Math.min(calculatedRegistrationFee, maxRegistrationFee) +
-        originalDbRegistration;
+      // Add any additional DB registration
+      registrationFee += originalDbRegistration;
 
       // Furniture = Difference + Floor Rise + Parking + Fixed component + Additional fixed Component
       let furnitureCharges = 0;
       let parkingInFurniture = 0;
 
       if (sheet.typologies && sheet.typologies.length > 0) {
-        const typology = sheet.typologies[0];
-        const furnitureArea = parseFloat(String(typology.saleableArea)) || 0;
-        const psfRate = parseFloat(String(typology.psfRate)) || 0;
-        const avRate = parseFloat(String(typology.avRate)) || 0;
+        // Use saleable area corresponding to selected carpet area
+        const carpetAreaForFurniture = safeNumber(sheet.reraCarpet);
+        const furnitureArea = carpetAreaForFurniture
+          ? getSaleableAreaForCarpetArea(sheet, carpetAreaForFurniture)
+          : parseFloat(String(sheet.typologies[0].saleableArea)) || 0;
+
+        // Get PSF and AV rates from selected carpet area data
+        let psfRateForFurniture = 0;
+        let avRateForFurniture = 0;
+
+        if (carpetAreaForFurniture) {
+          // Search in subTabData first (most accurate)
+          if (sheet.subTabData) {
+            for (const tabData of Object.values(sheet.subTabData)) {
+              if (tabData.pricingConfigs) {
+                for (const config of tabData.pricingConfigs) {
+                  if (
+                    safeNumber(config.reraCarpet) === carpetAreaForFurniture
+                  ) {
+                    psfRateForFurniture = safeNumber(config.psfRate) || 0;
+                    avRateForFurniture = safeNumber(config.avRate) || 0;
+                    break;
+                  }
+                }
+              }
+              if (psfRateForFurniture && avRateForFurniture) break;
+            }
+          }
+          // Fallback to pricingConfigs
+          if (
+            (!psfRateForFurniture || !avRateForFurniture) &&
+            sheet.pricingConfigs
+          ) {
+            for (const config of sheet.pricingConfigs) {
+              if (safeNumber(config.reraCarpet) === carpetAreaForFurniture) {
+                psfRateForFurniture =
+                  psfRateForFurniture || safeNumber(config.psfRate) || 0;
+                avRateForFurniture =
+                  avRateForFurniture || safeNumber(config.avRate) || 0;
+                break;
+              }
+            }
+          }
+        }
+
+        // Fallback to typology rates if no carpet area selected
+        if (!psfRateForFurniture || !avRateForFurniture) {
+          psfRateForFurniture =
+            psfRateForFurniture ||
+            parseFloat(String(sheet.typologies[0].psfRate)) ||
+            0;
+          avRateForFurniture =
+            avRateForFurniture ||
+            parseFloat(String(sheet.typologies[0].avRate)) ||
+            0;
+        }
 
         // Difference = (Saleable Area * (PSF Rate - AV Rate))
         // If AV Rate < PSF Rate and discount is provided, subtract discount from the rate difference
-        let rateDifference = psfRate - avRate;
-        if (avRate < psfRate && sheet.discount) {
+        let rateDifference = psfRateForFurniture - avRateForFurniture;
+        if (avRateForFurniture < psfRateForFurniture && sheet.discount) {
           rateDifference = Math.max(0, rateDifference - sheet.discount);
         }
         const difference = furnitureArea * rateDifference;
 
         // Parking: if AV Rate less than PSF Rate then include parking if "Yes" and mandatory with selected typology
+        // But ignore parking completely if PSF includes parking
         if (
-          avRate < psfRate &&
+          !psfIncludesParking &&
+          avRateForFurniture < psfRateForFurniture &&
           (shouldIncludeParkingInAgreement || isParkingMandatoryOrIncluded)
         ) {
           parkingInFurniture = parkingCost;
@@ -888,8 +1405,11 @@ const Compare = () => {
 
         // Floor Rise: Include Floor Rise ONLY if AV Rate < PSF Rate (per specification)
         let floorRiseAmount = 0;
-        if (avRate < psfRate) {
+        if (avRateForFurniture < psfRateForFurniture) {
           const currentFloorRiseType = sheet.floorRise || "";
+          const selectedCarpetTypology = carpetAreaForFurniture
+            ? getTypologyForCarpetArea(sheet, carpetAreaForFurniture)
+            : sheet.typologies[0].typology || "";
 
           if (currentFloorRiseType === "Floor Rise") {
             const floorRiseConfig = sheet.floorRiseConfig || {};
@@ -907,15 +1427,14 @@ const Compare = () => {
             const floorRiseConfig = sheet.floorRiseConfig || {};
             const fixedRateStartsFrom =
               parseInt(floorRiseConfig.fixedRateStartsFrom || "1") || 1;
-            const bhkType = typology.typology || "";
             const typologyRates = floorRiseConfig.typologyRates || {};
-            const fixedRate = parseInt(typologyRates[bhkType] || "0") || 0;
+            const fixedRate =
+              parseInt(typologyRates[selectedCarpetTypology] || "0") || 0;
 
             if (floor >= fixedRateStartsFrom) {
               floorRiseAmount = fixedRate * (floor - fixedRateStartsFrom + 1);
             }
           } else if (currentFloorRiseType === "Floor Band") {
-            const bhkType = typology.typology || "";
             const actualFloor = floor || 1;
             let bandRate = 0;
 
@@ -930,25 +1449,26 @@ const Compare = () => {
               if (
                 matchingBand &&
                 matchingBand.rates &&
-                matchingBand.rates[bhkType]
+                matchingBand.rates[selectedCarpetTypology]
               ) {
-                bandRate = parseInt(matchingBand.rates[bhkType] || "0") || 0;
+                bandRate =
+                  parseInt(matchingBand.rates[selectedCarpetTypology] || "0") ||
+                  0;
               }
             }
 
             // Fallback to typology floorBandConfiguration
             if (
               !bandRate &&
-              typology.floorBandConfiguration &&
-              typology.floorBandConfiguration.length > 0
+              sheet.typologies[0].floorBandConfiguration &&
+              sheet.typologies[0].floorBandConfiguration.length > 0
             ) {
-              const matchingBand = typology.floorBandConfiguration.find(
-                (band) => {
+              const matchingBand =
+                sheet.typologies[0].floorBandConfiguration.find((band) => {
                   const fromFloor = parseInt(band.fromFloor || "1");
                   const toFloor = parseInt(band.toFloor || "999");
                   return actualFloor >= fromFloor && actualFloor <= toFloor;
-                }
-              );
+                });
 
               if (matchingBand) {
                 bandRate = parseInt(matchingBand.rate || "0") || 0;
@@ -964,8 +1484,7 @@ const Compare = () => {
           }
         }
 
-        // Fixed component: Always use the actual fixed component amount for furniture calculation
-        // The PSF inclusion logic is handled separately in Agreement Value calculation
+        // Fixed component: Get from selected carpet area data
         const fixedComponentAmount =
           safeNumber(getFieldValue(sheet, "fixedComponent")) || 0;
         const fixedComponent = fixedComponentAmount;
@@ -982,30 +1501,76 @@ const Compare = () => {
           fixedComponent +
           additionalFixedComponent;
       } else {
-        // Legacy structure calculation
-        const furnitureArea =
-          safeNumber(sheet.saleableArea) || safeNumber(sheet.reraCarpet) || 0;
-        const psfRate = safeNumber(sheet.psfRate) || 0;
-        const avRate = safeNumber(sheet.avRate) || 0;
+        // Legacy structure calculation using selected carpet area data
+        const selectedCarpetArea = safeNumber(sheet.reraCarpet);
+        const furnitureArea = selectedCarpetArea
+          ? getSaleableAreaForCarpetArea(sheet, selectedCarpetArea)
+          : safeNumber(sheet.saleableArea) || 0;
+
+        // Get PSF and AV rates from selected carpet area data or fallback to legacy
+        let psfRateForFurniture = 0;
+        let avRateForFurniture = 0;
+
+        if (selectedCarpetArea) {
+          // Search in subTabData first (most accurate)
+          if (sheet.subTabData) {
+            for (const tabData of Object.values(sheet.subTabData)) {
+              if (tabData.pricingConfigs) {
+                for (const config of tabData.pricingConfigs) {
+                  if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                    psfRateForFurniture = safeNumber(config.psfRate) || 0;
+                    avRateForFurniture = safeNumber(config.avRate) || 0;
+                    break;
+                  }
+                }
+              }
+              if (psfRateForFurniture && avRateForFurniture) break;
+            }
+          }
+          // Fallback to pricingConfigs
+          if (
+            (!psfRateForFurniture || !avRateForFurniture) &&
+            sheet.pricingConfigs
+          ) {
+            for (const config of sheet.pricingConfigs) {
+              if (safeNumber(config.reraCarpet) === selectedCarpetArea) {
+                psfRateForFurniture =
+                  psfRateForFurniture || safeNumber(config.psfRate) || 0;
+                avRateForFurniture =
+                  avRateForFurniture || safeNumber(config.avRate) || 0;
+                break;
+              }
+            }
+          }
+        }
+
+        // Fallback to legacy rates if no carpet area selected
+        if (!psfRateForFurniture || !avRateForFurniture) {
+          psfRateForFurniture =
+            psfRateForFurniture || safeNumber(sheet.psfRate) || 0;
+          avRateForFurniture =
+            avRateForFurniture || safeNumber(sheet.avRate) || 0;
+        }
 
         // Difference = (Saleable Area * (PSF Rate - AV Rate))
         // If AV Rate < PSF Rate and discount is provided, subtract discount from the rate difference
-        let rateDifference = psfRate - avRate;
-        if (avRate < psfRate && sheet.discount) {
+        let rateDifference = psfRateForFurniture - avRateForFurniture;
+        if (avRateForFurniture < psfRateForFurniture && sheet.discount) {
           rateDifference = Math.max(0, rateDifference - sheet.discount);
         }
         const difference = furnitureArea * rateDifference;
 
         // Parking: if AV Rate less than PSF Rate then include parking if "Yes" and mandatory with selected typology
+        // But ignore parking completely if PSF includes parking
         if (
-          avRate < psfRate &&
+          !psfIncludesParking &&
+          avRateForFurniture < psfRateForFurniture &&
           (shouldIncludeParkingInAgreement || isParkingMandatoryOrIncluded)
         ) {
           parkingInFurniture = parkingCost;
         }
 
-        // Fixed component: Always use the actual fixed component amount for furniture calculation
-        // The PSF inclusion logic is handled separately in Agreement Value calculation
+        // Fixed component: Get from selected carpet area data
         const fixedComponentAmount =
           safeNumber(getFieldValue(sheet, "fixedComponent")) || 0;
         const fixedComponent = fixedComponentAmount;
@@ -1023,21 +1588,54 @@ const Compare = () => {
           additionalFixedComponent;
       }
 
-      // Possession Charge = Value as stored in DB for typology RERA
-      const typologyPossession = sheet.typologies?.[0]?.possessionCharges;
-      const subTabPossession = sheet.subTabData?.possessionCharges;
-      const legacyPossession = sheet.possessionCharges;
-      const possessionCharges =
-        safeNumber(typologyPossession) ||
-        safeNumber(subTabPossession) ||
-        safeNumber(legacyPossession) ||
-        0;
+      // Possession Charge = Value as stored in DB for selected typology RERA carpet area
+      let possessionCharges = 0;
+      const carpetAreaForPossession = safeNumber(sheet.reraCarpet);
+
+      if (carpetAreaForPossession) {
+        // Search in subTabData first (most accurate)
+        if (sheet.subTabData) {
+          for (const tabData of Object.values(sheet.subTabData)) {
+            if (tabData.pricingConfigs) {
+              for (const config of tabData.pricingConfigs) {
+                if (safeNumber(config.reraCarpet) === carpetAreaForPossession) {
+                  possessionCharges = safeNumber(config.possessionCharges) || 0;
+                  break;
+                }
+              }
+            }
+            if (possessionCharges) break;
+          }
+        }
+        // Fallback to pricingConfigs
+        if (!possessionCharges && sheet.pricingConfigs) {
+          for (const config of sheet.pricingConfigs) {
+            if (safeNumber(config.reraCarpet) === carpetAreaForPossession) {
+              possessionCharges = safeNumber(config.possessionCharges) || 0;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback to original logic if no carpet area selected or no match found
+      if (!possessionCharges) {
+        const typologyPossession = sheet.typologies?.[0]?.possessionCharges;
+        const subTabPossession = sheet.subTabData?.possessionCharges;
+        const legacyPossession = sheet.possessionCharges;
+        possessionCharges =
+          safeNumber(typologyPossession) ||
+          safeNumber(subTabPossession) ||
+          safeNumber(legacyPossession) ||
+          0;
+      }
 
       // Total Package = Agreement Value + Stamp Duty + Registration Fees + GST + Possession Charge + furniture + Parking (when parking field showing value in table)
 
       // Determine parking amount based on what's showing in table
       let parkingForTotal = 0;
       if (
+        !psfIncludesParking &&
         sheet.withParking &&
         !shouldIncludeParkingInAgreement &&
         !isParkingMandatoryOrIncluded
@@ -1065,7 +1663,8 @@ const Compare = () => {
 
       const safeAgreementValue = Number.isFinite(agreementValue)
         ? Number(agreementValue.toFixed(2))
-        : 0;
+        : // amazonq-ignore-next-line
+          0;
 
       const safeFurnitureCharges = Number.isFinite(furnitureCharges)
         ? Number(furnitureCharges.toFixed(2))
@@ -1117,56 +1716,102 @@ const Compare = () => {
 
   const initialSelectedItemsRef = useRef<CostSheet[]>([]);
 
-  // Get selected items from sessionStorage or location.state
+  // Listen for data from Dashboard component via URL parameter
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
+    const dataKey = urlParams.get("data");
+
+    if (dataKey) {
+      console.log("Compare: Found data key in URL:", dataKey);
+      const storedData = sessionStorage.getItem(dataKey);
+
+      if (storedData) {
+        try {
+          const compareData = JSON.parse(storedData);
+          console.log("Compare: Received data from Dashboard:", compareData);
+
+          const { selectedProperties, filters } = compareData;
+
+          // Set received properties
+          if (selectedProperties && selectedProperties.length > 0) {
+            initialSelectedItemsRef.current = selectedProperties;
+          }
+
+          // Set filters FIRST before applying them
+          if (filters) {
+            setFilterPropertyType(filters.bhkType || "");
+            setFilterLocation(filters.station || "");
+
+            // Apply filters immediately after setting them
+            if (filters.bhkType || filters.station) {
+              setFiltersApplied(true);
+            }
+          }
+
+          // Don't remove data immediately - let it be cleaned up later
+        } catch (error) {
+          console.error("Compare: Error parsing stored data:", error);
+        }
+      } else {
+        console.log("Compare: No data found for key:", dataKey);
+      }
+    }
+  }, [location.search]);
+
+  // Fallback: Get data from URL if no data received (for direct navigation)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const dataKey = urlParams.get("data");
     const storageKey = urlParams.get("storageKey");
     const bhkFilter = urlParams.get("bhkType");
 
     console.log("Compare: URL search params:", location.search);
+    console.log("Compare: Data key from URL:", dataKey);
     console.log("Compare: Storage key from URL:", storageKey);
     console.log("Compare: BHK filter from URL:", bhkFilter);
     console.log("Compare: Location state:", location.state);
 
     let selectedItems: CostSheet[] = [];
 
-    if (storageKey) {
-      // New tab - get from sessionStorage
-      console.log(
-        "Compare: Looking for data in sessionStorage with key:",
-        storageKey
-      );
+    if (dataKey) {
+      // New approach - get from sessionStorage using data key
+      const storedData = sessionStorage.getItem(dataKey);
+      if (storedData) {
+        try {
+          const compareData = JSON.parse(storedData);
+          selectedItems = compareData.selectedProperties || [];
+          console.log(
+            "Compare: Using data key, found",
+            selectedItems.length,
+            "items"
+          );
+          // Clean up after use
+          setTimeout(() => {
+            sessionStorage.removeItem(dataKey);
+          }, 1000);
+        } catch (error) {
+          console.error("Error parsing stored comparison data:", error);
+          // amazonq-ignore-next-line
+        }
+      }
+    } else if (storageKey) {
+      // Legacy approach - get from sessionStorage
       const storedData = sessionStorage.getItem(storageKey);
-      console.log("Compare: Retrieved data from sessionStorage:", storedData);
-
       if (storedData) {
         try {
           const parsedData = JSON.parse(storedData);
           selectedItems = Array.isArray(parsedData) ? parsedData : [];
           console.log(
-            "Compare: Parsed selected items:",
+            "Compare: Using storage key, found",
             selectedItems.length,
             "items"
           );
-          // Don't remove immediately - let it expire naturally or remove after a delay
           setTimeout(() => {
             sessionStorage.removeItem(storageKey);
           }, 1000);
         } catch (error) {
           console.error("Error parsing stored comparison data:", error);
         }
-      } else {
-        console.log(
-          "Compare: No data found in sessionStorage for key:",
-          storageKey
-        );
-        // Check if there are any compare keys in sessionStorage
-        const allKeys = Object.keys(sessionStorage);
-        const compareKeys = allKeys.filter((key) => key.startsWith("compare_"));
-        console.log(
-          "Compare: All compare keys in sessionStorage:",
-          compareKeys
-        );
       }
     } else {
       // Same tab - get from location.state
@@ -1179,7 +1824,11 @@ const Compare = () => {
     }
 
     console.log("Compare: Final selected items count:", selectedItems.length);
-    initialSelectedItemsRef.current = selectedItems;
+
+    // Only set if we haven't received data via the first useEffect
+    if (initialSelectedItemsRef.current.length === 0) {
+      initialSelectedItemsRef.current = selectedItems;
+    }
 
     // Store BHK filter for auto-filtering
     if (bhkFilter) {
@@ -1188,7 +1837,15 @@ const Compare = () => {
   }, [location]);
 
   useEffect(() => {
-    if (stampDutyRates.length && allCostSheets.length) {
+    console.log("Compare: useEffect triggered", {
+      allCostSheetsLength: allCostSheets.length,
+      hasInitiallyLoaded,
+      filterPropertyType,
+      filtersApplied,
+      initialSelectedItemsCount: initialSelectedItemsRef.current.length,
+    });
+
+    if (allCostSheets.length) {
       console.log("Compare: Setting up cost sheets...", {
         selectedItemsCount: initialSelectedItemsRef.current.length,
         selectedItems: initialSelectedItemsRef.current.map((item) => ({
@@ -1196,38 +1853,65 @@ const Compare = () => {
           projectName: item.projectName,
           hasSubTabData: !!item.subTabData,
         })),
+        filterPropertyType,
       });
 
       // Replace sessionStorage items with fresh data from allCostSheets
       let updatedSheets = initialSelectedItemsRef.current.map((item) => {
         const freshData = allCostSheets.find((s) => s.id === item.id);
-        return recalculateCostSheet(freshData || item);
+        const sheetToProcess = freshData || item;
+        console.log("Compare: Processing sheet:", {
+          id: sheetToProcess.id,
+          projectName: sheetToProcess.projectName,
+          hasTypologies: !!sheetToProcess.typologies,
+        });
+        return recalculateCostSheet(sheetToProcess);
       });
 
-      // Check for BHK filter from dashboard and auto-populate if no items selected
-      const bhkFilter = sessionStorage.getItem("compare_bhk_filter");
-      if (bhkFilter && updatedSheets.length === 0) {
-        console.log("Compare: Auto-filtering for BHK type:", bhkFilter);
+      // Auto-populate only when coming from Dashboard with filters (not when manually selecting filters in Compare page)
+      if (
+        updatedSheets.length === 0 &&
+        filterPropertyType &&
+        filtersApplied &&
+        !hasInitiallyLoaded
+      ) {
+        console.log(
+          "Compare: Auto-filtering for BHK type:",
+          filterPropertyType
+        );
 
-        // Filter approved cost sheets by BHK type
+        // Filter approved cost sheets by BHK type and location
         const matchingSheets = allCostSheets.filter((sheet) => {
           const isApproved =
             sheet.isApproved === true || sheet.approvalStatus === "approved";
           if (!isApproved) return false;
 
+          // Location filter
+          if (filterLocation) {
+            const locations = [sheet.station, sheet.location].filter(Boolean);
+            const hasMatchingLocation = locations.some(
+              (loc) =>
+                loc.toLowerCase().trim() === filterLocation.toLowerCase().trim()
+            );
+            if (!hasMatchingLocation) return false;
+          }
+
           // Check typologies for matching BHK
           if (sheet.typologies && Array.isArray(sheet.typologies)) {
             return sheet.typologies.some(
               (typology) =>
-                typology.typology === bhkFilter &&
+                typology.typology === filterPropertyType &&
                 typology.availability !== "Sold Out"
             );
+            // amazonq-ignore-next-line
+            // amazonq-ignore-next-line
+            // amazonq-ignore-next-line
           }
 
           // Check legacy flatType
           const flatType = sheet.flatType;
           const availability = sheet.availability;
-          return flatType === bhkFilter && availability !== "Sold Out";
+          return flatType === filterPropertyType && availability !== "Sold Out";
         });
 
         // Take first 3 matching properties
@@ -1240,11 +1924,10 @@ const Compare = () => {
           "Compare: Auto-selected",
           autoSelectedSheets.length,
           "properties for",
-          bhkFilter
+          filterPropertyType,
+          "with carpet areas:",
+          autoSelectedSheets.map((s) => s.reraCarpet)
         );
-
-        // Clear the filter after use
-        sessionStorage.removeItem("compare_bhk_filter");
       }
 
       // Ensure we always have 5 columns (empty ones will be filled with dropdowns)
@@ -1257,11 +1940,120 @@ const Compare = () => {
         updatedSheets.map((sheet) => ({
           id: sheet.id,
           projectName: sheet.projectName,
+          reraCarpet: sheet.reraCarpet,
         }))
       );
+
+      // Ensure we set the cost sheets immediately when we have data
       setCostSheets(updatedSheets);
+      setHasInitiallyLoaded(true);
+
+      console.log(
+        "Compare: Cost sheets set successfully, count:",
+        updatedSheets.length
+      );
+    } else {
+      console.log("Compare: Waiting for data to load...", {
+        allCostSheetsLength: allCostSheets.length,
+        hasInitialSelectedItems: initialSelectedItemsRef.current.length > 0,
+      });
+
+      // If we have selected items but no allCostSheets yet, use the selected items directly
+      if (initialSelectedItemsRef.current.length > 0) {
+        console.log("Compare: Using initial selected items directly");
+        let updatedSheets = initialSelectedItemsRef.current.map((item) => {
+          return recalculateCostSheet(item);
+        });
+
+        // Ensure we always have 5 columns
+        while (updatedSheets.length < 5) {
+          updatedSheets.push({ id: `empty-${updatedSheets.length}` });
+        }
+
+        setCostSheets(updatedSheets);
+        setHasInitiallyLoaded(true);
+      } else if (costSheets.length === 0) {
+        // Initialize empty columns when no data is loaded
+        const emptySheets = Array(5)
+          .fill(null)
+          .map((_, index) => ({ id: `empty-${index}` }));
+        setCostSheets(emptySheets);
+      }
     }
-  }, [stampDutyRates, allCostSheets, recalculateCostSheet]);
+  }, [
+    stampDutyRates,
+    allCostSheets,
+    recalculateCostSheet,
+    filterPropertyType,
+    filterLocation,
+    hasInitiallyLoaded,
+  ]);
+
+  // Separate useEffect to handle carpet area auto-selection when filters are applied
+  useEffect(() => {
+    if (filtersApplied && filterPropertyType && costSheets.length > 0) {
+      console.log(
+        "Compare: Auto-selecting carpet areas for filter:",
+        filterPropertyType
+      );
+
+      setCostSheets((prevSheets) => {
+        return prevSheets.map((sheet) => {
+          if (sheet.projectName) {
+            const targetTypology = filterPropertyType;
+            const availableAreas = getTypologyCarpetAreas(
+              sheet,
+              targetTypology,
+              true
+            );
+
+            if (availableAreas.length > 0) {
+              const selectedCarpetArea = availableAreas[0];
+              const correspondingSaleableArea = getSaleableAreaForCarpetArea(
+                sheet,
+                selectedCarpetArea
+              );
+
+              const updatedSheet = {
+                ...sheet,
+                reraCarpet: selectedCarpetArea,
+                saleableArea: correspondingSaleableArea,
+              };
+
+              // Update typologies if they exist
+              if (
+                updatedSheet.typologies &&
+                updatedSheet.typologies.length > 0
+              ) {
+                updatedSheet.typologies = updatedSheet.typologies.map((t) => ({
+                  ...t,
+                  reraCarpet: selectedCarpetArea,
+                  saleableArea: correspondingSaleableArea,
+                }));
+              }
+
+              // Update pricingConfigs if they exist
+              if (
+                updatedSheet.pricingConfigs &&
+                updatedSheet.pricingConfigs.length > 0
+              ) {
+                updatedSheet.pricingConfigs = updatedSheet.pricingConfigs.map(
+                  (p) => ({
+                    ...p,
+                    reraCarpet: selectedCarpetArea.toString(),
+                    saleableArea: correspondingSaleableArea.toString(),
+                  })
+                );
+              }
+
+              return recalculateCostSheet(updatedSheet);
+            }
+          }
+          return sheet;
+        });
+      });
+    }
+  }, [filtersApplied, filterPropertyType, costSheets.length]);
 
   const handleClose = () => navigate("/dashboard");
 
@@ -1273,15 +2065,32 @@ const Compare = () => {
     return `${(value || 0).toLocaleString("en-IN")} sq.ft.`;
   };
 
+  const formatPossessionDate = (dateString?: string) => {
+    if (!dateString || dateString === "Ready to move") return "Ready to move";
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Ready to move";
+
+      const month = date.toLocaleString("en-US", { month: "short" });
+      const year = date.getFullYear();
+      return `${month} ${year}`;
+    } catch {
+      return "Ready to move";
+    }
+  };
+
   const formatBooleanDropdown = (
     value: boolean | undefined,
     index: number,
     key: "withParking" | "includeParkingInAgreement"
   ) => {
     const sheet = costSheets[index];
-    // Get current typology
-    const currentTypology =
-      sheet?.typologies?.[0]?.typology || sheet?.flatType || "";
+    // Get current typology from selected carpet area or fallback
+    const selectedCarpetArea = safeNumber(sheet?.reraCarpet);
+    const currentTypology = selectedCarpetArea
+      ? getTypologyForCarpetArea(sheet, selectedCarpetArea)
+      : sheet?.typologies?.[0]?.typology || sheet?.flatType || "";
 
     // Check if parking is included in PSF or if typology is mandatory
     let psfIncludesParking = false;
@@ -1319,6 +2128,7 @@ const Compare = () => {
           }`}
           value={value ? "yes" : "no"}
           disabled={isDisabled}
+          // amazonq-ignore-next-line
           onChange={(e) => {
             if (isDisabled) return;
             const newValue = e.target.value === "yes";
@@ -1381,100 +2191,46 @@ const Compare = () => {
   };
 
   const handleCarpetAreaChange = (index: number, newArea: number) => {
-    console.log("RERA Carpet Area Change:", { index, newArea, filtersApplied });
-
     setCostSheets((prev) => {
       const updated = [...prev];
       const currentSheet = updated[index];
-      const currentTypology =
-        getFieldValue(currentSheet, "flatType") ||
-        currentSheet.typologies?.[0]?.typology ||
-        currentSheet.flatType;
 
-      console.log("Current sheet:", {
-        projectName: currentSheet.projectName,
-        typology: currentTypology,
-      });
+      // Get the corresponding saleable area for the selected carpet area
+      const correspondingSaleableArea = getSaleableAreaForCarpetArea(
+        currentSheet,
+        newArea
+      );
 
-      // Use filtered sheets if filters are applied, otherwise use all sheets
-      const sheetsToSearch = filtersApplied ? filteredSheets : allCostSheets;
+      // Update the carpet area and saleable area in all relevant places
+      const updatedSheet = {
+        ...currentSheet,
+        reraCarpet: newArea,
+        saleableArea: correspondingSaleableArea,
+      };
 
-      console.log("Sheets to search:", sheetsToSearch.length, "sheets");
-
-      // Find matching sheet with same project and typology (or any project if filters applied)
-      const matchingSheet = sheetsToSearch.find((sheet) => {
-        // If filters are applied, search across all projects; otherwise same project only
-        if (!filtersApplied && sheet.projectName !== currentSheet.projectName)
-          return false;
-
-        // Check if this sheet has the matching carpet area
-        let hasMatchingArea = false;
-
-        // Check typologies
-        if (sheet.typologies) {
-          hasMatchingArea = sheet.typologies.some(
-            (t) =>
-              t.typology === currentTypology &&
-              safeNumber(t.reraCarpet) === newArea
-          );
-        }
-
-        // Check pricingConfigs
-        if (!hasMatchingArea && sheet.pricingConfigs) {
-          hasMatchingArea = sheet.pricingConfigs.some(
-            (p) =>
-              p.typology === currentTypology &&
-              safeNumber(p.reraCarpet) === newArea
-          );
-        }
-
-        // Check legacy fields
-        if (
-          !hasMatchingArea &&
-          sheet.flatType === currentTypology &&
-          safeNumber(sheet.reraCarpet) === newArea
-        ) {
-          hasMatchingArea = true;
-        }
-
-        if (hasMatchingArea) {
-          console.log("Found matching sheet:", {
-            projectName: sheet.projectName,
-            id: sheet.id,
-          });
-        }
-
-        return hasMatchingArea;
-      });
-
-      if (matchingSheet) {
-        console.log("Updating with matching sheet:", matchingSheet.projectName);
-        // Preserve the current sheet's user inputs while updating with matching sheet data
-        const updatedSheet = {
-          ...recalculateCostSheet(matchingSheet),
-          // Preserve user-modified fields from current sheet
-          discount: currentSheet.discount,
-          floor: currentSheet.floor,
-          withParking: currentSheet.withParking,
-          includeParkingInAgreement: currentSheet.includeParkingInAgreement,
-        };
-        updated[index] = recalculateCostSheet(updatedSheet);
-      } else {
-        console.log("No matching sheet found for carpet area:", newArea);
-        // If no matching sheet found, just update the current sheet's carpet area
-        const updatedSheet = {
-          ...currentSheet,
+      // Update typologies if they exist
+      if (updatedSheet.typologies && updatedSheet.typologies.length > 0) {
+        updatedSheet.typologies = updatedSheet.typologies.map((t) => ({
+          ...t,
           reraCarpet: newArea,
-        };
-        // Update typologies if they exist
-        if (updatedSheet.typologies && updatedSheet.typologies.length > 0) {
-          updatedSheet.typologies = updatedSheet.typologies.map((t) =>
-            t.typology === currentTypology ? { ...t, reraCarpet: newArea } : t
-          );
-        }
-        updated[index] = recalculateCostSheet(updatedSheet);
+          saleableArea: correspondingSaleableArea,
+        }));
       }
 
+      // Update pricingConfigs if they exist
+      if (
+        updatedSheet.pricingConfigs &&
+        updatedSheet.pricingConfigs.length > 0
+      ) {
+        updatedSheet.pricingConfigs = updatedSheet.pricingConfigs.map((p) => ({
+          ...p,
+          reraCarpet: newArea.toString(),
+          saleableArea: correspondingSaleableArea.toString(),
+        }));
+      }
+
+      // Recalculate all financial values based on new carpet area
+      updated[index] = recalculateCostSheet(updatedSheet);
       return updated;
     });
   };
@@ -1483,13 +2239,20 @@ const Compare = () => {
     const newSheet = allCostSheets.find((s) => s.id === newId);
     if (newSheet) {
       const recalculated = recalculateCostSheet(newSheet);
-
       setCostSheets((prev) => {
         const updated = [...prev];
         updated[index] = recalculated;
         return updated;
       });
     }
+  };
+
+  const handleRemoveProject = (index: number) => {
+    setCostSheets((prev) => {
+      const updated = [...prev];
+      updated[index] = { id: `empty-${index}` };
+      return updated;
+    });
   };
 
   // Close dropdown when clicking outside
@@ -1517,12 +2280,16 @@ const Compare = () => {
 
     const clonedTable = tableElement.cloneNode(true) as HTMLElement;
 
-    // Remove negotiation row from cloned table
-    const negotiationRows = clonedTable.querySelectorAll("tr");
-    negotiationRows.forEach((row) => {
+    // Remove negotiation row and specified rows from cloned table
+    const rowsToRemove = ["Negotiation Scope", "Discount", "AV Rate", "Flat Cost", "Floor Rise"];
+    const allRows = clonedTable.querySelectorAll("tr");
+    allRows.forEach((row) => {
       const firstCell = row.querySelector("td");
-      if (firstCell && firstCell.textContent?.includes("Negotiation Scope")) {
-        row.remove();
+      if (firstCell) {
+        const cellText = firstCell.textContent?.trim();
+        if (rowsToRemove.some(rowName => cellText?.includes(rowName))) {
+          row.remove();
+        }
       }
     });
 
@@ -1541,7 +2308,7 @@ const Compare = () => {
     });
 
     // Remove columns that don't have properties selected
-    const allRows = clonedTable.querySelectorAll("tr");
+    const tableRows = clonedTable.querySelectorAll("tr");
     const columnsToRemove: number[] = [];
 
     // Find empty columns (columns without properties)
@@ -1551,8 +2318,7 @@ const Compare = () => {
       }
     });
 
-    // Remove empty columns from all rows
-    allRows.forEach((row) => {
+    tableRows.forEach((row) => {
       const cells = row.querySelectorAll("td, th");
       // Remove columns in reverse order to maintain indices
       columnsToRemove.reverse().forEach((colIndex) => {
@@ -1599,6 +2365,52 @@ const Compare = () => {
             cells[index + 1].textContent = formatCurrency(furnitureValue);
           }
         });
+      }
+    });
+
+    // Replace parking-related dropdown values with actual selected values
+    const parkingRows = clonedTable.querySelectorAll("tr");
+    parkingRows.forEach((row) => {
+      const firstCell = row.querySelector("td");
+      if (firstCell) {
+        const cellText = firstCell.textContent?.trim();
+        if (cellText?.includes("With Parking") || cellText?.includes("Include Parking in Agreement")) {
+          const cells = row.querySelectorAll("td");
+          costSheets.forEach((sheet, index) => {
+            if (sheet.projectName && cells[index + 1]) {
+              // Check if dropdown is disabled (PSF includes parking or mandatory parking)
+              const selectedCarpetArea = safeNumber(sheet.reraCarpet);
+              const currentTypology = selectedCarpetArea
+                ? getTypologyForCarpetArea(sheet, selectedCarpetArea)
+                : sheet.typologies?.[0]?.typology || sheet.flatType || "";
+              
+              let psfIncludesParking = false;
+              let isMandatoryParking = false;
+              if (sheet.subTabData && typeof sheet.subTabData === "object") {
+                for (const k in sheet.subTabData) {
+                  const tabData = sheet.subTabData[k];
+                  if (tabData?.psfIncludesParking === true || tabData?.psfIncludesParking === "true") {
+                    psfIncludesParking = true;
+                    break;
+                  }
+                  if (!psfIncludesParking && tabData?.mandatoryParkingTypologies && Array.isArray(tabData.mandatoryParkingTypologies)) {
+                    if (tabData.mandatoryParkingTypologies.includes(currentTypology)) {
+                      isMandatoryParking = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              
+              const isDisabled = psfIncludesParking || isMandatoryParking;
+              const value = isDisabled ? "-" : 
+                cellText.includes("With Parking") && !cellText.includes("Include") 
+                  ? (sheet.withParking ? "Yes" : "No")
+                  : (sheet.includeParkingInAgreement ? "Yes" : "No");
+              cells[index + 1].textContent = value;
+            }
+          });
+        }
       }
     });
 
@@ -1655,6 +2467,7 @@ const Compare = () => {
               width: 100%; 
               border-collapse: collapse; 
               margin-bottom: 30px;
+              // amazonq-ignore-next-line
               font-size: 12px;
             }
             th, td { 
@@ -1672,6 +2485,7 @@ const Compare = () => {
               margin-top: 40px;
               padding: 20px;
               border-top: 2px solid #ddd;
+              // amazonq-ignore-next-line
               text-align: left;
             }
             .signature-section p {
@@ -1763,7 +2577,6 @@ const Compare = () => {
               setFilterLocation,
               setFilteredSheets,
               setFiltersApplied,
-              setCostSheets,
               filtersApplied
             )}
           </div>
@@ -1787,21 +2600,32 @@ const Compare = () => {
               {discountRow(costSheets, setCostSheets, recalculateCostSheet)}
 
               {/* Select Property Row */}
-              {selectPropertyRow(
-                costSheets,
-                searchTerms,
-                setSearchTerms,
-                showDropdowns,
-                setShowDropdowns,
-                filtersApplied,
-                filteredSheets,
-                allCostSheets,
-                location,
-                selectedProjectNames,
-                handleAddProject,
-                selectedIndices,
-                setSelectedIndices
-              )}
+              {(() => {
+                console.log("Rendering selectPropertyRow with:", {
+                  costSheetsLength: costSheets.length,
+                  searchTermsLength: searchTerms.length,
+                  showDropdownsLength: showDropdowns.length,
+                  selectedProjectNamesLength: selectedProjectNames.length,
+                });
+                return selectPropertyRow(
+                  costSheets,
+                  searchTerms,
+                  setSearchTerms,
+                  showDropdowns,
+                  setShowDropdowns,
+                  filtersApplied,
+                  filteredSheets,
+                  allCostSheets,
+                  location,
+                  selectedProjectNames,
+                  handleAddProject,
+                  handleRemoveProject,
+                  selectedIndices,
+                  setSelectedIndices,
+                  filterPropertyType,
+                  filterLocation
+                );
+              })()}
 
               {/* Data Rows */}
               {[
@@ -1900,7 +2724,13 @@ const Compare = () => {
                   bold: true,
                   icon: "📦",
                 },
-                { label: "Possession", key: "reraPossession", icon: "📅" },
+                {
+                  label: "Possession",
+                  key: "developerPossession",
+                  formatter: formatPossessionDate,
+                  icon: "📅",
+                  useHelper: true,
+                },
               ].map(
                 ({
                   label,
@@ -2005,6 +2835,7 @@ const Compare = () => {
                           ) {
                             const typology = sheet.typologies[0];
                             const saleableArea =
+                              // amazonq-ignore-next-line
                               parseFloat(String(typology.saleableArea)) || 0;
                             const floorRiseConfig = sheet.floorRiseConfig || {};
                             const floorRise = sheet.floorRise || "";
@@ -2016,17 +2847,35 @@ const Compare = () => {
                               floorRiseAmount = riseRate * saleableArea;
                             } else if (floorRise === "FR - Fixed Rate") {
                               // FR - Fixed Rate - show the fixed rate directly
-                              const bhkType = typology.typology || "";
+                              // Get the selected typology based on carpet area or filter
+                              const selectedCarpetArea = safeNumber(sheet.reraCarpet);
+                              const selectedTypology = selectedCarpetArea
+                                ? getTypologyForCarpetArea(sheet, selectedCarpetArea)
+                                : filtersApplied && filterPropertyType
+                                ? filterPropertyType
+                                : typology.typology || "";
+                              
                               const typologyRates =
                                 sheet.floorRiseConfig?.typologyRates || {};
                               floorRiseAmount =
-                                parseInt(typologyRates[bhkType] || "0") || 0;
+                                parseInt(typologyRates[selectedTypology] || "0") || 0;
                             } else if (floorRise === "Floor Band") {
                               // Floor Band calculation - check both root floorBandConfig and typology floorBandConfiguration
                               const bhkType = typology.typology || "";
                               const floor = sheet.floor || 1; // Default to floor 1 if no input
 
-                              // Try root level floorBandConfig first
+                              // Get the selected typology based on carpet area
+                              const selectedCarpetArea = safeNumber(
+                                sheet.reraCarpet
+                              );
+                              const selectedTypology = selectedCarpetArea
+                                ? getTypologyForCarpetArea(
+                                    sheet,
+                                    selectedCarpetArea
+                                  )
+                                : bhkType;
+
+                              // Try root level floorBandConfig first (this is the correct source)
                               let matchingBand = null;
                               if (
                                 sheet.floorBandConfig &&
@@ -2049,20 +2898,21 @@ const Compare = () => {
                                 if (
                                   matchingBand &&
                                   matchingBand.rates &&
-                                  matchingBand.rates[bhkType]
+                                  matchingBand.rates[selectedTypology]
                                 ) {
                                   const rate =
                                     parseInt(
-                                      matchingBand.rates[bhkType] || "0"
+                                      matchingBand.rates[selectedTypology] ||
+                                        "0"
                                     ) || 0;
                                   floorRiseAmount =
                                     rate > 20000 ? rate : rate * saleableArea;
                                 }
                               }
 
-                              // Fallback to typology floorBandConfiguration
+                              // Fallback to typology floorBandConfiguration only if no root config found
                               if (
-                                !matchingBand &&
+                                floorRiseAmount === 0 &&
                                 typology.floorBandConfiguration &&
                                 typology.floorBandConfiguration.length > 0
                               ) {
@@ -2100,24 +2950,29 @@ const Compare = () => {
                               className="px-2 py-1 text-sm text-right border-r border-gray-200"
                             >
                               {sheet.projectName ? (
-                                <div className="flex items-center justify-end">
-                                  {sheet.floorRise === "Floor Rise" && (
-                                    <span className="text-xs text-blue-600 mr-4">
-                                      Rise Rate
-                                    </span>
-                                  )}
-                                  {sheet.floorRise === "FR - Fixed Rate" && (
-                                    <span className="text-xs text-green-600 mr-4">
-                                      Fixed Rate
-                                    </span>
-                                  )}
-                                  {sheet.floorRise === "Floor Band" && (
-                                    <span className="text-xs text-orange-600 mr-4">
-                                      Band Rate
-                                    </span>
-                                  )}
-                                  <span>{formatCurrency(floorRiseAmount)}</span>
-                                </div>
+                                <FloorRiseTooltip 
+                                  sheet={sheet} 
+                                  selectedTypology={safeNumber(sheet.reraCarpet) ? getTypologyForCarpetArea(sheet, safeNumber(sheet.reraCarpet)) : sheet.typologies?.[0]?.typology}
+                                >
+                                  <div className="flex items-center justify-end">
+                                    {sheet.floorRise === "Floor Rise" && (
+                                      <span className="text-xs text-blue-600 mr-4">
+                                        Rise Rate
+                                      </span>
+                                    )}
+                                    {sheet.floorRise === "FR - Fixed Rate" && (
+                                      <span className="text-xs text-green-600 mr-4">
+                                        Fixed Rate
+                                      </span>
+                                    )}
+                                    {sheet.floorRise === "Floor Band" && (
+                                      <span className="text-xs text-orange-600 mr-4">
+                                        Band Rate
+                                      </span>
+                                    )}
+                                    <span>{formatCurrency(floorRiseAmount)}</span>
+                                  </div>
+                                </FloorRiseTooltip>
                               ) : (
                                 <div className="h-6" />
                               )}
@@ -2297,6 +3152,8 @@ const Compare = () => {
                         getFieldValue={getFieldValue}
                         handleCarpetAreaChange={handleCarpetAreaChange}
                         formatArea={formatArea}
+                        filtersApplied={filtersApplied}
+                        filterPropertyType={filterPropertyType}
                       />
                     );
                   }
@@ -2327,13 +3184,21 @@ const Compare = () => {
                           {sheet.projectName ? (
                             (() => {
                               const value = useHelper
-                                ? getFieldValue(sheet, key)
+                                ? getFieldValue(
+                                    sheet,
+                                    key,
+                                    filtersApplied
+                                      ? filterPropertyType
+                                      : undefined
+                                  )
                                 : sheet[key as keyof CostSheet];
-                              return formatter && typeof value === "number"
-                                ? formatter(value)
-                                : value != null
-                                ? String(value)
-                                : "N/A";
+                              if (formatter) {
+                                return typeof value === "string" ||
+                                  typeof value === "number"
+                                  ? formatter(value)
+                                  : formatter(String(value || ""));
+                              }
+                              return value != null ? String(value) : "N/A";
                             })()
                           ) : (
                             <div className="h-5" />
@@ -2402,8 +3267,30 @@ const Compare = () => {
               {/* Negotiation Scope */}
               <tr className="bg-blue-50 border-l-4 border-blue-500 hover:bg-blue-100">
                 <td className="sticky left-0 z-10 bg-blue-50 border-l-4 border-blue-500 p-3 font-semibold text-gray-700 border-r">
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-between">
                     <span>Negotiation Scope</span>
+                    <button
+                      onClick={() =>
+                        setShowNegotiationButtons(!showNegotiationButtons)
+                      }
+                      className="ml-2 p-1 hover:bg-blue-200 rounded transition-colors"
+                    >
+                      <svg
+                        className={`w-4 h-4 transform transition-transform duration-200 ${
+                          showNegotiationButtons ? "rotate-90" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 </td>
                 {costSheets.map((sheet, index) => (
@@ -2411,50 +3298,58 @@ const Compare = () => {
                     key={index}
                     className="px-2 py-1 text-sm text-right border-r border-gray-200"
                   >
-                    {sheet.projectName ? (
-                      <div className="flex justify-center">
-                        <button
-                          onClick={() => {
-                            const negotiationValue = (() => {
-                              // Get negotiation scope from pricingConfigs or typologies
-                              if (
-                                sheet.pricingConfigs &&
-                                sheet.pricingConfigs.length > 0
-                              ) {
-                                const config = sheet.pricingConfigs.find(
-                                  (config) => config.negotiationScope
-                                );
-                                return config?.negotiationScope || "N/A";
-                              }
-                              if (
-                                sheet.typologies &&
-                                sheet.typologies.length > 0
-                              ) {
-                                const typology = sheet.typologies.find(
-                                  (t) => t.negotiationScope
-                                );
-                                return typology?.negotiationScope || "N/A";
-                              }
-                              return "N/A";
-                            })();
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        showNegotiationButtons
+                          ? "max-h-20 opacity-100"
+                          : "max-h-0 opacity-0"
+                      }`}
+                    >
+                      {sheet.projectName ? (
+                        <div className="flex justify-center pt-2">
+                          <button
+                            onClick={() => {
+                              const negotiationValue = (() => {
+                                // Get negotiation scope from pricingConfigs or typologies
+                                if (
+                                  sheet.pricingConfigs &&
+                                  sheet.pricingConfigs.length > 0
+                                ) {
+                                  const config = sheet.pricingConfigs.find(
+                                    (config) => config.negotiationScope
+                                  );
+                                  return config?.negotiationScope || "N/A";
+                                }
+                                if (
+                                  sheet.typologies &&
+                                  sheet.typologies.length > 0
+                                ) {
+                                  const typology = sheet.typologies.find(
+                                    (t) => t.negotiationScope
+                                  );
+                                  return typology?.negotiationScope || "N/A";
+                                }
+                                return "N/A";
+                              })();
 
-                            setSelectedNegotiationValue(
-                              negotiationValue === "N/A"
-                                ? "N/A"
-                                : Number(negotiationValue).toLocaleString(
-                                    "en-IN"
-                                  )
-                            );
-                            setShowNegotiationModal(true);
-                          }}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition-colors"
-                        >
-                          View
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="h-10"></div>
-                    )}
+                              setSelectedNegotiationValue(
+                                negotiationValue === "N/A"
+                                  ? "Not Disclosed"
+                                  : Number(negotiationValue).toLocaleString(
+                                      "en-IN"
+                                    )
+                              );
+                              setShowNegotiationModal(true);
+                            }}
+                            className="border border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-50 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                          >
+                            View
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="h-10"></div>
+                      )}
+                    </div>
                   </td>
                 ))}
               </tr>

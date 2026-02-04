@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../utils/authContext";
 import Button from "../ui/Button";
-import logo from "../../assets/logo.png";
+import logo from "../../assets/EstateX-Logo.png";
 
 const Navbar: React.FC = () => {
   const { user, logout, loading } = useAuth();
@@ -89,7 +89,11 @@ const Navbar: React.FC = () => {
                       }`}
                     >
                       <Settings className="w-4 h-4" />{" "}
-                      {user.role === "admin" ? "Admin" : user.role === "manager" ? "Manager" : "Executive"}
+                      {user.role === "admin"
+                        ? "Admin"
+                        : user.role === "manager"
+                        ? "Manager"
+                        : "Executive"}
                     </Link>
                   )}
                 </nav>
@@ -222,7 +226,11 @@ const Navbar: React.FC = () => {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Settings className="w-4 h-4" />{" "}
-                      {user.role === "admin" ? "Admin" : user.role === "manager" ? "Manager" : "Executive"}
+                      {user.role === "admin"
+                        ? "Admin"
+                        : user.role === "manager"
+                        ? "Manager"
+                        : "Executive"}
                     </Link>
                   )}
                   <div className="border-t mt-2 pt-2">

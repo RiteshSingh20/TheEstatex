@@ -1,6 +1,6 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { encryptUrl } from "../utils/encryptUrl";
+import { useSecureMedia } from "../hooks/useSecureMedia";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -8,133 +8,74 @@ interface SecurePDFViewerProps {
   fileUrl: string;
 }
 
-const MEDIA_PROXY_URL =
-  import.meta.env.VITE_MEDIA_PROXY_URL || "http://localhost:8080";
-
 export function SecurePDFViewer({ fileUrl }: SecurePDFViewerProps) {
-  const proxyUrl = useMemo(() => {
-    const token = encryptUrl(fileUrl);
-    return `${MEDIA_PROXY_URL}?token=${encodeURIComponent(token)}`;
-  }, [fileUrl]);
-  const [numPages, setNumPages] = useState<number>(0);
+  const { secureUrl, loading, error } = useSecureMedia(fileUrl);
+  const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
-  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
-    setNumPages(numPages);
-    setIsLoaded(true);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading PDF...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !secureUrl) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-100">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+          </div>
+          <p className="text-gray-600 mb-4">Unable to load PDF</p>
+          <a 
+            href={fileUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            Open in new tab
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div
-      className="flex h-full w-full bg-gray-800"
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {/* Sidebar with page thumbnails */}
-      <div className="w-48 bg-gray-900 overflow-y-auto flex-shrink-0">
-        <div className="p-2 space-y-2">
-          {isLoaded && (
-            <Document file={proxyUrl} loading="">
-              {Array.from(new Array(numPages), (_, index) => (
-                <div
-                  key={index}
-                  onClick={() => {
-                    setPageNumber(index + 1);
-                    pageRefs.current[index]?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                  }}
-                  className={`cursor-pointer border-2 ${
-                    pageNumber === index + 1
-                      ? "border-blue-500"
-                      : "border-transparent"
-                  } hover:border-blue-300 transition-colors`}
-                >
-                  <Page
-                    pageNumber={index + 1}
-                    width={160}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                  />
-                  <p className="text-white text-xs text-center mt-1">
-                    {index + 1}
-                  </p>
-                </div>
-              ))}
-            </Document>
-          )}
-        </div>
+    <div className="flex flex-col h-full w-full bg-gray-100">
+      <div className="flex items-center justify-between p-4 bg-white border-b">
+        <button
+          onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
+          disabled={pageNumber <= 1}
+          className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300"
+        >
+          Previous
+        </button>
+        <span className="text-sm">
+          Page {pageNumber} of {numPages || '?'}
+        </span>
+        <button
+          onClick={() => setPageNumber(Math.min(numPages || 1, pageNumber + 1))}
+          disabled={pageNumber >= (numPages || 1)}
+          className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300"
+        >
+          Next
+        </button>
       </div>
-
-      {/* Main PDF viewer */}
-      <div className="flex-1 overflow-auto bg-gray-700">
-        <div className="flex flex-col items-center py-4 space-y-4">
-          <Document
-            file={proxyUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            loading={
-              <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
-                <div className="relative">
-                  <div className="w-20 h-20 border-4 border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <svg
-                      className="w-8 h-8 text-blue-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <div className="text-center space-y-2">
-                  <h3 className="text-xl font-semibold text-white">
-                    Loading Document
-                  </h3>
-                  <p className="text-gray-400 text-sm">
-                    Please wait while we prepare your document...
-                  </p>
-                  <div className="flex items-center justify-center space-x-2 mt-4">
-                    <div
-                      className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    ></div>
-                    <div
-                      className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    ></div>
-                    <div
-                      className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            }
-          >
-            {Array.from(new Array(numPages), (_, index) => (
-              <div
-                key={index}
-                ref={(el) => (pageRefs.current[index] = el)}
-                className="bg-white shadow-lg"
-              >
-                <Page
-                  pageNumber={index + 1}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                  width={Math.min(window.innerWidth * 0.65, 1000)}
-                />
-              </div>
-            ))}
-          </Document>
-        </div>
+      <div className="flex-1 overflow-auto flex justify-center">
+        <Document
+          file={secureUrl}
+          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          className="max-w-full"
+        >
+          <Page pageNumber={pageNumber} className="shadow-lg" />
+        </Document>
       </div>
     </div>
   );

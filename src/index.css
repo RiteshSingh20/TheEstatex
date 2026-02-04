@@ -80,3 +80,31 @@
   width: 100%;
   height: 100%;
 }
+
+/* Media Protection Styles */
+.secure-media {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+.secure-media::selection {
+  background: transparent;
+}
+
+.secure-media::-moz-selection {
+  background: transparent;
+}
+
+.media-container {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

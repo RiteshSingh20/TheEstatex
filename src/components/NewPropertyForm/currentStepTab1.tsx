@@ -1,6 +1,7 @@
 import React from "react";
 import { FormDataType } from "../../pages/CostSheetFormProps";
 import { StampDutyRate } from "../CompareModal";
+import { TYPOLOGIES } from "../../constants/typologies";
 import { calculatePricingTotal } from "../../lib/propertyFormLogic";
 import { calculateBaseAmountWithFixedComponent } from "../../lib/fixedComponentLogic";
 import { interceptFormSubmission } from "../../utils/totalPackageCalculator";
@@ -174,6 +175,16 @@ export function currentStepTab1(
         [tabId]: {
           ...prev[tabId],
           [field]: value,
+          // Clear parking data when psfIncludesParking is ticked
+          ...(field === 'psfIncludesParking' && value && {
+            parkingCharges: null,
+            mandatoryParkingTypologies: null,
+            numberOfParkingIncluded: null,
+          }),
+          // Clear numberOfParkingIncluded when psfIncludesParking is unticked
+          ...(field === 'psfIncludesParking' && !value && {
+            numberOfParkingIncluded: null,
+          }),
         },
       };
 
@@ -240,7 +251,7 @@ export function currentStepTab1(
 
                 {/* Header Row */}
                 <div className="bg-neutral-100 p-2 rounded-t border">
-                  <div className="grid grid-cols-8 gap-4 text-sm font-medium text-neutral-700">
+                  <div className="grid grid-cols-9 gap-4 text-sm font-medium text-neutral-700">
                     <div>Bldg No./Phase</div>
                     <div>Project Type</div>
                     <div>Project Status</div>
@@ -248,13 +259,14 @@ export function currentStepTab1(
                     <div>RERA Number</div>
                     <div>RERA Possession</div>
                     <div>RERA URL</div>
+                    <div>SD Rate</div>
                     <div>Flats per Floor *</div>
                   </div>
                 </div>
 
                 {/* Data Row */}
                 <div className="bg-white border-x border-b rounded-b p-2">
-                  <div className="grid grid-cols-8 gap-4">
+                  <div className="grid grid-cols-9 gap-4">
                     <div>
                       <input
                         type="text"
@@ -286,10 +298,9 @@ export function currentStepTab1(
                               )
                             );
                           } else {
-                            const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
                             setSubTabs((prev) =>
                               prev.map((t) =>
-                                t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                                t.id === tab.id ? { ...t, name: "Pre-launch" } : t
                               )
                             );
                           }
@@ -448,40 +459,34 @@ export function currentStepTab1(
                               )
                             );
                           } else {
-                            const tabIndex = subTabs.findIndex((t) => t.id === tab.id);
                             setSubTabs((prev) =>
                               prev.map((t) =>
-                                t.id === tab.id ? { ...t, name: `RERA-${tabIndex + 1}` } : t
+                                t.id === tab.id ? { ...t, name: "Pre-launch" } : t
                               )
                             );
                           }
                         }}
                         onKeyDown={(e) => {
                           if (e.key === "Tab") {
-                            const value = e.currentTarget.value;
-                            if (value.trim()) {
+                            const wingBuildingNo = subTabData[tab.id]?.wingBuildingNo?.trim();
+                            const reraNumber = e.currentTarget.value.trim();
+                            
+                            if (wingBuildingNo) {
                               setSubTabs((prev) =>
                                 prev.map((t) =>
-                                  t.id === tab.id
-                                    ? {
-                                        ...t,
-                                        name: value.trim(),
-                                      }
-                                    : t
+                                  t.id === tab.id ? { ...t, name: wingBuildingNo } : t
+                                )
+                              );
+                            } else if (reraNumber) {
+                              setSubTabs((prev) =>
+                                prev.map((t) =>
+                                  t.id === tab.id ? { ...t, name: reraNumber } : t
                                 )
                               );
                             } else {
-                              const tabIndex = subTabs.findIndex(
-                                (t) => t.id === tab.id
-                              );
                               setSubTabs((prev) =>
                                 prev.map((t) =>
-                                  t.id === tab.id
-                                    ? {
-                                        ...t,
-                                        name: `RERA-${tabIndex + 1}`,
-                                      }
-                                    : t
+                                  t.id === tab.id ? { ...t, name: "Pre-launch" } : t
                                 )
                               );
                             }
@@ -529,6 +534,34 @@ export function currentStepTab1(
                         }}
                         disabled={subTabData[tab.id]?.type === "Pre-launch"}
                         className="w-full border border-neutral-300 rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={subTabData[tab.id]?.sdRate || ""}
+                        onChange={(e) => {
+                          const numericValue = e.target.value.replace(/[^0-9.]/g, "");
+                          setSubTabData((prev) => ({
+                            ...prev,
+                            [tab.id]: {
+                              ...prev[tab.id],
+                              sdRate: numericValue,
+                            },
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value && !e.target.value.includes('%')) {
+                            e.target.value = e.target.value + '%';
+                          }
+                        }}
+                        onFocus={(e) => {
+                          if (e.target.value.includes('%')) {
+                            e.target.value = e.target.value.replace('%', '');
+                          }
+                        }}
+                        placeholder="e.g., 6"
+                        className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                       />
                     </div>
                     <div>
@@ -620,25 +653,11 @@ export function currentStepTab1(
                               className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
                             >
                               <option value="">Select</option>
-                              <option value="1 RK">1 RK</option>
-                              <option value="1 BHK">1 BHK</option>
-                              <option value="1.5 BHK">1.5 BHK</option>
-                              <option value="2 BHK">2 BHK</option>
-                              <option value="2.5 BHK">2.5 BHK</option>
-                              <option value="3 BHK">3 BHK</option>
-                              <option value="3.5 BHK">3.5 BHK</option>
-                              <option value="4 BHK">4 BHK</option>
-                              <option value="4.5 BHK">4.5 BHK</option>
-                              <option value="5 BHK">5 BHK</option>
-                              <option value="1 + 1 Jodi">1 + 1 Jodi</option>
-                              <option value="1 + 2 Jodi">1 + 2 Jodi</option>
-                              <option value="2 + 2 Jodi">2 + 2 Jodi</option>
-                              <option value="2 + 3 Jodi">2 + 3 Jodi</option>
-                              <option value="3 + 3 Jodi">3 + 3 Jodi</option>
-                              <option value="Penthouse / Duplex">Penthouse / Duplex</option>
-                              <option value="Row House">Row House</option>
-                              <option value="Bungalow">Bungalow</option>
-                              <option value="Villa">Villa</option>
+                              {TYPOLOGIES.map((typology) => (
+                                <option key={typology} value={typology}>
+                                  {typology}
+                                </option>
+                              ))}
                             </select>
                           </div>
                           <div>
@@ -1076,48 +1095,6 @@ export function currentStepTab1(
                                                 },
                                               };
                                             });
-                                          }}
-                                          className="rounded"
-                                        />
-                                        <span>{typology}</span>
-                                      </label>
-                                    ))
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                        </>
-                        )}
-                        {subTabData[tab.id]?.parkingCharges && parseIndianCurrency(subTabData[tab.id]?.parkingCharges || "") && (
-                          <>
-                            <div className="ml-4">
-                              <label className="text-sm font-medium text-neutral-700 block mb-2">
-                                Mandatory with:
-                              </label>
-                              <div className="flex flex-wrap gap-4">
-                                {(() => {
-                                  const uniqueTypologies = [...new Set((subTabData[tab.id]?.pricingConfigs || []).map(config => config.typology).filter(Boolean))];
-                                  console.log('Available typologies:', uniqueTypologies);
-                                  return uniqueTypologies.length === 0 ? (
-                                    <div className="text-sm text-gray-500">Add typologies first</div>
-                                  ) : (
-                                    uniqueTypologies.map((typology, index) => (
-                                      <label key={index} className="flex items-center gap-2 text-sm">
-                                        <input
-                                          type="checkbox"
-                                          checked={(subTabData[tab.id]?.mandatoryParkingTypologies || []).includes(typology)}
-                                          onChange={(e) => {
-                                            const current = subTabData[tab.id]?.mandatoryParkingTypologies || [];
-                                            const updated = e.target.checked
-                                              ? [...current, typology]
-                                              : current.filter(t => t !== typology);
-                                            setSubTabData((prev) => ({
-                                              ...prev,
-                                              [tab.id]: {
-                                                ...prev[tab.id],
-                                                mandatoryParkingTypologies: updated,
-                                              },
-                                            }));
                                           }}
                                           className="rounded"
                                         />

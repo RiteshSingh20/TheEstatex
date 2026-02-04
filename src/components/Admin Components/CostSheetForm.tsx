@@ -381,6 +381,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [bhkFilter, setBhkFilter] = useState("");
   const [reraRange, setReraRange] = useState({ min: "", max: "" });
+  const [activePropertyTab, setActivePropertyTab] = useState("updated");
 
   const availableBhkTypes = getApprovedFlatTypes(costSheets);
 
@@ -1607,7 +1608,9 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
               setSelectedStateCode,
               setCities,
               Section,
-              Field
+              Field,
+              activePropertyTab,
+              setActivePropertyTab
             );
           }
         })()}

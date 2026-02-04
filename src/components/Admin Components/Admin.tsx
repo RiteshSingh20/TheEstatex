@@ -10,8 +10,6 @@ import {
   updatePropertyStatus,
   updateResaleProperty,
   updateRentalProperty,
-  getPricing,
-  getStampDutyRates,
   updateUserRole,
 } from "../../utils/firestoreListings";
 import { User } from "../../types";
@@ -19,13 +17,17 @@ import { useAuth } from "../../utils/authContext";
 import CostSheetForm from "./CostSheetForm";
 import { useForm } from "react-hook-form";
 // import TagInput from "../utils/rrAmenitiesInput";
-import { ResaleFormData, RentalFormData, fetchStates } from "../../utils/api";
+import {
+  ResaleFormData,
+  RentalFormData,
+  fetchStates,
+  fetchCities,
+} from "../../utils/api";
 import { State, City } from "../../types";
 import {
   onSnapshot,
   collection,
   doc,
-  setDoc,
   // getDoc,
   Timestamp,
   getDocs,
@@ -35,16 +37,16 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../utils/firebase";
-import { StampDutyRate } from "../CompareComponents/Compare";
+
 import { UserRole } from "../../types";
 import { usePermissions } from "../../hooks/usePermissions";
-import { stations } from "../../utils/stations";
+
 import { manageRejectionModal } from "./manageRejectionModal";
 import { showUserDetailsModal } from "./showUserDetailsModal";
 import { handlePropertyDetails } from "./handlePropertyDetails";
-import { manageSubscriptionPricing } from "./manageSubscriptionPricing";
-import { manageStampDuty } from "./manageStampDuty";
+
 import { manageUsersTab } from "./manageUsersTab";
+import PricingManager from "./PricingComponents/PricingManager";
 import { renderPropertyApprovalTabs } from "./PropertyApprovalTabs/renderPropertyApprovalTabs";
 import { displaySubscriptionInfo } from "./displaySubscriptionInfo";
 import { NewPropertyModal } from "../NewPropertyTables/NewPropertyModal";
@@ -81,43 +83,7 @@ const Admin = () => {
   const [showPropertyDetails, setShowPropertyDetails] =
     useState<ShowPropertyDetails | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  interface PricingState {
-    rentalResalePrice: number;
-    newPropertyPrice: number;
-    resalePrice: number;
-    rentalPrice: number;
-    actualPrice?: number;
-    discount?: number;
-    offerPrice?: number;
-    discountedPrice?: { [key: string]: number };
-    newStationName?: string;
-    selectedStationId?: string;
-  }
-  const [pricing, setPricingState] = useState<PricingState>({
-    rentalResalePrice: 2500,
-    newPropertyPrice: 1500,
-    resalePrice: 2500,
-    rentalPrice: 2500,
-    actualPrice: undefined,
-    discount: undefined,
-    offerPrice: undefined,
-    discountedPrice: {},
-    newStationName: "",
-    selectedStationId: "",
-  });
-  const [newStationPricing, setNewStationPricing] = useState({
-    actual: 1500,
-    offer: 1500,
-  });
-  const [currentPricing, setCurrentPricing] = useState<{
-    actualPrice?: { RR: number };
-    discountedPrice?: { RR: number };
-  }>({});
-  const [rates, setRates] = useState<StampDutyRate[]>([]);
-  const [newRate, setNewRate] = useState({
-    jurisdiction: "",
-    rate: "",
-  });
+
   const [editingRole, setEditingRole] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>("user");
   const [searchTerm, setSearchTerm] = useState("");
@@ -127,31 +93,7 @@ const Admin = () => {
     SubscriptionInfo[]
   >([]);
   const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
-  // Inside the Admin component
-  interface StationPricing {
-    actual: number;
-    offer: number;
-  }
-  const [newPropertyPricing, setNewPropertyPricing] = useState<{
-    [key: string]: StationPricing;
-  }>({});
-  const [editingStationId, setEditingStationId] = useState<string | null>(null);
-  const [editingStationName, setEditingStationName] = useState<string>("");
-  const [customStationNames, setCustomStationNames] = useState<{
-    [key: string]: string;
-  }>({});
-  const [durationDiscounts, setDurationDiscounts] = useState<{
-    3: number;
-    6: number;
-    12: number;
-  }>({ 3: 10, 6: 20, 12: 40 });
-  const [costSheetStationsCount, setCostSheetStationsCount] = useState(0);
-  const [costSheetStationsLoaded, setCostSheetStationsLoaded] = useState(false);
-  const [allMergedStations, setAllMergedStations] = useState<
-    { id: string; name: string }[]
-  >([]);
-  const [stationSearchTerm, setStationSearchTerm] = useState("");
-  const [showStationDropdown, setShowStationDropdown] = useState(false);
+
   const [showPropertiesModal, setShowPropertiesModal] = useState(false);
   const [modalProperties, setModalProperties] = useState<any[]>([]);
   const [modalTitle, setModalTitle] = useState("");
@@ -550,99 +492,11 @@ const Admin = () => {
     return userDataMap[userId] || null;
   };
 
-  const fetchCostSheetStations = async () => {
-    try {
-      // Count available stations (normalized)
-      const availableStations = new Set<string>();
 
-      // Fetch from costSheets
-      const costSheetsSnap = await getDocs(collection(db, "TestingCostSheets"));
 
-      costSheetsSnap.forEach((doc) => {
-        const data = doc.data();
 
-        if (data.station) {
-          const normalized = normalizeStationName(data.station).toLowerCase();
-          availableStations.add(normalized);
-        }
 
-        if (data.availableStations?.length) {
-          data.availableStations.forEach((station: string) => {
-            const normalized = normalizeStationName(station).toLowerCase();
 
-            availableStations.add(normalized);
-          });
-        }
-      });
-
-      const availableCount = availableStations.size;
-      const staticCount = stations.length;
-
-      // Show static stations if available < static, otherwise show only available stations
-      if (availableCount < staticCount) {
-        setCostSheetStationsCount(staticCount);
-        setAllMergedStations(stations.map((s) => ({ id: s.id, name: s.name })));
-      } else {
-        setCostSheetStationsCount(availableCount);
-
-        // Create list with only available stations from costSheets
-        const availableStationsList: { id: string; name: string }[] = [];
-        const seen = new Set<string>();
-
-        // Add only costSheets stations
-        costSheetsSnap.forEach((doc) => {
-          const data = doc.data();
-
-          if (data.station) {
-            const normalized = normalizeStationName(data.station).toLowerCase();
-            if (!seen.has(normalized)) {
-              seen.add(normalized);
-              availableStationsList.push({
-                id: `costsheet-${data.station
-                  .toLowerCase()
-                  .replace(/\s+/g, "-")}`,
-                name: normalizeStationName(data.station),
-              });
-            }
-          }
-
-          if (data.availableStations?.length) {
-            data.availableStations.forEach((station: string) => {
-              const normalized = normalizeStationName(station).toLowerCase();
-              if (!seen.has(normalized)) {
-                seen.add(normalized);
-                availableStationsList.push({
-                  id: `costsheet-${station.toLowerCase().replace(/\s+/g, "-")}`,
-                  name: normalizeStationName(station),
-                });
-              }
-            });
-          }
-        });
-
-        setAllMergedStations(availableStationsList);
-      }
-
-      setCostSheetStationsLoaded(true);
-    } catch (error) {
-      setCostSheetStationsLoaded(true);
-    }
-  };
-
-  const getDynamicCostSheetStationCount = () => {
-    if (!costSheetStationsLoaded) return stations.length;
-    return costSheetStationsCount;
-  };
-
-  const isDisabled =
-    !pricing.rentalResalePrice ||
-    !pricing.newPropertyPrice ||
-    !pricing.resalePrice ||
-    !pricing.rentalPrice ||
-    !pricing.actualPrice ||
-    !pricing.offerPrice;
-
-  const isAddStationDisabled = !pricing.newStationName?.trim();
 
   useEffect(() => {
     if (!user || !permissions.canViewUsers()) return;
@@ -769,74 +623,9 @@ const Admin = () => {
     loadStates();
   }, []);
 
-  useEffect(() => {
-    getPricing().then((data) => {
-      setPricingState({
-        rentalResalePrice: data.rentalResalePrice || 2500,
-        newPropertyPrice: data.newPropertyPrice || 1500,
-        resalePrice: data.resalePrice || 2500,
-        rentalPrice: data.rentalPrice || 2500,
-      });
 
-      // Set current pricing for reference
-      setCurrentPricing({
-        actualPrice: data.actualPrice,
-        discountedPrice: data.discountedPrice,
-      });
 
-      // Initialize new property pricing
-      if (data.newPropertyPricing) {
-        setNewPropertyPricing(
-          data.newPropertyPricing as { [key: string]: StationPricing }
-        );
-      } else {
-        // Create default pricing for all stations
-        const defaultPricing: { [key: string]: StationPricing } = {};
-        stations.forEach((station) => {
-          defaultPricing[station.id] = {
-            actual: data.newPropertyPrice || 1500,
-            offer: data.newPropertyPrice || 1500,
-          };
-        });
-        setNewPropertyPricing(defaultPricing);
-      }
 
-      // Initialize custom station names
-      if (data.newPropertyStationNames) {
-        setCustomStationNames(data.newPropertyStationNames);
-      }
-
-      // Initialize duration discounts
-      if (data.durationDiscounts) {
-        setDurationDiscounts(data.durationDiscounts);
-      }
-    });
-
-    // Fetch cost sheet stations count
-    fetchCostSheetStations();
-  }, []);
-
-  // Removed unused handleNewPropertyPriceChange
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "stampDutyRates"),
-      (snapshot) => {
-        const liveRates: StampDutyRate[] = snapshot.docs.map((doc) => {
-          const data = doc.data() as Omit<StampDutyRate, "id">;
-          return {
-            id: doc.id,
-            ...data,
-          };
-        });
-        setRates(liveRates);
-      }
-    );
-
-    return () => unsubscribe(); // Clean up listener
-  }, []);
-
-  // Categorize properties based on isApproved and user role
   const getFilteredProperties = () => {
     const userRole = user?.role;
 
@@ -1776,73 +1565,7 @@ const Admin = () => {
     }
   };
 
-  const handleAddRate = async () => {
-    if (!newRate.jurisdiction || !newRate.rate) {
-      toast.error("All fields are required");
-      return;
-    }
 
-    try {
-      const allDocs = await getDocs(collection(db, "stampDutyRates"));
-
-      const inputJurisdiction = newRate.jurisdiction.trim().toLowerCase();
-      const inputRate = newRate.rate.trim();
-
-      const existingDoc = allDocs.docs.find((doc) => {
-        const data = doc.data();
-        const existingJurisdiction = data.jurisdiction?.toLowerCase().trim();
-        return existingJurisdiction === inputJurisdiction;
-      });
-
-      const formattedJurisdiction = toTitleCase(newRate.jurisdiction.trim());
-
-      if (existingDoc) {
-        const existingData = existingDoc.data();
-        const existingRate = existingData.rate?.toString().trim();
-
-        if (existingRate === inputRate) {
-          toast.error("Jurisdiction already exists with the same rate.");
-          return;
-        }
-
-        // ✏️ Update only if rate differs
-        await updateDoc(doc(db, "stampDutyRates", existingDoc.id), {
-          jurisdiction: formattedJurisdiction,
-          rate: newRate.rate,
-        });
-        toast.success("Stamp Duty rate updated!");
-      } else {
-        // ➕ Add new
-        const ref = doc(collection(db, "stampDutyRates"));
-        await setDoc(ref, {
-          jurisdiction: formattedJurisdiction,
-          rate: newRate.rate,
-        });
-        toast.success("Stamp Duty rate added!");
-      }
-
-      setNewRate({ jurisdiction: "", rate: "" });
-      const updatedRates = await getStampDutyRates();
-      setRates(updatedRates);
-    } catch (err) {
-      toast.error("Failed to save rate");
-    }
-  };
-
-  // removed duplicate toTitleCase (already defined at top-level)
-
-  const handleDeleteRate = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "stampDutyRates", id));
-      toast.success("Stamp Duty rate deleted!");
-
-      // Refresh the list after deletion
-      const updatedRates = await getStampDutyRates();
-      setRates(updatedRates);
-    } catch (error) {
-      toast.error("Failed to delete stamp duty rate");
-    }
-  };
 
   // Instant search with optimized filtering
   const filteredUsers = useMemo(() => {
@@ -2008,47 +1731,22 @@ const Admin = () => {
       baseTabs.push({
         id: "pricing",
         label: "Pricing",
-        content: manageSubscriptionPricing(
-          currentPricing,
-          pricing,
-          setPricingState,
-          setCurrentPricing,
-          newStationPricing,
-          setNewStationPricing,
-          newPropertyPricing,
-          customStationNames,
-          setCustomStationNames,
-          setNewPropertyPricing,
-          stationSearchTerm,
-          setStationSearchTerm,
-          setShowStationDropdown,
-          showStationDropdown,
-          allMergedStations,
-          durationDiscounts,
-          setDurationDiscounts,
-          getDynamicCostSheetStationCount,
-          editingStationId,
-          editingStationName,
-          setEditingStationName,
-          setEditingStationId
-        ),
+        content: <PricingManager />,
       });
     }
 
     // Stamp Duty tab - admin only
-    if (permissions.canManageStampDuty()) {
-      baseTabs.push({
-        id: "stampDuty",
-        label: "Stamp Duty",
-        content: manageStampDuty(
-          newRate,
-          setNewRate,
-          handleAddRate,
-          rates.map((rate) => ({ ...rate, location: rate.location || "" })),
-          handleDeleteRate
-        ),
-      });
-    }
+    // if (permissions.canManageStampDuty()) {
+    //   baseTabs.push({
+    //     id: "stampDuty",
+    //     label: "Stamp Duty",
+    //     content: (
+    //       <div className="p-6 text-center text-neutral-600">
+    //         Stamp Duty management has been moved to separate components.
+    //       </div>
+    //     ),
+    //   });
+    // }
 
     return baseTabs;
   };

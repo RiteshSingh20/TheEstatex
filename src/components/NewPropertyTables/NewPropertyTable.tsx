@@ -67,12 +67,16 @@ export function handleNewPropertyTable(
   setSelectedStateCode: React.Dispatch<React.SetStateAction<string>>,
   setCities: React.Dispatch<React.SetStateAction<City[]>>,
   Section,
-  Field
+  Field,
+  activeTab?: string,
+  onTabChange?: (tabId: string) => void
 ): React.ReactNode {
   return (
     <Card>
       <h2 className="text-xl font-semibold mb-4">New Properties</h2>
       <Tabs
+        activeTab={activeTab}
+        onTabChange={onTabChange}
         tabs={(() => {
           // Calculate counts for tab labels
           const allApprovedSheets = (costSheets as any[]).filter(

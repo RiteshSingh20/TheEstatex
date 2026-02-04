@@ -194,28 +194,28 @@ export function furnitureModal(
             );
           })()}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fixed Component (Un-editable)
-            </label>
-            <input
-              type="text"
-              value={(() => {
-                const sheet = costSheets[selectedColumnIndex];
-                const typologyValue = sheet?.typologies?.[0]?.fixedComponent;
-                const pricingValue = sheet?.pricingConfigs?.[0]?.fixedComponent;
-                const legacyValue = sheet?.fixedComponent;
-
-                const finalValue =
-                  safeNumber(typologyValue) ||
-                  safeNumber(pricingValue) ||
-                  safeNumber(legacyValue);
-                return finalValue ? formatCurrency(finalValue) : "₹0";
-              })()}
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
-            />
-          </div>
+          {(() => {
+            const sheet = costSheets[selectedColumnIndex];
+            const fixedComponentValue = getFieldValue(sheet, "fixedComponent") || 0;
+            
+            // Only show fixed component field if it has a value
+            if (fixedComponentValue) {
+              return (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fixed Component (Un-editable)
+                  </label>
+                  <input
+                    type="text"
+                    value={formatCurrency(fixedComponentValue)}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -340,15 +340,7 @@ export function furnitureModal(
                   }
 
                   // Get fixed component
-                  const typologyValue = sheet?.typologies?.[0]?.fixedComponent;
-                  const pricingValue =
-                    sheet?.pricingConfigs?.[0]?.fixedComponent;
-                  const legacyValue = sheet?.fixedComponent;
-                  const fixedComponent =
-                    safeNumber(typologyValue) ||
-                    safeNumber(pricingValue) ||
-                    safeNumber(legacyValue) ||
-                    0;
+                  const fixedComponent = getFieldValue(sheet, "fixedComponent") || 0;
 
                   // Get additional fixed component
                   const additionalFixedComponent =

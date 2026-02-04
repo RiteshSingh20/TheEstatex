@@ -25,7 +25,7 @@ export const stations = [
   { id: "24", name: "Mira Road", price: 1500 },
   { id: "25", name: "Bhayandar", price: 1500 },
   { id: "26", name: "Naigaon", price: 1500 },
-  { id: "27", name: "Vasai", price: 1500 },
+  { id: "27", name: "Vasai Road", price: 1500 },
   { id: "28", name: "Nallasopara", price: 1500 },
   { id: "29", name: "Virar", price: 1500 },
 ];
@@ -38,8 +38,9 @@ export const getMergedStations = (
     .filter(([id]) => id.startsWith("custom-") && newPropertyStationNames?.[id])
     .map(([id, pricing]) => ({
       id,
-      name: newPropertyStationNames?.[id] || `Custom Station ${id.substring(7)}`,
-      price: typeof pricing === 'object' ? pricing.offer : pricing,
+      name:
+        newPropertyStationNames?.[id] || `Custom Station ${id.substring(7)}`,
+      price: typeof pricing === "object" ? pricing.offer : pricing,
     }));
 
   const merged = [...stations];

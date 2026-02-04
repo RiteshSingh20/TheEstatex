@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resale Property Form</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        .resale-form {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .form-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+        }
+        .form-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            vertical-align: middle;
+        }
+        .label {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            text-align: center;
+            min-width: 120px;
+        }
+        .form-table input, .form-table textarea {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 4px;
+            font-size: 14px;
+        }
+        .form-table textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+        .submit-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .submit-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const ResalePropertyForm = () => {
+            const [formData, setFormData] = React.useState({
+                buildingSocietyName: '', sublocation: '', landmark: '', locationStation: '',
+                pinCode: '', state: '', district: '', configuration: '', buildingNoWing: '',
+                flatNo: '', floorNo: '', totalFloors: '', carpetArea: '', builtUpArea: '',
+                propertyAge: '', ocAvailable: '', cosmoSociety: '', furnishing: '',
+                terraceGallery: '', parking: '', expectedPrice: '', negotiable: '',
+                exitDirection: '', maintenancePerMonth: '', plusProperty: '', amenities: '',
+                ownerName: '', ownerNumber: '', image: null, video: null
+            });
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleFileChange = (e) => {
+                const { name, files } = e.target;
+                setFormData(prev => ({ ...prev, [name]: files[0] }));
+            };
+
+            return (
+                <div className="resale-form">
+                    <div className="section">
+                        <h3>Section-1 Basic Details</h3>
+                        <table className="form-table">
+                            <tbody>
+                                <tr>
+                                    <td className="label">Building/Society Name</td>
+                                    <td><input name="buildingSocietyName" value={formData.buildingSocietyName} onChange={handleInputChange} /></td>
+                                    <td className="label">Sublocation</td>
+                                    <td><input name="sublocation" value={formData.sublocation} onChange={handleInputChange} /></td>
+                                    <td className="label">Landmark</td>
+                                    <td><input name="landmark" value={formData.landmark} onChange={handleInputChange} /></td>
+                                </tr>
+                                <tr>
+                                    <td className="label">Location / Station</td>
+                                    <td><input name="locationStation" value={formData.locationStation} onChange={handleInputChange} /></td>
+                                    <td className="label">PIN Code</td>
+                                    <td><input name="pinCode" value={formData.pinCode} onChange={handleInputChange} /></td>
+                                    <td className="label">State</td>
+                                    <td><input name="state" value={formData.state} onChange={handleInputChange} /></td>
+                                    <td className="label">District</td>
+                                    <td><input name="district" value={formData.district} onChange={handleInputChange} /></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="section">
+                        <h3>Section-2 Property Details</h3>
+                        <table className="form-table">
+                            <tbody>
+                                <tr>
+                                    <td className="label">Configuration</td>
+                                    <td><input name="configuration" value={formData.configuration} onChange={handleInputChange} /></td>
+                                    <td className="label">Building No./Wing</td>
+                                    <td><input name="buildingNoWing" value={formData.buildingNoWing} onChange={handleInputChange} /></td>
+                                    <td className="label">Flat No (Optional)</td>
+                                    <td><input name="flatNo" value={formData.flatNo} onChange={handleInputChange} /></td>
+                                    <td className="label">Floor No. *</td>
+                                    <td><input name="floorNo" value={formData.floorNo} onChange={handleInputChange} required /></td>
+                                    <td className="label">Total Floors *</td>
+                                    <td><input name="totalFloors" value={formData.totalFloors} onChange={handleInputChange} required /></td>
+                                </tr>
+                                <tr>
+                                    <td className="label">Carpet Area (sq ft) *</td>
+                                    <td><input name="carpetArea" value={formData.carpetArea} onChange={handleInputChange} required /></td>
+                                    <td className="label">Built-up Area (sq ft) *</td>
+                                    <td><input name="builtUpArea" value={formData.builtUpArea} onChange={handleInputChange} required /></td>
+                                    <td className="label">Property Age (years) *</td>
+                                    <td><input name="propertyAge" value={formData.propertyAge} onChange={handleInputChange} required /></td>
+                                    <td className="label">OC Available *</td>
+                                    <td><input name="ocAvailable" value={formData.ocAvailable} onChange={handleInputChange} required /></td>
+                                    <td className="label">Cosmo Society *</td>
+                                    <td><input name="cosmoSociety" value={formData.cosmoSociety} onChange={handleInputChange} required /></td>
+                                </tr>
+                                <tr>
+                                    <td className="label">Furnishing *</td>
+                                    <td><input name="furnishing" value={formData.furnishing} onChange={handleInputChange} required /></td>
+                                    <td className="label">Terrace/Gallery *</td>
+                                    <td><input name="terraceGallery" value={formData.terraceGallery} onChange={handleInputChange} required /></td>
+                                    <td className="label">Parking *</td>
+                                    <td><input name="parking" value={formData.parking} onChange={handleInputChange} required /></td>
+                                    <td className="label">Expected Price (₹) *</td>
+                                    <td><input name="expectedPrice" value={formData.expectedPrice} onChange={handleInputChange} required /></td>
+                                    <td className="label">Negotiable *</td>
+                                    <td><input name="negotiable" value={formData.negotiable} onChange={handleInputChange} required /></td>
+                                </tr>
+                                <tr>
+                                    <td className="label">Exit Direction</td>
+                                    <td><input name="exitDirection" value={formData.exitDirection} onChange={handleInputChange} /></td>
+                                    <td className="label">Maintenance per Month (₹)</td>
+                                    <td><input name="maintenancePerMonth" value={formData.maintenancePerMonth} onChange={handleInputChange} /></td>
+                                    <td className="label">Plus Property</td>
+                                    <td colSpan="5"><input name="plusProperty" value={formData.plusProperty} onChange={handleInputChange} /></td>
+                                </tr>
+                                <tr>
+                                    <td className="label">Amenities *</td>
+                                    <td colSpan="9">
+                                        <textarea name="amenities" value={formData.amenities} onChange={handleInputChange} required />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="section">
+                        <h3>Section-3 Contacts & Collaterals</h3>
+                        <table className="form-table">
+                            <tbody>
+                                <tr>
+                                    <td className="label">Owner Name (Optional)</td>
+                                    <td><input name="ownerName" value={formData.ownerName} onChange={handleInputChange} /></td>
+                                    <td className="label">Owner Number (Optional)</td>
+                                    <td><input name="ownerNumber" value={formData.ownerNumber} onChange={handleInputChange} /></td>
+                                    <td className="label">Image</td>
+                                    <td><input type="file" name="image" onChange={handleFileChange} accept="image/*" /></td>
+                                    <td className="label">Video</td>
+                                    <td><input type="file" name="video" onChange={handleFileChange} accept="video/*" /></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button type="submit" className="submit-btn">Submit Property</button>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<ResalePropertyForm />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -13,7 +13,7 @@ import {
 import { useAuth } from "../../utils/authContext";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../utils/firebase";
-import logo from "../../assets/logo.png";
+import logo from "../../assets/EstateX-Logo.png";
 
 const Footer: React.FC = () => {
   const { user } = useAuth();

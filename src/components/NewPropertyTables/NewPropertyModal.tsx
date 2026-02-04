@@ -7,6 +7,9 @@ import { State, City } from "../../types";
 import { updateCostSheet } from "../../utils/firestoreListings";
 import { sanitizeInput } from "../../utils/formSubmissionUtils";
 import Button from "../ui/Button";
+import { TYPOLOGIES } from "../../constants/typologies";
+import { SecureImage } from "../SecureImage";
+import { SecureVideo } from "../SecureVideo";
 
 interface NewPropertyModalProps {
   Section: any;
@@ -20,6 +23,8 @@ interface NewPropertyModalProps {
   setSelectedSheet?: React.Dispatch<React.SetStateAction<CostSheet | null>>;
   setCostSheets?: React.Dispatch<React.SetStateAction<unknown[]>>;
   onClose?: () => void;
+  fromDashboard?: boolean;
+  selectedTypology?: string;
 }
 
 export function NewPropertyModal({
@@ -34,50 +39,73 @@ export function NewPropertyModal({
   setSelectedSheet,
   setCostSheets,
   onClose,
+  fromDashboard = false,
+  selectedTypology,
 }: NewPropertyModalProps) {
   const [mediaModal, setMediaModal] = useState<{isOpen: boolean, title: string, files: string[], type: 'image' | 'video' | 'pdf'}>({isOpen: false, title: '', files: [], type: 'image'});
   const [fullViewer, setFullViewer] = useState<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+  
+  // Helper function to format storey data
+  const formatStorey = (storey: string) => {
+    if (!storey) return "-";
+    const mapping = {
+      'B': 'Basement',
+      'P': 'Level Podium',
+      'H': 'Habitable',
+      'Comm': 'Commercial',
+      'Stilt': 'Stilt',
+      'G': 'Ground',
+    };
+    return storey.replace(/(\d*)(B|P|H|Comm|Stilt|G)\b/g, (match, num, abbr) => num + ' ' + (mapping[abbr as keyof typeof mapping] || abbr));
+  };
   // Helper function to format possession dates by RERA number
   const formatPossessionDates = (dateField: string) => {
-    const typologies = (selectedSheet as any).typologies;
-    if (!typologies || !Array.isArray(typologies)) {
+    const subTabData = (selectedSheet as any).subTabData;
+    if (!subTabData) {
       return dateField === 'reraPossession' ? selectedSheet.reraPossession || "-" : "-";
     }
     
-    const uniqueDatesSet = new Set();
-    typologies.forEach((t: any) => {
-      const date = t[dateField];
+    // Use subTabData sequence (sorted by keys)
+    const orderedDates: string[] = [];
+    Object.keys(subTabData).sort().forEach(key => {
+      const tabData = subTabData[key];
+      const date = tabData[dateField];
       if (date) {
         try {
           const formattedDate = new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-          uniqueDatesSet.add(formattedDate);
+          if (!orderedDates.includes(formattedDate)) {
+            orderedDates.push(formattedDate);
+          }
         } catch {}
       }
     });
     
-    const uniqueDates = Array.from(uniqueDatesSet);
-    return uniqueDates.length > 0 ? uniqueDates.join(' | ') : (dateField === 'reraPossession' ? selectedSheet.reraPossession || "-" : "-");
+    return orderedDates.length > 0 ? orderedDates.join(' | ') : (dateField === 'reraPossession' ? selectedSheet.reraPossession || "-" : "-");
   };
 
   // Helper function to format RERA numbers
   const formatReraNumbers = () => {
-    const typologies = (selectedSheet as any).typologies;
-    if (!typologies || !Array.isArray(typologies)) {
+    const subTabData = (selectedSheet as any).subTabData;
+    if (!subTabData) {
       return selectedSheet.mahaReraNumber || "-";
     }
     
-    const reraMap = new Map();
-    typologies.forEach((t: any) => {
-      if (t.mahaReraNumber) {
-        reraMap.set(t.mahaReraNumber, t.mahaReraLink);
+    // Use subTabData sequence (sorted by keys)
+    const orderedReraEntries: Array<[string, string]> = [];
+    Object.keys(subTabData).sort().forEach(key => {
+      const tabData = subTabData[key];
+      const reraNumber = tabData.mahaReraNumber;
+      const reraLink = tabData.mahaReraLink;
+      if (reraNumber && !orderedReraEntries.some(([num]) => num === reraNumber)) {
+        orderedReraEntries.push([reraNumber, reraLink]);
       }
     });
     
-    if (reraMap.size === 0) return selectedSheet.mahaReraNumber || "-";
+    if (orderedReraEntries.length === 0) return selectedSheet.mahaReraNumber || "-";
     
     return (
       <span>
-        {Array.from(reraMap.entries()).map(([reraNumber, reraLink], index) => (
+        {orderedReraEntries.map(([reraNumber, reraLink], index) => (
           <span key={reraNumber}>
             {index > 0 && " | "}
             {reraLink ? (
@@ -123,6 +151,8 @@ export function NewPropertyModal({
 
   // Group typologies by wingBuildingNo for tab functionality
   const typologies = (selectedSheet as any).typologies;
+  const subTabData = (selectedSheet as any).subTabData;
+  
   const groupedByWing = typologies ? typologies.reduce((acc: any, typology: any) => {
     const wingNumber = typology.wingBuildingNo || typology.mahaReraNumber || 'No Wing';
     if (!acc[wingNumber]) acc[wingNumber] = [];
@@ -130,15 +160,43 @@ export function NewPropertyModal({
     return acc;
   }, {}) : {};
   
-  const wingNumbers = Object.keys(groupedByWing);
+  // Use subTabData for tab ordering if available, otherwise fallback to typologies order
+  const wingNumbers = subTabData 
+    ? Object.keys(subTabData).sort().map(key => {
+        const tabData = subTabData[key];
+        return tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
+      })
+    : Object.keys(groupedByWing);
   const [activeTab, setActiveTab] = useState('');
   
   // Set initial active tab when wingNumbers change
   React.useEffect(() => {
     if (wingNumbers.length > 0 && !activeTab) {
-      setActiveTab(wingNumbers[0]);
+      if (fromDashboard && selectedTypology) {
+        // Find the tab that contains the selected typology with lowest package
+        let targetTab = wingNumbers[0];
+        let lowestPackage = Infinity;
+        
+        wingNumbers.forEach(wingNumber => {
+          const wingTypologies = groupedByWing[wingNumber] || [];
+          wingTypologies.forEach((typology: any) => {
+            if (typology.typology === selectedTypology && typology.availability !== "Sold Out") {
+              const pkgValue = typology.totalPackage;
+              const pkg = typeof pkgValue === "string" ? Number(pkgValue.replace(/[^0-9]/g, "")) : pkgValue || 0;
+              if (pkg > 0 && pkg < lowestPackage) {
+                lowestPackage = pkg;
+                targetTab = wingNumber;
+              }
+            }
+          });
+        });
+        
+        setActiveTab(targetTab);
+      } else {
+        setActiveTab(wingNumbers[0]);
+      }
     }
-  }, [wingNumbers, activeTab]);
+  }, [wingNumbers, activeTab, fromDashboard, selectedTypology]);
 
   const openMediaModal = (title: string, files: string[], type: 'image' | 'video' | 'pdf' = 'image') => {
     setMediaModal({isOpen: true, title, files, type});
@@ -315,17 +373,17 @@ export function NewPropertyModal({
           const updateDate = getValidDate(selectedSheet.dateUpdateCostSheet);
           return updateDate ? updateDate.toLocaleDateString('en-GB') : selectedSheet.dateUpdateCostSheet || "-";
         })()} />
-        <Field label="Location" value={selectedSheet.location} />
         <Field label="Developer Name" value={selectedSheet.developerName} />
         <Field label="Project Name" value={selectedSheet.projectName} />
         <Field label="Sub-Location" value={selectedSheet.subLocation} />
+        <Field label="Road" value={selectedSheet.road} />
         <Field label="Landmark" value={selectedSheet.landmark} />
-        <Field label="Pin Code" value={selectedSheet.pinCode} />
-        <Field label="District" value={selectedSheet.district} />
+        <Field label="Location" value={selectedSheet.location} />
+        <Field label="District" value={`${selectedSheet.district || "-"}${selectedSheet.pinCode ? ` - ${selectedSheet.pinCode}` : ""}`} />
         <Field label="State" value={selectedSheet.state} />
         <Field label="Land Parcel" value={selectedSheet.landParcel} />
         <Field label="Total Towers" value={selectedSheet.towers} />
-        <Field label="Total Storey" value={selectedSheet.storey} />
+        <Field label="Total Storey" value={formatStorey(selectedSheet.storey)} />
       </Section>
 
       {/* Section 2: Pricing Details */}
@@ -382,8 +440,34 @@ export function NewPropertyModal({
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-neutral-200">
-                    {groupedByWing[activeTab]?.map((typology: any, index: number) => (
-                      <tr key={index} className="hover:bg-neutral-50">
+                    {groupedByWing[activeTab]?.map((typology: any, index: number) => {
+                      // Check if this row should be highlighted (from dashboard with matching typology and lowest package)
+                      const shouldHighlight = fromDashboard && selectedTypology && 
+                        typology.typology === selectedTypology && 
+                        typology.availability !== "Sold Out" && (() => {
+                          // Find the lowest package for this typology across all tabs
+                          let lowestPackage = Infinity;
+                          wingNumbers.forEach(wingNumber => {
+                            const wingTypologies = groupedByWing[wingNumber] || [];
+                            wingTypologies.forEach((t: any) => {
+                              if (t.typology === selectedTypology && t.availability !== "Sold Out") {
+                                const pkgValue = t.totalPackage;
+                                const pkg = typeof pkgValue === "string" ? Number(pkgValue.replace(/[^0-9]/g, "")) : pkgValue || 0;
+                                if (pkg > 0 && pkg < lowestPackage) {
+                                  lowestPackage = pkg;
+                                }
+                              }
+                            });
+                          });
+                          
+                          const currentPkg = typeof typology.totalPackage === "string" 
+                            ? Number(typology.totalPackage.replace(/[^0-9]/g, "")) 
+                            : typology.totalPackage || 0;
+                          return currentPkg === lowestPackage;
+                        })();
+                      
+                      return (
+                        <tr key={index} className={shouldHighlight ? "bg-orange-50 border-l-4 border-l-orange-500" : "hover:bg-neutral-50"}>
                         <td className="px-3 py-2 text-sm font-medium text-neutral-900">
                           {typology.typology || "-"}
                         </td>
@@ -413,35 +497,78 @@ export function NewPropertyModal({
                           </span>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                     </tbody>
                   </table>
                 </div>
                 
                 {/* Flats per Floor field below the table */}
                 <div className="mt-4 p-3 bg-blue-50 rounded border">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-neutral-700">Flats per Floor:</span>
-                    <span className="text-sm text-neutral-800">
-                    {(() => {
-                      // Check if new format (subTabData) exists
-                      if ((selectedSheet as any).subTabData) {
-                        const subTabData = (selectedSheet as any).subTabData;
-                        // Find the flatsPerFloor for the current active tab
-                        const activeTabData = Object.entries(subTabData).find(([_, tabData]: [string, any]) => {
-                          const wingName = tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
-                          return wingName === activeTab;
-                        });
-                        
-                        if (activeTabData && activeTabData[1]?.flatsPerFloor) {
-                          return activeTabData[1].flatsPerFloor;
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-neutral-700">Flats per Floor:</span>
+                      <span className="text-sm text-neutral-800">
+                      {(() => {
+                        // Check if new format (subTabData) exists
+                        if ((selectedSheet as any).subTabData) {
+                          const subTabData = (selectedSheet as any).subTabData;
+                          // Find the flatsPerFloor for the current active tab
+                          const activeTabData = Object.entries(subTabData).find(([_, tabData]: [string, any]) => {
+                            const wingName = tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
+                            return wingName === activeTab;
+                          });
+                          
+                          if (activeTabData && activeTabData[1]?.flatsPerFloor) {
+                            return activeTabData[1].flatsPerFloor;
+                          }
                         }
-                      }
-                      
-                      // Fallback to old format
-                      return selectedSheet.flatsPerFloor || "Not specified";
-                    })()} 
-                    </span>
+                        
+                        // Fallback to old format
+                        return selectedSheet.flatsPerFloor || "Not specified";
+                      })()} 
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-neutral-700">Parking Charges:</span>
+                      <span className="text-sm text-neutral-800">
+                      {(() => {
+                        if ((selectedSheet as any).subTabData) {
+                          const subTabData = (selectedSheet as any).subTabData;
+                          const activeTabData = Object.entries(subTabData).find(([_, tabData]: [string, any]) => {
+                            const wingName = tabData.wingBuildingNo || tabData.mahaReraNumber || 'No Wing';
+                            return wingName === activeTab;
+                          });
+                          
+                          if (activeTabData && activeTabData[1]) {
+                            const tabData = activeTabData[1];
+                            
+                            // Check if parking is included in PSF
+                            if (tabData.psfIncludesParking && tabData.numberOfParkingIncluded && parseInt(tabData.numberOfParkingIncluded) > 0) {
+                              return `${tabData.numberOfParkingIncluded} Parking included in the cost`;
+                            }
+                            
+                            // Show parking charges if available
+                            if (tabData.parkingCharges) {
+                              const parkingAmount = `₹${parseFloat(tabData.parkingCharges).toLocaleString('en-IN')}`;
+                              const mandatoryTypologies = tabData.mandatoryParkingTypologies;
+                              
+                              if (mandatoryTypologies && Array.isArray(mandatoryTypologies) && mandatoryTypologies.length > 0) {
+                                const sortedTypologies = mandatoryTypologies.sort((a, b) => {
+                                  const indexA = TYPOLOGIES.indexOf(a);
+                                  const indexB = TYPOLOGIES.indexOf(b);
+                                  return indexA - indexB;
+                                });
+                                return `${parkingAmount} included in ${sortedTypologies.join(' | ')}`;
+                              }
+                              return parkingAmount;
+                            }
+                          }
+                        }
+                        return "Not specified";
+                      })()} 
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -993,15 +1120,25 @@ export function NewPropertyModal({
                     </div>
                   ) : mediaModal.type === 'video' ? (
                     <div className="aspect-square relative overflow-hidden">
-                      <video src={file} className="w-full h-full object-cover" muted />
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                      <SecureVideo
+                        src={file}
+                        className="w-full h-full object-cover"
+                        muted
+                        securityOptions={{ expiryHours: 4 }}
+                      />
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
                         <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z" />
                         </svg>
                       </div>
                     </div>
                   ) : (
-                    <img src={file} alt={`Media ${index + 1}`} className="w-full aspect-square object-cover" />
+                    <SecureImage
+                      src={file}
+                      alt={`Media ${index + 1}`}
+                      className="w-full aspect-square object-cover"
+                      securityOptions={{ expiryHours: 4 }}
+                    />
                   )}
                   <div className="p-1">
                     <p className="text-xs text-gray-600 truncate">{mediaModal.type === 'pdf' ? 'PDF' : mediaModal.type === 'video' ? 'Video' : 'Image'} {index + 1}</p>
@@ -1037,9 +1174,19 @@ export function NewPropertyModal({
             {fullViewer.type === 'pdf' ? (
               <iframe src={fullViewer.files[fullViewer.currentIndex]} className="w-[90vw] h-[90vh] bg-white rounded" />
             ) : fullViewer.type === 'video' ? (
-              <video controls className="max-w-[90vw] max-h-[90vh]" src={fullViewer.files[fullViewer.currentIndex]} />
+              <SecureVideo
+                controls
+                className="max-w-[90vw] max-h-[90vh]"
+                src={fullViewer.files[fullViewer.currentIndex]}
+                securityOptions={{ expiryHours: 4 }}
+              />
             ) : (
-              <img src={fullViewer.files[fullViewer.currentIndex]} alt="Full size media" className="max-w-[90vw] max-h-[90vh] object-contain" />
+              <SecureImage
+                src={fullViewer.files[fullViewer.currentIndex]}
+                alt="Full size media"
+                className="max-w-[90vw] max-h-[90vh] object-contain"
+                securityOptions={{ expiryHours: 4 }}
+              />
             )}
           </div>
           

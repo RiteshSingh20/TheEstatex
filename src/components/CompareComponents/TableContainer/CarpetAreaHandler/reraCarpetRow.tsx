@@ -1,4 +1,9 @@
-import { getCurrentTypology, getTypologyCarpetAreas } from "./carpetAreaUtils";
+import React from "react";
+import {
+  getCurrentTypology,
+  getTypologyCarpetAreas,
+  getLowestTotalPackageCarpetArea,
+} from "./carpetAreaUtils";
 
 interface Props {
   label: string;
@@ -7,6 +12,8 @@ interface Props {
   getFieldValue: Function;
   handleCarpetAreaChange: (index: number, value: number) => void;
   formatArea: (area: number) => string;
+  filtersApplied: boolean;
+  filterPropertyType?: string;
 }
 
 export function ReraCarpetRow({
@@ -16,7 +23,26 @@ export function ReraCarpetRow({
   getFieldValue,
   handleCarpetAreaChange,
   formatArea,
+  filtersApplied,
+  filterPropertyType,
 }: Props) {
+  // Auto-select first available carpet area when filters are applied
+  React.useEffect(() => {
+    if (filterPropertyType) {
+      costSheets.forEach((sheet, index) => {
+        if (sheet.projectName && !getFieldValue(sheet, "reraCarpet")) {
+          const targetTypology = filterPropertyType || getCurrentTypology(sheet);
+          const availableAreas = getTypologyCarpetAreas(sheet, targetTypology, true);
+          
+          if (availableAreas.length > 0) {
+            handleCarpetAreaChange(index, availableAreas[0]);
+          }
+        }
+      });
+    }
+  }, [filterPropertyType, costSheets]);
+
+
   return (
     <tr className="bg-blue-50 border-l-4 border-blue-500 hover:bg-blue-100 transition-colors">
       <td className="sticky left-0 z-10 bg-blue-50 border-l-4 border-blue-500 p-3 font-semibold text-gray-700 border-r">
@@ -40,9 +66,25 @@ export function ReraCarpetRow({
           );
         }
 
-        const typology = getCurrentTypology(sheet);
-        const carpetAreas = getTypologyCarpetAreas(sheet, typology);
-        const currentCarpetArea = getFieldValue(sheet, "reraCarpet");
+        const targetTypology = filterPropertyType || getCurrentTypology(sheet);
+        const availableAreas = getTypologyCarpetAreas(
+          sheet,
+          targetTypology,
+          !!filterPropertyType
+        );
+        const currentArea = getFieldValue(sheet, "reraCarpet");
+        
+        // Auto-select first matching area if current area doesn't match the typology
+        if (filterPropertyType && currentArea && !availableAreas.includes(currentArea) && availableAreas.length > 0) {
+          handleCarpetAreaChange(index, availableAreas[0]);
+        }
+        
+        // Only include current area if it matches the typology or no typology filter is applied
+        const allAreas = currentArea && !availableAreas.includes(currentArea) && !filterPropertyType
+          ? [...availableAreas, currentArea].sort((a, b) => a - b)
+          : availableAreas;
+
+
 
         return (
           <td
@@ -50,24 +92,20 @@ export function ReraCarpetRow({
             className="px-2 py-1 text-sm text-right border-r border-gray-200"
           >
             <select
-              value={currentCarpetArea || ""}
-              onChange={(e) =>
-                handleCarpetAreaChange(index, Number(e.target.value))
-              }
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500
-                         focus:border-blue-500"
+              value={currentArea || ""}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                handleCarpetAreaChange(index, value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  (e.target as HTMLSelectElement).blur();
+                }
+              }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select Carpet Area</option>
-
-              {currentCarpetArea &&
-                !carpetAreas.includes(currentCarpetArea) && (
-                  <option value={currentCarpetArea}>
-                    {formatArea(currentCarpetArea)} (Current)
-                  </option>
-                )}
-
-              {carpetAreas.map((area) => (
+              {allAreas.map((area) => (
                 <option key={area} value={area}>
                   {formatArea(area)}
                 </option>

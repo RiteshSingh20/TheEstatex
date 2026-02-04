@@ -1,5 +1,23 @@
 import { User, SubscriptionLocation } from "../types";
 
+// Helper function to format storey data
+export const formatStorey = (storey: string): string => {
+  if (!storey) return "-";
+  const mapping = {
+    B: "Basement",
+    P: "Level Podium",
+    H: "Habitable",
+    Comm: "Commercial",
+    Stilt: "Stilt",
+    G: "Ground",
+  };
+  return storey.replace(
+    /(\d*)(B|P|H|Comm|Stilt|G)\b/g,
+    (match, num, abbr) =>
+      num + " " + (mapping[abbr as keyof typeof mapping] || abbr),
+  );
+};
+
 // Format currency to Indian Rupees
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat("en-IN", {
@@ -11,7 +29,7 @@ export const formatCurrency = (amount: number): string => {
 
 // Calculate subscription total
 export const calculateSubscriptionTotal = (
-  locations: SubscriptionLocation[]
+  locations: SubscriptionLocation[],
 ): number => {
   return locations.reduce((total, location) => total + location.price, 0);
 };
@@ -42,7 +60,7 @@ export const formatAmount = (amount: number | string): string => {
 // Helper function to get floor category
 const getFloorCategory = (
   floorNo: string | number | undefined,
-  totalFloors: string | number | undefined
+  totalFloors: string | number | undefined,
 ): string => {
   const floor = Number(floorNo);
   const total = Number(totalFloors);
@@ -81,10 +99,10 @@ export const generateWhatsAppText = (
   totalResaleCount?: number,
   isCostSheet?: boolean,
   isQuickSend?: boolean,
-  propertyCategory?: string
+  propertyCategory?: string,
 ): string => {
   if (isCostSheet && properties.length > 0) {
-    // If it's Quick Send, use the existing detailed format
+    // If it's Quick Send, use the new detailed format
     if (isQuickSend) {
       const property = properties[0];
 
@@ -114,26 +132,61 @@ export const generateWhatsAppText = (
       ];
 
       properties.forEach((p) => {
-        if (p.flatType && p.reraCarpet) {
-          if (!configGroups[p.flatType]) configGroups[p.flatType] = [];
-          configGroups[p.flatType].push(p.reraCarpet);
+        // Handle typologies array
+        if (p.typologies && Array.isArray(p.typologies)) {
+          p.typologies.forEach((typology: any) => {
+            if (
+              typology.availability !== "Sold Out" &&
+              typology.typology &&
+              typology.reraCarpet
+            ) {
+              if (!configGroups[typology.typology])
+                configGroups[typology.typology] = [];
+              configGroups[typology.typology].push(typology.reraCarpet);
+            }
+            if (typology.developerPossession)
+              allPossessions.add(typology.developerPossession);
+            if (typology.mahaReraNumber)
+              allReraNumbers.add(typology.mahaReraNumber);
+            if (typology.totalPackage) {
+              minPrice = Math.min(minPrice, Number(typology.totalPackage));
+              maxPrice = Math.max(maxPrice, Number(typology.totalPackage));
+            }
+          });
         }
-        if (p.possession) allPossessions.add(p.possession);
-        if (p.mahaReraNumber) allReraNumbers.add(p.mahaReraNumber);
-        if (p.totalPackage) {
-          minPrice = Math.min(minPrice, Number(p.totalPackage));
-          maxPrice = Math.max(maxPrice, Number(p.totalPackage));
+
+        // Handle subTabData
+        if (p.subTabData) {
+          Object.values(p.subTabData).forEach((tabData: any) => {
+            if (
+              tabData.pricingConfigs &&
+              Array.isArray(tabData.pricingConfigs)
+            ) {
+              tabData.pricingConfigs.forEach((config: any) => {
+                if (
+                  config.availability !== "Sold Out" &&
+                  config.typology &&
+                  config.reraCarpet
+                ) {
+                  if (!configGroups[config.typology])
+                    configGroups[config.typology] = [];
+                  configGroups[config.typology].push(config.reraCarpet);
+                }
+                if (config.totalPackage) {
+                  minPrice = Math.min(minPrice, Number(config.totalPackage));
+                  maxPrice = Math.max(maxPrice, Number(config.totalPackage));
+                }
+              });
+            }
+            if (tabData.developerPossession)
+              allPossessions.add(tabData.developerPossession);
+            if (tabData.mahaReraNumber)
+              allReraNumbers.add(tabData.mahaReraNumber);
+          });
         }
       });
 
-      let text = `Dear ${prefix ? prefix + " " : ""}${name},\n\n`;
-
-      const projectTypeText = property.mahaReraNumber
-        ? "is RERA Registered project"
-        : property.type
-        ? `is ${property.type} project`
-        : "project";
-      text += `The resedential property *${property.projectName}* ${projectTypeText}, Developing by *${property.developerName}*, Located at ${property.subLocation} in ${property.station}. The total land parcel of the project is *${property.landParcel} Acre*.\n\n`;
+      let text = `We are thrilled to introduce *${property.projectName}*, a new residential project by the Developer *${property.developerName}*, located at ${property.subLocation}, ${property.location || property.station}, ${property.landmark || ""}. This expansive development spans a *${property.landParcel} Acres* land parcel and features *${property.towers} Towers* of *${formatStorey(property.storey)} Storeys*.\n\n`;
 
       // Sort flat types according to bhkOrder
       const sortedFlatTypes = Object.keys(configGroups).sort((a, b) => {
@@ -141,21 +194,19 @@ export const generateWhatsAppText = (
         const indexB = bhkOrder.indexOf(b);
         return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
       });
-      const flatTypes = sortedFlatTypes.join(" | ");
-      text += `The project contains ${property.towers} Tower of ${property.storey} Storey building, having *${flatTypes}* Apartments,\n\n`;
 
       text += `*🏠 Configuration Type: [Rera Carpet Areas] :*\n`;
       sortedFlatTypes.forEach((flatType) => {
         const uniqueAreas = [...new Set(configGroups[flatType])].sort(
-          (a, b) => Number(a) - Number(b)
+          (a, b) => Number(a) - Number(b),
         );
         text += `- *${flatType}* - ${uniqueAreas.join(" | ")}\n`;
       });
       text += `\n`;
 
       if (minPrice !== Infinity && maxPrice > 0) {
-        text += `Price range : *${formatAmount(minPrice)}* to *${formatAmount(
-          maxPrice
+        text += `Price Range: *${formatAmount(minPrice)}* to *${formatAmount(
+          maxPrice,
         )}* All Inclusive.\n\n`;
       }
 
@@ -163,7 +214,7 @@ export const generateWhatsAppText = (
         property.locationHighlights &&
         property.locationHighlights.length > 0
       ) {
-        text += `*✨ Highlights :*\n`;
+        text += `📍 Prime Connectivity (All within!)\n`;
         property.locationHighlights.forEach((highlight) => {
           text += `- ${highlight}\n`;
         });
@@ -171,7 +222,7 @@ export const generateWhatsAppText = (
       }
 
       if (property.projectAmenities && property.projectAmenities.length > 0) {
-        text += `*🎉 Project Amenities :*\n`;
+        text += `🌳 Lifestyle Amenities\n`;
         property.projectAmenities.forEach((amenity) => {
           text += `- ${amenity}\n`;
         });
@@ -182,9 +233,17 @@ export const generateWhatsAppText = (
         property.apartmentAmenities &&
         property.apartmentAmenities.length > 0
       ) {
-        text += `*🏠 Apartment Amenities :*\n`;
+        text += `🏠 Apartment Amenities\n`;
         property.apartmentAmenities.forEach((amenity) => {
           text += `- ${amenity}\n`;
+        });
+        text += `\n`;
+      }
+
+      if (property.paymentSchemes && property.paymentSchemes.length > 0) {
+        text += `Payment Schemes\n`;
+        property.paymentSchemes.forEach((scheme: any) => {
+          text += `- ${scheme.schemeName || scheme}\n`;
         });
         text += `\n`;
       }
@@ -218,11 +277,10 @@ export const generateWhatsAppText = (
         text += `*Possession by : ${sortedPossessions.join(" | ")}*\n\n`;
       }
 
-      if (allReraNumbers.size > 0) {
-        text += `Maha RERA number : *${Array.from(allReraNumbers).join(
-          " | "
-        )}*\n\n`;
-      }
+      // Add media links placeholders
+      // text += `*Brochure*\t: {link}\n`;
+      // text += `*Images*\t: {link}\n`;
+      // text += `*Videos*\t: {link}\n\n`;
 
       const firmName = user?.firmName || "us";
       text += `Thank you for considering ${firmName}.\n\nBest regards,\n${
@@ -234,18 +292,46 @@ export const generateWhatsAppText = (
 
     // If it's table selection (multiple properties), use the new format
     const totalCount = totalResaleCount || properties.length;
+    
+    // Deduplicate properties by project name to avoid duplicate entries
+    const uniqueProperties = properties.reduce((acc, property) => {
+      const existingIndex = acc.findIndex(p => p.projectName === property.projectName);
+      if (existingIndex === -1) {
+        acc.push(property);
+      }
+      return acc;
+    }, [] as any[]);
+    
     let text = `Hello! ${prefix ? prefix + " " : ""}*${name}*\n\n`;
     text += `As per you requirement / Budget we have ${totalCount} new properties.\n`;
-    text += `Sending ${properties.length} Selected properties.\n\n`;
+    text += `Sending ${uniqueProperties.length} Selected properties.\n\n`;
 
-    properties.forEach((property) => {
-      const possessionText =
-        property.possession === "Ready to Move"
-          ? "READY TO MOVE"
-          : property.possession || "N/A";
-      text += `✅ ${property.projectName} - ${
-        property.subLocation
-      } - ${formatAmount(property.totalPackage)} - ${possessionText}\n\n`;
+    uniqueProperties.forEach((property) => {
+      // Get possession from typologies or subTabData
+      let possessionText = "N/A";
+      if (property.reraPossession === "Ready to move") {
+        possessionText = "READY TO MOVE";
+      } else if (property.typologies?.[0]?.developerPossession) {
+        possessionText = property.typologies[0].developerPossession;
+      } else if (property.subTabData) {
+        const firstTab = Object.values(property.subTabData)[0] as any;
+        if (firstTab?.developerPossession) {
+          possessionText = firstTab.developerPossession;
+        }
+      }
+
+      // Get price from typologies or subTabData
+      let priceText = "N/A";
+      if (property.typologies?.[0]?.totalPackage) {
+        priceText = formatAmount(property.typologies[0].totalPackage);
+      } else if (property.subTabData) {
+        const firstTab = Object.values(property.subTabData)[0] as any;
+        if (firstTab?.pricingConfigs?.[0]?.totalPackage) {
+          priceText = formatAmount(firstTab.pricingConfigs[0].totalPackage);
+        }
+      }
+
+      text += `✅ ${property.projectName} - ${property.subLocation} - ${priceText} - ${possessionText}\n\n`;
     });
 
     const firmName = user?.firmName || "us";
@@ -274,7 +360,7 @@ export const generateWhatsAppText = (
   properties.forEach((property) => {
     const floorCategory = getFloorCategory(
       property.floorNo,
-      property.totalFloors
+      property.totalFloors,
     );
     const location = property.sublocation || property.roadLocation || "N/A";
 
@@ -303,11 +389,11 @@ export const generateWhatsAppText = (
 // Check if user has subscription for a location
 export const hasLocationSubscription = (
   user: User | null,
-  location: string
+  location: string,
 ): boolean => {
   if (!user) return false;
   return user.subscriptionLocations.some(
-    (loc) => loc.name.toLowerCase() === location.toLowerCase()
+    (loc) => loc.name.toLowerCase() === location.toLowerCase(),
   );
 };
 

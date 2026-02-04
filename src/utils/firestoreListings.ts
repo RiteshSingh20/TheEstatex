@@ -50,16 +50,63 @@ export const deleteResaleProperty = async (
   userId: string,
   propertyId: string
 ): Promise<void> => {
-  const propertyRef = doc(db, "users", userId, "resaleProperties", propertyId);
-  await deleteDoc(propertyRef);
+  // Try to delete from old collection first
+  try {
+    const oldPropertyRef = doc(db, "users", userId, "resaleProperties", propertyId);
+    const oldDoc = await getDoc(oldPropertyRef);
+    if (oldDoc.exists()) {
+      await deleteDoc(oldPropertyRef);
+      return;
+    }
+  } catch (error) {
+    // Continue to try new collection if old fails
+  }
+
+  // Try to delete from new collection
+  try {
+    const newPropertyRef = doc(db, "properties", propertyId);
+    const newDoc = await getDoc(newPropertyRef);
+    if (newDoc.exists() && newDoc.data()?.userId === userId && 
+        (newDoc.data()?.transactionType === "Resale" || newDoc.data()?.transactionType === "sale")) {
+      await deleteDoc(newPropertyRef);
+      return;
+    }
+  } catch (error) {
+    // If both fail, throw error
+  }
+
+  throw new Error(`Property not found: ${propertyId}`);
 };
 
 export const deleteRentalProperty = async (
   userId: string,
   propertyId: string
 ): Promise<void> => {
-  const propertyRef = doc(db, "users", userId, "rentalProperties", propertyId);
-  await deleteDoc(propertyRef);
+  // Try to delete from old collection first
+  try {
+    const oldPropertyRef = doc(db, "users", userId, "rentalProperties", propertyId);
+    const oldDoc = await getDoc(oldPropertyRef);
+    if (oldDoc.exists()) {
+      await deleteDoc(oldPropertyRef);
+      return;
+    }
+  } catch (error) {
+    // Continue to try new collection if old fails
+  }
+
+  // Try to delete from new collection
+  try {
+    const newPropertyRef = doc(db, "properties", propertyId);
+    const newDoc = await getDoc(newPropertyRef);
+    if (newDoc.exists() && newDoc.data()?.userId === userId && newDoc.data()?.transactionType === "Rental") {
+      await deleteDoc(newPropertyRef);
+      return;
+    }
+  } catch (error) {
+    // If both fail, throw error
+  }
+
+  throw new Error(`Property not found: ${propertyId}`);
 };
 
 export const addRentalProperty = async (userId: string, property: any) => {
@@ -263,36 +310,150 @@ export const updateUserSubscriptionStatus = async (
 };
 
 // ==================== Property Fetching Functions ====================
-export const getResaleProperties = async (userId: string): Promise<any[]> => {
+export const getResaleProperties = async (userId: string, propertyType?: string): Promise<any[]> => {
+  // Always fetch from old collection (all old source properties should show under Residential)
   const resaleCollection = collection(db, "users", userId, "resaleProperties");
-  const querySnapshot = await getDocs(resaleCollection);
-  return querySnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+  
+  // Fetch from new collection with filters
+  let newPropertiesQuery = query(
+    collection(db, "properties"),
+    where("userId", "==", userId)
+  );
+
+  // Add propertyType filter for new source if specified
+  if (propertyType) {
+    newPropertiesQuery = query(newPropertiesQuery, where("propertyType", "==", propertyType));
+  }
+
+  const [oldSnapshot, newSnapshot] = await Promise.all([
+    getDocs(resaleCollection),
+    getDocs(newPropertiesQuery)
+  ]);
+
+  // All old source properties (they don't have propertyType field)
+  const oldProperties = oldSnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+  
+  // Filter new source properties for resale/sale transactions
+  const newProperties = newSnapshot.docs
+    .filter(doc => {
+      const data = doc.data();
+      return data.transactionType === "Resale" || data.transactionType === "sale";
+    })
+    .map((doc) => ({ docId: doc.id, ...doc.data() }));
+
+  return [...oldProperties, ...newProperties];
 };
 
-export const getRentalProperties = async (userId: string): Promise<any[]> => {
+export const getRentalProperties = async (userId: string, propertyType?: string): Promise<any[]> => {
+  // Always fetch from old collection (all old source properties should show under Residential)
   const rentalCollection = collection(db, "users", userId, "rentalProperties");
-  const querySnapshot = await getDocs(rentalCollection);
-  return querySnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+  
+  // Fetch from new collection with filters
+  let newPropertiesQuery = query(
+    collection(db, "properties"),
+    where("userId", "==", userId),
+    where("transactionType", "==", "Rental")
+  );
+
+  // Add propertyType filter for new source if specified
+  if (propertyType) {
+    newPropertiesQuery = query(newPropertiesQuery, where("propertyType", "==", propertyType));
+  }
+
+  const [oldSnapshot, newSnapshot] = await Promise.all([
+    getDocs(rentalCollection),
+    getDocs(newPropertiesQuery)
+  ]);
+
+  // All old source properties (they don't have propertyType field)
+  const oldProperties = oldSnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+  const newProperties = newSnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+
+  return [...oldProperties, ...newProperties];
 };
 
 // Get user's resale properties for modal display
 export const getUserResaleProperties = async (
-  userId: string
+  userId: string,
+  propertyType?: string
 ): Promise<any[]> => {
+  // Always fetch from old collection
   const resaleCollection = collection(db, "users", userId, "resaleProperties");
-  const q = query(resaleCollection, orderBy("createdAt", "desc"));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+  const oldQuery = query(resaleCollection, orderBy("createdAt", "desc"));
+
+  // Fetch from new collection with filters
+  let newPropertiesQuery = query(
+    collection(db, "properties"),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
+
+  // Add propertyType filter for new source if specified
+  if (propertyType) {
+    newPropertiesQuery = query(newPropertiesQuery, where("propertyType", "==", propertyType));
+  }
+
+  const [oldSnapshot, newSnapshot] = await Promise.all([
+    getDocs(oldQuery),
+    getDocs(newPropertiesQuery)
+  ]);
+
+  // All old source properties
+  const oldProperties = oldSnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+  
+  // Filter new source properties for resale/sale transactions
+  const newProperties = newSnapshot.docs
+    .filter(doc => {
+      const data = doc.data();
+      return data.transactionType === "Resale" || data.transactionType === "sale";
+    })
+    .map((doc) => ({ docId: doc.id, ...doc.data() }));
+
+  // sort combined results by createdAt desc
+  return [...oldProperties, ...newProperties].sort((a: any, b: any) => {
+    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+    return dateB.getTime() - dateA.getTime();
+  });
 };
 
 // Get user's rental properties for modal display
 export const getUserRentalProperties = async (
-  userId: string
+  userId: string,
+  propertyType?: string
 ): Promise<any[]> => {
+  // Always fetch from old collection
   const rentalCollection = collection(db, "users", userId, "rentalProperties");
-  const q = query(rentalCollection, orderBy("createdAt", "desc"));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+  const oldQuery = query(rentalCollection, orderBy("createdAt", "desc"));
+
+  // Fetch from new collection with filters
+  let newPropertiesQuery = query(
+    collection(db, "properties"),
+    where("userId", "==", userId),
+    where("transactionType", "==", "Rental"),
+    orderBy("createdAt", "desc")
+  );
+
+  // Add propertyType filter for new source if specified
+  if (propertyType) {
+    newPropertiesQuery = query(newPropertiesQuery, where("propertyType", "==", propertyType));
+  }
+
+  const [oldSnapshot, newSnapshot] = await Promise.all([
+    getDocs(oldQuery),
+    getDocs(newPropertiesQuery)
+  ]);
+
+  // All old source properties
+  const oldProperties = oldSnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+  const newProperties = newSnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+
+  // sort combined results by createdAt desc
+  return [...oldProperties, ...newProperties].sort((a: any, b: any) => {
+    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+    return dateB.getTime() - dateA.getTime();
+  });
 };
 
 export const getResalePropertiesByLocations = async (

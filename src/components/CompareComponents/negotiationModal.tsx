@@ -21,7 +21,7 @@ export function negotiationModal(
 
         <div className="text-center py-2">
           <div className="text-lg font-bold text-blue-600">
-            ₹{selectedNegotiationValue}
+            {selectedNegotiationValue === "Not Disclosed" ? selectedNegotiationValue : `₹${selectedNegotiationValue}`}
           </div>
         </div>
 
