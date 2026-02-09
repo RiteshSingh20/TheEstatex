@@ -233,9 +233,9 @@ export function handleNewEntryForm(
     landmarkSuggestions: string[];
     isLoading: boolean;
     searchLocations: (term: string) => void;
-    searchSubLocations: (term: string) => void;
-    searchRoads: (term: string) => void;
-    searchLandmarks: (term: string) => void;
+    searchSubLocations: (term: string, locationFilter?: string) => void;
+    searchRoads: (term: string, locationFilter?: string, subLocationFilter?: string) => void;
+    searchLandmarks: (term: string, locationFilter?: string, subLocationFilter?: string) => void;
   }
 ): React.ReactNode {
   return (

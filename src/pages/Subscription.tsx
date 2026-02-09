@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Building, Check, Clock, Zap, ChevronLeft, Shield } from "lucide-react";
 import Button from "../components/ui/Button";
@@ -95,6 +95,12 @@ const Subscription = () => {
     12: number;
   }>({ 3: 10, 6: 20, 12: 40 });
 
+  // Memoize station list to prevent unnecessary re-renders
+  const memoizedNDStationsList = useMemo(
+    () => ndMergedStationsList,
+    [ndMergedStationsList]
+  );
+
   // Free trial functionality
   const isFreeTrialActive = () => {
     const currentDate = new Date();
@@ -127,9 +133,11 @@ const Subscription = () => {
     }
   };
 
-  const getDynamicStationCount = (planType: "RR" | "ND") => {
+  const getDynamicStationCount = (planType: "RR" | "ND" | "SP" | "Enterprise") => {
     if (!stationsLoaded) return stations.length;
-    return planType === "RR" ? rrStationsCount : ndStationsCount;
+    if (planType === "RR") return rrStationsCount;
+    if (planType === "ND") return ndStationsCount;
+    return stations.length;
   };
 
   const normalizeStationName = (name: string) => {
@@ -138,110 +146,64 @@ const Subscription = () => {
 
   const fetchAvailableStations = async () => {
     try {
-      // Fetch RR stations (resale + rental)
-      const rrAvailableStations = new Set<string>();
-      const usersSnap = await getDocs(collection(db, "users"));
-      for (const userDoc of usersSnap.docs) {
-        const resaleSnap = await getDocs(
-          collection(db, "users", userDoc.id, "resaleProperties")
-        );
-        resaleSnap.forEach((doc) => {
-          const data = doc.data();
-          if (data.station) {
-            rrAvailableStations.add(
-              normalizeStationName(data.station).toLowerCase()
-            );
-          }
-        });
-
-        const rentalSnap = await getDocs(
-          collection(db, "users", userDoc.id, "rentalProperties")
-        );
-        rentalSnap.forEach((doc) => {
-          const data = doc.data();
-          if (data.station) {
-            rrAvailableStations.add(
-              normalizeStationName(data.station).toLowerCase()
-            );
-          }
-        });
-      }
-
-      // Fetch ND stations (costSheets)
-      const ndAvailableStations = new Set<string>();
+      // Fetch ND stations (costSheets) - this is the primary data source
       const costSheetsSnap = await getDocs(collection(db, "TestingCostSheets"));
+      const ndAvailableStations = new Set<string>();
+      const ndAvailableList: { id: string; name: string }[] = [];
+      const ndSeen = new Set<string>();
+
       costSheetsSnap.forEach((doc) => {
         const data = doc.data();
         if (data.station) {
-          ndAvailableStations.add(
-            normalizeStationName(data.station).toLowerCase()
-          );
+          const normalized = normalizeStationName(data.station).toLowerCase();
+          if (!ndSeen.has(normalized)) {
+            ndSeen.add(normalized);
+            ndAvailableStations.add(normalized);
+            ndAvailableList.push({
+              id: `costsheet-${data.station.toLowerCase().replace(/\s+/g, "-")}`,
+              name: normalizeStationName(data.station),
+            });
+          }
         }
         if (data.availableStations?.length) {
-          data.availableStations.forEach((station: string) =>
-            ndAvailableStations.add(normalizeStationName(station).toLowerCase())
-          );
+          data.availableStations.forEach((station: string) => {
+            const normalized = normalizeStationName(station).toLowerCase();
+            if (!ndSeen.has(normalized)) {
+              ndSeen.add(normalized);
+              ndAvailableStations.add(normalized);
+              ndAvailableList.push({
+                id: `costsheet-${station.toLowerCase().replace(/\s+/g, "-")}`,
+                name: normalizeStationName(station),
+              });
+            }
+          });
         }
       });
 
-      const rrAvailableCount = rrAvailableStations.size;
-      const ndAvailableCount = ndAvailableStations.size;
       const staticCount = stations.length;
+      const ndAvailableCount = ndAvailableStations.size;
 
-      // RR logic
-      if (rrAvailableCount < staticCount) {
-        setRRStationsCount(staticCount);
+      // Set ND stations - use available list if we have data, otherwise use static
+      if (ndAvailableCount > 0) {
+        setNDStationsCount(ndAvailableCount);
+        setNDMergedStationsList(ndAvailableList);
       } else {
-        setRRStationsCount(rrAvailableCount);
-      }
-
-      // ND logic
-      if (ndAvailableCount < staticCount) {
         setNDStationsCount(staticCount);
         setNDMergedStationsList(
           stations.map((s) => ({ id: s.id, name: s.name }))
         );
-      } else {
-        setNDStationsCount(ndAvailableCount);
-        // Create list with only available ND stations from Firestore
-        const ndAvailableList: { id: string; name: string }[] = [];
-        const ndSeen = new Set<string>();
-
-        // Add only available ND stations from Firestore
-        costSheetsSnap.forEach((doc) => {
-          const data = doc.data();
-          if (data.station) {
-            const normalized = normalizeStationName(data.station).toLowerCase();
-            if (!ndSeen.has(normalized)) {
-              ndSeen.add(normalized);
-              ndAvailableList.push({
-                id: `costsheet-${data.station
-                  .toLowerCase()
-                  .replace(/\s+/g, "-")}`,
-                name: normalizeStationName(data.station),
-              });
-            }
-          }
-          if (data.availableStations?.length) {
-            data.availableStations.forEach((station: string) => {
-              const normalized = normalizeStationName(station).toLowerCase();
-              if (!ndSeen.has(normalized)) {
-                ndSeen.add(normalized);
-                ndAvailableList.push({
-                  id: `costsheet-${station.toLowerCase().replace(/\s+/g, "-")}`,
-                  name: normalizeStationName(station),
-                });
-              }
-            });
-          }
-        });
-
-        setNDMergedStationsList(ndAvailableList);
       }
 
+      // RR stations - use static count as default (no need to query all users)
+      setRRStationsCount(staticCount);
       setStationsLoaded(true);
     } catch (error) {
-      
+      // Fallback to static stations on error
+      setRRStationsCount(stations.length);
+      setNDStationsCount(stations.length);
+      setNDMergedStationsList(
+        stations.map((s) => ({ id: s.id, name: s.name }))
+      );
       setStationsLoaded(true);
     }
   };
@@ -309,7 +271,6 @@ const Subscription = () => {
           data.newPropertyPrices || {},
           data.newPropertyStationNames || {}
         );
-
         setPricing({
           rentalResalePrice: data.rentalResalePrice || 2500,
           newPropertyPrices: data.newPropertyPrices || {},
@@ -664,11 +625,12 @@ const Subscription = () => {
     );
   };
 
-  const renderPlanCard = (plan: "RR" | "ND" | "Enterprise") => {
+  const renderPlanCard = (plan: "RR" | "ND" | "SP" | "Enterprise") => {
     const isRR = plan === "RR";
     const isND = plan === "ND";
+    const isSpecial = plan === "SP";
     const isEnterprise = plan === "Enterprise";
-    const isSelected = selectedPlan === plan && !isEnterprise;
+    const isSelected = selectedPlan === plan && !isSpecial && !isEnterprise;
     // Get lowest price for ND from available stations
     const getLowestNDPrice = () => {
       if (ndMergedStationsList.length === 0) return pricing.discountedPrice.ND;
@@ -683,12 +645,12 @@ const Subscription = () => {
       return Math.min(...prices);
     };
 
-    const actualPrice = isEnterprise
+    const actualPrice = isSpecial || isEnterprise
       ? 0
       : plan === "RR"
       ? pricing.actualPrice.RR
       : pricing.actualPrice.ND;
-    const discountedPrice = isEnterprise
+    const discountedPrice = isSpecial || isEnterprise
       ? 0
       : plan === "RR"
       ? pricing.discountedPrice.RR
@@ -718,18 +680,25 @@ const Subscription = () => {
 
     return (
       <motion.div
-        whileHover={{ scale: hasActiveSubscription || isEnterprise ? 1 : 1.02 }}
+        whileHover={{
+          scale: hasActiveSubscription || isSpecial || isEnterprise ? 1 : 1.02,
+        }}
         className="h-full"
       >
         <Card
           className={`h-full transition-all duration-300 relative overflow-hidden rounded-lg ${
-            isEnterprise
+            isSpecial || isEnterprise
               ? "border-2 border-dashed border-gray-300 bg-gray-50 opacity-75"
               : isSelected
               ? "border-2 border-[#193867] shadow-lg bg-white"
               : "border border-gray-200 hover:border-gray-300 hover:shadow-md bg-white"
           } ${hasActiveSubscription ? "opacity-50 cursor-not-allowed" : ""}`}
         >
+          {isSpecial && (
+            <div className="absolute top-4 right-4 bg-gray-600 text-white px-2 py-1 rounded text-xs font-semibold">
+              Customizable
+            </div>
+          )}
           {isEnterprise && (
             <div className="absolute top-4 right-4 bg-gray-600 text-white px-2 py-1 rounded text-xs font-semibold">
               Coming Soon
@@ -738,7 +707,7 @@ const Subscription = () => {
 
           <div className="flex flex-col h-full p-6">
             <div className="mb-6">
-              {!isEnterprise && (
+              {!isSpecial && !isEnterprise && (
                 <div className="flex items-center gap-2 mb-3">
                   {isRR && (
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">
@@ -758,6 +727,8 @@ const Subscription = () => {
                   ? "Rental & Resale"
                   : isND
                   ? "New Developments"
+                  : isSpecial
+                  ? "Special Package"
                   : "Enterprise"}
               </h3>
 
@@ -766,12 +737,14 @@ const Subscription = () => {
                   ? "Complete access to rental and resale properties across all Western line stations"
                   : isND
                   ? "Selective access to new development projects with custom duration options"
+                  : isSpecial
+                  ? "Tailored access plans with custom stations, durations, and support for unique business needs"
                   : "Custom solutions for large teams and organizations with advanced features"}
               </p>
             </div>
 
             <div className="mb-6">
-              {!isEnterprise ? (
+              {!isSpecial && !isEnterprise ? (
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   {isND ? (
                     <div className="space-y-1">
@@ -803,7 +776,7 @@ const Subscription = () => {
                 </div>
               )}
 
-              {!isEnterprise && savedPrice > 0 && (
+              {!isSpecial && !isEnterprise && savedPrice > 0 && (
                 <div className="mt-2">
                   <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold">
                     Save {savePercent}% (₹{savedPrice.toLocaleString()})
@@ -816,42 +789,98 @@ const Subscription = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 What's Included:
               </h3>
-              <ul className="space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
-                    <Check className="h-4 w-4 text-gray-600" />
-                  </div>
-                  <span>
-                    Access to{" "}
-                    <span className="font-semibold text-gray-900">
-                      All {getDynamicStationCount(plan)} Stations
-                    </span>{" "}
-                    from Virar to Churchgate
-                  </span>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
-                    <Check className="h-4 w-4 text-gray-600" />
-                  </div>
-                  <span>
-                    {isRR
-                      ? "1 year full access"
-                      : "1 month access per location"}
-                  </span>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
-                    <Check className="h-4 w-4 text-gray-600" />
-                  </div>
-                  <span>Includes both East & West areas</span>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
-                    <Check className="h-4 w-4 text-gray-600" />
-                  </div>
-                  <span>Premium support and analytics</span>
-                </li>
-              </ul>
+              {isSpecial ? (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Custom packages tailored to your team needs</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Flexible station bundles and durations</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Dedicated onboarding and priority support</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Real-time pricing from admin configured packages</span>
+                  </li>
+                </ul>
+              ) : isEnterprise ? (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Custom coverage across selected locations</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Team management and advanced controls</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Dedicated onboarding and priority support</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Custom pricing with SLA options</span>
+                  </li>
+                </ul>
+              ) : (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>
+                      Access to{" "}
+                      <span className="font-semibold text-gray-900">
+                        All {getDynamicStationCount(plan)} Stations
+                      </span>{" "}
+                      from Virar to Churchgate
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>
+                      {isRR
+                        ? "1 year full access"
+                        : "1 month access per location"}
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Includes both East & West areas</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="bg-gray-200 p-1 rounded-full mr-3 mt-0.5 flex-shrink-0">
+                      <Check className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span>Premium support and analytics</span>
+                  </li>
+                </ul>
+              )}
             </div>
 
             <div className="mt-auto">
@@ -883,7 +912,7 @@ const Subscription = () => {
                     ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                     : isSelected
                     ? "bg-blue-800 hover:bg-blue-900 text-white shadow-md"
-                    : isRR
+                    : isRR || isSpecial
                     ? "bg-blue-800 hover:bg-blue-900 text-white hover:shadow-md"
                     : isEnterprise
                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -892,6 +921,11 @@ const Subscription = () => {
                 onClick={async (e) => {
                   e.stopPropagation();
                   if (hasActiveSubscription) return;
+                  if (isEnterprise) return;
+                  if (isSpecial) {
+                    navigate("/subscription/custom-packages");
+                    return;
+                  }
 
                   if (plan === "RR") {
                     // Direct payment for RR plan
@@ -1018,6 +1052,8 @@ const Subscription = () => {
                   ? "Processing Payment..."
                   : isSelected
                   ? "✓ Plan Selected"
+                  : isSpecial
+                  ? "Get Customize Offer"
                   : isEnterprise
                   ? "Coming Soon"
                   : plan === "ND"
@@ -1123,13 +1159,16 @@ const Subscription = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
           >
             <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
               {renderPlanCard("RR")}
             </div>
             <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
               {renderPlanCard("ND")}
+            </div>
+            <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
+              {renderPlanCard("SP")}
             </div>
             <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
               {renderPlanCard("Enterprise")}
@@ -1169,7 +1208,7 @@ const Subscription = () => {
                 {!showCheckout ? (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {ndMergedStationsList.map((station) => {
+                      {memoizedNDStationsList.length > 0 ? memoizedNDStationsList.map((station) => {
                         const isSelected = selectedNewStations.includes(
                           station.id
                         );
@@ -1259,7 +1298,12 @@ const Subscription = () => {
                             )}
                           </motion.div>
                         );
-                      })}
+                      }) : (
+                        <div className="col-span-full text-center py-8 text-[#19386780]">
+                          <Building className="h-12 w-12 mx-auto mb-3 text-[#19386740]" />
+                          <p>Loading stations...</p>
+                        </div>
+                      )}
                     </div>
 
                     {selectedNewStations.length === 0 && (
@@ -1329,7 +1373,7 @@ const Subscription = () => {
 
                             <div className="divide-y divide-gray-200">
                               {selectedNewStations.map((stationId) => {
-                                const station = ndMergedStationsList.find(
+                                const station = memoizedNDStationsList.find(
                                   (s) => s.id === stationId
                                 );
                                 if (!station) return null;
@@ -1483,7 +1527,7 @@ const Subscription = () => {
 
                             <div className="space-y-2 mb-4">
                               {selectedNewStations.map((stationId) => {
-                                const station = ndMergedStationsList.find(
+                                const station = memoizedNDStationsList.find(
                                   (s) => s.id === stationId
                                 );
                                 if (!station) return null;

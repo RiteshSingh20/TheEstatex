@@ -53,7 +53,8 @@ const LocationDropdown: React.FC<LocationDropdownProps> = ({
       onSearch(newValue);
       setIsOpen(true);
     } else {
-      setIsOpen(false);
+      onSearch("");
+      setIsOpen(true);
     }
   };
 
@@ -125,10 +126,8 @@ const LocationDropdown: React.FC<LocationDropdownProps> = ({
   };
 
   const handleFocus = () => {
-    if (inputValue.length >= 1) {
-      onSearch(inputValue);
-      setIsOpen(true);
-    }
+    onSearch(inputValue);
+    setIsOpen(true);
     setSelectedIndex(-1);
   };
 

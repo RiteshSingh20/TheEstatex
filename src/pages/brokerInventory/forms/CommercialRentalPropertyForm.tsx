@@ -1,6 +1,11 @@
 import React, { useState, ChangeEvent, FormEvent, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePropertyBloc } from '../hooks/usePropertyBloc';
 import toast from 'react-hot-toast';
+import LocationDropdown from '../../../components/ui/LocationDropdown';
+import { useLocationData } from '../../../hooks/useLocationData';
+import { fetchLocationContextByValue } from '../../../utils/api';
+import { useStateDistrict } from '../../../hooks/useStateDistrict';
 
 interface CommercialRentalFormData {
   buildingSocietyName: string;
@@ -44,6 +49,9 @@ interface CommercialRentalPropertyFormProps {
 
 const CommercialRentalPropertyForm: React.FC<CommercialRentalPropertyFormProps> = ({ onBack }) => {
   const [currentTab, setCurrentTab] = useState<number>(0);
+  const navigate = useNavigate();
+  const locationData = useLocationData();
+  const { states, districts, selectedState, isLoadingStates, isLoadingDistricts, stateError, districtError, setSelectedState } = useStateDistrict();
   const [formData, setFormData] = useState<CommercialRentalFormData>({
     buildingSocietyName: '',
     sublocation: '',
@@ -211,12 +219,12 @@ const CommercialRentalPropertyForm: React.FC<CommercialRentalPropertyFormProps> 
   useEffect(() => {
     if (state.success && state.message) {
       toast.success(state.message);
-      onBack?.();
+      navigate('/inventory');
     }
     if (state.error) {
       toast.error(state.error);
     }
-  }, [state.success, state.error, state.message, onBack]);
+  }, [state.success, state.error, state.message, navigate]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -350,18 +358,17 @@ const CommercialRentalPropertyForm: React.FC<CommercialRentalPropertyFormProps> 
     <div className="min-h-screen">
       <div className="min-h-[calc(100vh-120px)]">
         <div className="max-w-7xl mx-auto p-0.5">
-          {onBack && (
-            <div className="px-8 py-4 text-left">
-              <button onClick={onBack} className="inline-flex items-center justify-center rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 border border-primary text-primary hover:bg-primary hover:text-white focus:ring-primary text-sm py-1 px-3">
-                <i className="fas fa-arrow-left mr-2"></i> Back to Form Selection
-              </button>
-            </div>
-          )}
-
-          <div className="bg-white rounded-lg shadow-card overflow-hidden mb-6">
+          <div className="bg-white rounded-lg shadow-card overflow-hidden mb-1">
+            {onBack && (
+              <div className="px-8 py-4 text-left">
+                <button onClick={onBack} className="inline-flex items-center justify-center rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 border border-primary text-primary hover:bg-primary hover:text-white focus:ring-primary text-sm py-1 px-3">
+                  <i className="fas fa-arrow-left mr-2"></i> Back to Form Selection
+                </button>
+              </div>
+            )}
             <div className="bg-gradient-to-r from-primary to-primary-dark p-4 text-white">
               <h2 className="text-lg font-bold mb-0.5">Add Commercial Rental Property</h2>
-              <p className="opacity-90 text-sm">Enter comprehensive commercial rental property details</p>
+              <p className="opacity-90 text-sm">Enter comprehensive commercial rental property details and configuration settings</p>
             </div>
             <div className="flex bg-neutral-50 border-b border-neutral-200 rounded-t-lg">
               {tabLabels.map((tab, index) => (
@@ -378,22 +385,44 @@ const CommercialRentalPropertyForm: React.FC<CommercialRentalPropertyFormProps> 
                   
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-2 mb-6 shadow-sm border border-gray-200">
                     <div className="font-bold text-gray-800 mb-1 text-sm flex items-center before:content-['▶'] before:text-blue-600 before:mr-2 before:text-xs">Property Information</div>
-                    <div className="grid grid-cols-7 gap-1 bg-white rounded border border-gray-200 p-1" style={{gridTemplateColumns: '1fr 1fr 1.5fr 1fr 0.6fr 1fr 1fr'}}>
+                    <div className="grid grid-cols-7 gap-1 bg-white rounded border border-gray-200 p-1" style={{gridTemplateColumns: '1fr 1fr 1fr 1.5fr 0.6fr 1fr 1fr'}}>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Building/Society Name</div>
+                      <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Location</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Sub-Location</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Landmark</div>
-                      <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Location / Station</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">PIN Code</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">State</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">District</div>
                       
                       <div className="p-1"><input name="buildingSocietyName" value={formData.buildingSocietyName} onChange={handleInputChange} placeholder="Enter building/society name" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" /></div>
-                      <div className="p-1"><input name="sublocation" value={formData.sublocation} onChange={handleInputChange} placeholder="Enter sub-location" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" /></div>
-                      <div className="p-1"><input name="landmark" value={formData.landmark} onChange={handleInputChange} placeholder="Enter nearby landmark" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" /></div>
-                      <div className="p-1"><input name="locationStation" value={formData.locationStation} onChange={handleInputChange} placeholder="Enter location/station" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" /></div>
+                      <div className="p-1">
+                        <LocationDropdown value={formData.locationStation} onChange={(value) => {setFormData(prev => ({...prev, locationStation: value, sublocation: '', landmark: ''}));}} suggestions={locationData.locationSuggestions} onSearch={locationData.searchLocations} placeholder="Select location..." isLoading={locationData.isLoading} />
+                      </div>
+                      <div className="p-1">
+                        <LocationDropdown value={formData.sublocation} onChange={(value) => {setFormData(prev => ({...prev, sublocation: value, landmark: ''}));}} suggestions={locationData.subLocationSuggestions} onSearch={(term) => locationData.searchSubLocations(term, formData.locationStation)} placeholder="Select sub-location..." isLoading={locationData.isLoading} />
+                      </div>
+                      <div className="p-1">
+                        <LocationDropdown value={formData.landmark} onChange={async (value) => {setFormData(prev => ({...prev, landmark: value})); const context = await fetchLocationContextByValue("landmark", value); if (context?.location || context?.subLocation) {setFormData(prev => ({...prev, locationStation: context.location || prev.locationStation, sublocation: context.subLocation || prev.sublocation, landmark: value}));}}} suggestions={locationData.landmarkSuggestions} onSearch={(term) => locationData.searchLandmarks(term, formData.locationStation, formData.sublocation)} placeholder="Select landmark..." isLoading={locationData.isLoading} />
+                      </div>
                       <div className="p-1"><input name="pinCode" value={formData.pinCode} onChange={handleInputChange} placeholder="Enter PIN code" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" /></div>
-                      <div className="p-1"><input name="state" value={formData.state} onChange={handleInputChange} placeholder="Enter state" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" /></div>
-                      <div className="p-1"><input name="district" value={formData.district} onChange={handleInputChange} placeholder="Enter district" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" /></div>
+                      <div className="p-1"><select name="state" value={formData.state} onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData(prev => ({ ...prev, state: value, district: '' }));
+                          setSelectedState(value);
+                        }} disabled={isLoadingStates} className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed">
+                          <option value="">{isLoadingStates ? 'Loading states...' : 'Select State'}</option>
+                          {states.map(state => (
+                            <option key={state.iso2} value={state.name}>{state.name}</option>
+                          ))}
+                        </select>
+                        {stateError && <span className="text-xs text-red-500 mt-1 block">{stateError}</span>}</div>
+                      <div className="p-1"><select name="district" value={formData.district} onChange={(e) => setFormData(prev => ({ ...prev, district: e.target.value }))} disabled={!formData.state || isLoadingDistricts} className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed">
+                          <option value="">{isLoadingDistricts ? 'Loading districts...' : formData.state ? 'Select District' : 'Select State First'}</option>
+                          {districts.map(district => (
+                            <option key={district.name} value={district.name}>{district.name}</option>
+                          ))}
+                        </select>
+                        {districtError && <span className="text-xs text-red-500 mt-1 block">{districtError}</span>}</div>
                     </div>
                   </div>
                   </div>

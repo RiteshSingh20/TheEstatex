@@ -1,0 +1,6 @@
+// ADD THIS LINE AFTER LINE 100 (after showSpecialPackages state):
+const [showCheckout, setShowCheckout] = useState(false);
+
+// This should be placed between:
+// const [showSpecialPackages, setShowSpecialPackages] = useState(false);
+// const [specialPackages, setSpecialPackages] = useState<SpecialPackage[]>([]);

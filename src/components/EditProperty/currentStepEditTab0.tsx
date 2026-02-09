@@ -2,6 +2,7 @@ import React from "react";
 import { FormDataType, toTitleCase } from "../../pages/CostSheetFormProps";
 import { State, City } from "../../types";
 import LocationDropdown from "../ui/LocationDropdown";
+import { fetchLocationContextByValue } from "../../utils/api";
 import { useLocationData } from "../../hooks/useLocationData";
 
 export function currentStepEditTab0(
@@ -23,9 +24,9 @@ export function currentStepEditTab0(
     landmarkSuggestions: string[];
     isLoading: boolean;
     searchLocations: (term: string) => void;
-    searchSubLocations: (term: string) => void;
-    searchRoads: (term: string) => void;
-    searchLandmarks: (term: string) => void;
+    searchSubLocations: (term: string, locationFilter?: string) => void;
+    searchRoads: (term: string, locationFilter?: string, subLocationFilter?: string) => void;
+    searchLandmarks: (term: string, locationFilter?: string, subLocationFilter?: string) => void;
   }
 ): React.ReactNode {
   // Ensure cities is always an array
@@ -113,6 +114,9 @@ export function currentStepEditTab0(
                     setFormData((prev) => ({
                       ...prev,
                       location: value,
+                      subLocation: "",
+                      road: "",
+                      landmark: "",
                     }));
                   }}
                   suggestions={locationSuggestions}
@@ -143,10 +147,14 @@ export function currentStepEditTab0(
                     setFormData((prev) => ({
                       ...prev,
                       subLocation: value,
+                      road: "",
+                      landmark: "",
                     }));
                   }}
                   suggestions={subLocationSuggestions}
-                  onSearch={searchSubLocations}
+                  onSearch={(term) =>
+                    searchSubLocations(term, String(formData.location || ""))
+                  }
                   placeholder="Type sub-location..."
                   isLoading={isLoading}
                 />
@@ -169,14 +177,32 @@ export function currentStepEditTab0(
               {locationData ? (
                 <LocationDropdown
                   value={String(formData.road || "")}
-                  onChange={(value) => {
+                  onChange={async (value) => {
                     setFormData((prev) => ({
                       ...prev,
                       road: value,
                     }));
+                    const context = await fetchLocationContextByValue(
+                      "road",
+                      value
+                    );
+                    if (context?.location || context?.subLocation) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        location: context.location || prev.location,
+                        subLocation: context.subLocation || prev.subLocation,
+                        road: value,
+                      }));
+                    }
                   }}
                   suggestions={roadSuggestions}
-                  onSearch={searchRoads}
+                  onSearch={(term) =>
+                    searchRoads(
+                      term,
+                      String(formData.location || ""),
+                      String(formData.subLocation || "")
+                    )
+                  }
                   placeholder="Type road..."
                   isLoading={isLoading}
                 />
@@ -199,14 +225,32 @@ export function currentStepEditTab0(
               {locationData ? (
                 <LocationDropdown
                   value={String(formData.landmark || "")}
-                  onChange={(value) => {
+                  onChange={async (value) => {
                     setFormData((prev) => ({
                       ...prev,
                       landmark: value,
                     }));
+                    const context = await fetchLocationContextByValue(
+                      "landmark",
+                      value
+                    );
+                    if (context?.location || context?.subLocation) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        location: context.location || prev.location,
+                        subLocation: context.subLocation || prev.subLocation,
+                        landmark: value,
+                      }));
+                    }
                   }}
                   suggestions={landmarkSuggestions}
-                  onSearch={searchLandmarks}
+                  onSearch={(term) =>
+                    searchLandmarks(
+                      term,
+                      String(formData.location || ""),
+                      String(formData.subLocation || "")
+                    )
+                  }
                   placeholder="Type landmark..."
                   isLoading={isLoading}
                 />

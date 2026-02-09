@@ -101,11 +101,11 @@ const Tabs: React.FC<TabsProps> = ({
           Coming Soon
         </div>
       )}
-      <div className="py-4">
+      <div className="py-4 overflow-visible">
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            className={`${activeTab === tab.id ? 'block' : 'hidden'}`}
+            className={`${activeTab === tab.id ? 'block' : 'hidden'} w-full overflow-visible`}
           >
             {tab.content}
           </div>

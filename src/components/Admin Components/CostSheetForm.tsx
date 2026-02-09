@@ -74,6 +74,7 @@ import {
   removeUndefined,
   sanitizeInput,
 } from "../../utils/formSubmissionUtils";
+import { createApprovalStatus } from "../../utils/propertyApprovalWorkflow";
 
 const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
   const locationData = useLocationData();
@@ -858,22 +859,25 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
     let isApproved = false;
     let approvalStatus = "pending";
     let nextApprovalLevel = null;
+    let approvalWorkflow: any = null;
 
     if (formData.id && onSave) {
       isApproved = formData.isApproved || false;
       approvalStatus = formData.approvalStatus || "pending";
       nextApprovalLevel = formData.nextApprovalLevel;
+      approvalWorkflow = formData.approvalWorkflow;
     } else if (userRole === "admin") {
       isApproved = true;
       approvalStatus = "approved";
-    } else if (userRole === "manager") {
+      approvalWorkflow = createApprovalStatus(user?.id || "");
+      approvalWorkflow.status = "approved";
+      approvalWorkflow.approvedBy = user?.id;
+      approvalWorkflow.approvedAt = new Date().toISOString();
+    } else {
+      // For manager, executive, and user roles - set to pending
       isApproved = false;
       approvalStatus = "pending";
-      nextApprovalLevel = "admin";
-    } else if (userRole === "executive") {
-      isApproved = false;
-      approvalStatus = "pending";
-      nextApprovalLevel = "manager";
+      approvalWorkflow = createApprovalStatus(user?.id || "");
     }
 
     // convertReraPossession function moved to utils
@@ -1124,6 +1128,7 @@ const CostSheetForm = ({ editProperty, onSave }: CostSheetFormProps = {}) => {
 
       isApproved: isApproved || false,
       approvalStatus: approvalStatus || "pending",
+      approvalWorkflow: approvalWorkflow,
       submittedBy: formData.id
         ? formData.submittedBy || user?.id
         : user?.id || "",

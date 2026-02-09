@@ -1,5 +1,4 @@
 import { UserRole } from "../types";
-import { canApproveFromRole, getApprovalWorkflow } from "./rbac";
 
 export interface PropertyApprovalStatus {
   isApproved: boolean;
@@ -24,9 +23,17 @@ export interface ApprovalHistoryEntry {
   changes?: Record<string, any>;
 }
 
+// Define approval workflow for each role
+const APPROVAL_WORKFLOWS: Record<UserRole, UserRole[]> = {
+  admin: [],
+  manager: [],
+  executive: ['manager', 'admin'],
+  user: ['manager', 'admin']
+};
+
 // Get the next approver role for a property
 export const getNextApprover = (submitterRole: UserRole, currentApprovalLevel?: UserRole): UserRole | null => {
-  const workflow = getApprovalWorkflow(submitterRole);
+  const workflow = APPROVAL_WORKFLOWS[submitterRole] || [];
   
   if (!currentApprovalLevel) {
     // First approval needed
@@ -68,12 +75,17 @@ export const getPropertiesNeedingApproval = (
   });
 };
 
+// Helper to get workflow for a role
+const getApprovalWorkflow = (submitterRole: UserRole): UserRole[] => {
+  return APPROVAL_WORKFLOWS[submitterRole] || [];
+};
+
 // Create approval status for a new property
 export const createInitialApprovalStatus = (
   submitterId: string,
   submitterRole: UserRole
 ): PropertyApprovalStatus => {
-  const workflow = getApprovalWorkflow(submitterRole);
+  const workflow = APPROVAL_WORKFLOWS[submitterRole] || [];
   
   return {
     isApproved: workflow.length === 0, // Auto-approve if no workflow needed (admin submissions)
@@ -94,9 +106,10 @@ export const createInitialApprovalStatus = (
 export const processPropertyApproval = (
   currentStatus: PropertyApprovalStatus,
   approverId: string,
-  approverRole: UserRole
+  approverRole: UserRole,
+  submitterRole: UserRole = 'executive'
 ): PropertyApprovalStatus => {
-  const workflow = getApprovalWorkflow(currentStatus.submittedBy);
+  const workflow = APPROVAL_WORKFLOWS[submitterRole] || [];
   const currentIndex = currentStatus.currentApprovalLevel 
     ? workflow.indexOf(currentStatus.currentApprovalLevel)
     : -1;

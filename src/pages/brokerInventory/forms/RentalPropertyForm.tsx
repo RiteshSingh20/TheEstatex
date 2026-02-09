@@ -2,6 +2,10 @@ import React, { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePropertyBloc } from '../hooks/usePropertyBloc';
 import toast from 'react-hot-toast';
+import LocationDropdown from '../../../components/ui/LocationDropdown';
+import { useLocationData } from '../../../hooks/useLocationData';
+import { fetchLocationContextByValue } from '../../../utils/api';
+import { useStateDistrict } from '../../../hooks/useStateDistrict';
 
 interface RentalFormData {
   buildingSocietyName: string;
@@ -89,6 +93,8 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack, editPro
     image: null,
     video: null
   });
+  const locationData = useLocationData();
+  const { states, districts, selectedState, isLoadingStates, isLoadingDistricts, stateError, districtError, setSelectedState } = useStateDistrict();
 
   const tabs: string[] = ['basic', 'property', 'contacts'];
   const tabLabels: TabLabel[] = [
@@ -382,11 +388,11 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack, editPro
                   
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-2 mb-6 shadow-sm border border-gray-200">
                     <div className="font-bold text-gray-800 mb-1 text-sm flex items-center before:content-['▶'] before:text-blue-600 before:mr-2 before:text-xs">Property Information</div>
-                    <div className="grid grid-cols-7 gap-1 bg-white rounded border border-gray-200 p-1" style={{gridTemplateColumns: '1fr 1fr 1.5fr 1fr 0.6fr 1fr 1fr'}}>
+                    <div className="grid grid-cols-7 gap-1 bg-white rounded border border-gray-200 p-1" style={{gridTemplateColumns: '1fr 1fr 1fr 1.5fr 0.6fr 1fr 1fr'}}>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Building/Society Name</div>
+                      <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Location</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Sub-Location</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Landmark</div>
-                      <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Location / Station</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">PIN Code</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">State</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">District</div>
@@ -395,22 +401,90 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack, editPro
                         <input name="buildingSocietyName" value={formData.buildingSocietyName} onChange={handleInputChange} placeholder="Enter building/society name" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
                       </div>
                       <div className="p-1">
-                        <input name="sublocation" value={formData.sublocation} onChange={handleInputChange} placeholder="Enter sub-location" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
+                        <LocationDropdown
+                          value={formData.locationStation}
+                          onChange={(value) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              locationStation: value,
+                              sublocation: '',
+                              landmark: '',
+                            }));
+                          }}
+                          suggestions={locationData.locationSuggestions}
+                          onSearch={locationData.searchLocations}
+                          placeholder="Select location..."
+                          isLoading={locationData.isLoading}
+                        />
                       </div>
                       <div className="p-1">
-                        <input name="landmark" value={formData.landmark} onChange={handleInputChange} placeholder="Enter nearby landmark" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
+                        <LocationDropdown
+                          value={formData.sublocation}
+                          onChange={(value) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              sublocation: value,
+                              landmark: '',
+                            }));
+                          }}
+                          suggestions={locationData.subLocationSuggestions}
+                          onSearch={(term) =>
+                            locationData.searchSubLocations(term, formData.locationStation)
+                          }
+                          placeholder="Select sub-location..."
+                          isLoading={locationData.isLoading}
+                        />
                       </div>
                       <div className="p-1">
-                        <input name="locationStation" value={formData.locationStation} onChange={handleInputChange} placeholder="Enter location/station" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
+                        <LocationDropdown
+                          value={formData.landmark}
+                          onChange={async (value) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              landmark: value,
+                            }));
+                            const context = await fetchLocationContextByValue("landmark", value);
+                            if (context?.location || context?.subLocation) {
+                              setFormData(prev => ({
+                                ...prev,
+                                locationStation: context.location || prev.locationStation,
+                                sublocation: context.subLocation || prev.sublocation,
+                                landmark: value,
+                              }));
+                            }
+                          }}
+                          suggestions={locationData.landmarkSuggestions}
+                          onSearch={(term) =>
+                            locationData.searchLandmarks(term, formData.locationStation, formData.sublocation)
+                          }
+                          placeholder="Select landmark..."
+                          isLoading={locationData.isLoading}
+                        />
                       </div>
                       <div className="p-1">
                         <input name="pinCode" value={formData.pinCode} onChange={handleInputChange} placeholder="Enter PIN code" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
                       </div>
                       <div className="p-1">
-                        <input name="state" value={formData.state} onChange={handleInputChange} placeholder="Enter state" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
+                        <select name="state" value={formData.state} onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData(prev => ({ ...prev, state: value, district: '' }));
+                          setSelectedState(value);
+                        }} disabled={isLoadingStates} className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed">
+                          <option value="">{isLoadingStates ? 'Loading states...' : 'Select State'}</option>
+                          {states.map(state => (
+                            <option key={state.iso2} value={state.name}>{state.name}</option>
+                          ))}
+                        </select>
+                        {stateError && <span className="text-xs text-red-500 mt-1 block">{stateError}</span>}
                       </div>
                       <div className="p-1">
-                        <input name="district" value={formData.district} onChange={handleInputChange} placeholder="Enter district" className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
+                        <select name="district" value={formData.district} onChange={(e) => setFormData(prev => ({ ...prev, district: e.target.value }))} disabled={!formData.state || isLoadingDistricts} className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed">
+                          <option value="">{isLoadingDistricts ? 'Loading districts...' : formData.state ? 'Select District' : 'Select State First'}</option>
+                          {districts.map(district => (
+                            <option key={district.name} value={district.name}>{district.name}</option>
+                          ))}
+                        </select>
+                        {districtError && <span className="text-xs text-red-500 mt-1 block">{districtError}</span>}
                       </div>
                     </div>
                   </div>

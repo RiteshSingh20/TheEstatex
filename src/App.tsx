@@ -13,6 +13,10 @@ const PropertyManagement = lazy(() => import("./pages/brokerInventory/PropertyFo
 const Profile = lazy(() => import("./pages/Profile"));
 const Subscription = lazy(() => import("./pages/Subscription"));
 const SubscriptionCheckout = lazy(() => import("./pages/SubscriptionCheckout"));
+const SpecialPackages = lazy(() => import("./pages/SpecialPackages"));
+const SpecialPackageCheckout = lazy(
+  () => import("./pages/SpecialPackageCheckout")
+);
 const Admin = lazy(() => import("./components/Admin Components/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Compare = lazy(() => import("./components/CompareComponents/Compare"));
@@ -170,6 +174,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <SubscriptionCheckout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="subscription/custom-packages"
+            element={
+              <ProtectedRoute>
+                <SpecialPackages />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="subscription/custom-packages/checkout"
+            element={
+              <ProtectedRoute>
+                <SpecialPackageCheckout />
               </ProtectedRoute>
             }
           />

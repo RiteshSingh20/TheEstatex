@@ -15,14 +15,31 @@ export const useLocationData = () => {
   const [landmarkSuggestions, setLandmarkSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchSuggestions = useCallback(async (searchTerm: string, field: keyof LocationData) => {
-    if (!searchTerm || searchTerm.length < 1) {
-      return [];
+  const fetchSuggestions = useCallback(
+    async (
+      searchTerm: string,
+      field: keyof LocationData,
+      locationFilter?: string,
+      subLocationFilter?: string
+    ) => {
+    if (
+      (!searchTerm || searchTerm.length < 1) &&
+      !locationFilter &&
+      !subLocationFilter
+    ) {
+      // Allow dropdowns to show all options when no input is provided.
+      searchTerm = "";
     }
 
     setIsLoading(true);
     try {
-      const suggestions = await fetchLocationSuggestions(searchTerm, field);
+      const suggestions = await fetchLocationSuggestions(
+        searchTerm,
+        field,
+        undefined,
+        locationFilter,
+        subLocationFilter
+      );
       return suggestions;
     } catch (error) {
       console.error('Error fetching location suggestions:', error);
@@ -37,18 +54,43 @@ export const useLocationData = () => {
     setLocationSuggestions(suggestions);
   }, [fetchSuggestions]);
 
-  const searchSubLocations = useCallback(async (searchTerm: string) => {
-    const suggestions = await fetchSuggestions(searchTerm, 'subLocation');
+  const searchSubLocations = useCallback(
+    async (searchTerm: string, locationFilter?: string) => {
+      const suggestions = await fetchSuggestions(
+        searchTerm,
+        "subLocation",
+        locationFilter
+      );
     setSubLocationSuggestions(suggestions);
   }, [fetchSuggestions]);
 
-  const searchRoads = useCallback(async (searchTerm: string) => {
-    const suggestions = await fetchSuggestions(searchTerm, 'road');
+  const searchRoads = useCallback(
+    async (
+      searchTerm: string,
+      locationFilter?: string,
+      subLocationFilter?: string
+    ) => {
+      const suggestions = await fetchSuggestions(
+        searchTerm,
+        "road",
+        locationFilter,
+        subLocationFilter
+      );
     setRoadSuggestions(suggestions);
   }, [fetchSuggestions]);
 
-  const searchLandmarks = useCallback(async (searchTerm: string) => {
-    const suggestions = await fetchSuggestions(searchTerm, 'landmark');
+  const searchLandmarks = useCallback(
+    async (
+      searchTerm: string,
+      locationFilter?: string,
+      subLocationFilter?: string
+    ) => {
+      const suggestions = await fetchSuggestions(
+        searchTerm,
+        "landmark",
+        locationFilter,
+        subLocationFilter
+      );
     setLandmarkSuggestions(suggestions);
   }, [fetchSuggestions]);
 

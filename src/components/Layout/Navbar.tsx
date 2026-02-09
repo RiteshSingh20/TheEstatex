@@ -8,10 +8,13 @@ import {
   Settings,
   Menu,
   X,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "../../utils/authContext";
 import Button from "../ui/Button";
 import logo from "../../assets/EstateX-Logo.png";
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { db } from "../../utils/firebase";
 
 const Navbar: React.FC = () => {
   const { user, logout, loading } = useAuth();
@@ -19,6 +22,123 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = React.useRef<HTMLDivElement>(null);
+  const [packageNameById, setPackageNameById] = useState<Record<string, string>>(
+    {}
+  );
+  // Expiry window: 1 day.
+  const EXPIRY_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+  const toDate = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (value instanceof Timestamp) return value.toDate();
+    if (typeof value === "string" || typeof value === "number") {
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof value === "object" && "toDate" in (value as any)) {
+      try {
+        return (value as any).toDate();
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return "--";
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    const docRef = doc(db, "settings", "pricing");
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (!snap.exists()) {
+        setPackageNameById({});
+        return;
+      }
+      const data = snap.data();
+      const packages = data.packages || {};
+      const nextMap: Record<string, string> = {};
+
+      if (packages.resaleRental) {
+        Object.entries(packages.resaleRental).forEach(
+          ([id, pkg]: [string, any]) => {
+            nextMap[id] = pkg?.name || "Custom Package";
+          }
+        );
+      }
+
+      if (packages.newProperty) {
+        Object.entries(packages.newProperty).forEach(
+          ([id, pkg]: [string, any]) => {
+            nextMap[id] = pkg?.name || "Custom Package";
+          }
+        );
+      }
+
+      setPackageNameById(nextMap);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showNotifications]);
+
+  const expiryNotifications =
+    user?.role === "user" && Array.isArray(user?.subscriptions)
+      ? user.subscriptions
+          .filter((sub: any) => sub?.status === "active")
+          .map((sub: any) => {
+            const endDate = toDate(sub.endDate);
+            const startDate = toDate(sub.startDate);
+            if (!endDate) return null;
+            const now = Date.now();
+            const diff = endDate.getTime() - now;
+            if (diff <= 0 || diff > EXPIRY_WINDOW_MS) return null;
+
+            const packageName =
+              (sub.packageId && packageNameById[sub.packageId]) ||
+              (sub.type === "RR"
+                ? "Rental & Resale"
+                : sub.type === "ND"
+                ? "New Properties"
+                : "Subscription");
+
+            return {
+              id: sub.id || `${packageName}-${endDate.toISOString()}`,
+              packageName,
+              purchasedOn: formatDate(startDate),
+              amount: sub.amount ?? sub.discountedPrice ?? 0,
+              expiresOn: formatDate(endDate),
+            };
+          })
+          .filter(Boolean)
+      : [];
+
+  const notificationTotal = expiryNotifications.length;
+  const notificationBadgeText =
+    notificationTotal > 9 ? "9+" : String(notificationTotal);
 
   useEffect(() => {
     setDropdownOpen(false);
@@ -68,16 +188,68 @@ const Navbar: React.FC = () => {
                     <ListChecks className="w-4 h-4" /> Dashboard
                   </Link>
                   {user.role === "user" && (
-                    <Link
-                      to="/inventory"
-                      className={`flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition hover:text-primary ${
-                        isActive("/inventory")
-                          ? "text-primary font-semibold"
-                          : "text-gray-700"
-                      }`}
-                    >
-                      Inventory
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to="/inventory"
+                        className={`flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition hover:text-primary ${
+                          isActive("/inventory")
+                            ? "text-primary font-semibold"
+                            : "text-gray-700"
+                        }`}
+                      >
+                        Inventory
+                      </Link>
+                      <div className="relative" ref={notificationRef}>
+                        <button
+                          type="button"
+                          onClick={() => setShowNotifications((prev) => !prev)}
+                          className="relative inline-flex items-center justify-center h-8 w-8 rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm hover:bg-neutral-50 transition-colors"
+                          aria-label="Notifications"
+                        >
+                          <Bell className="h-4 w-4" />
+                          {notificationTotal > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] font-semibold flex items-center justify-center">
+                              {notificationBadgeText}
+                            </span>
+                          )}
+                        </button>
+                        {showNotifications && (
+                          <div className="absolute right-0 mt-2 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg z-50">
+                            <div className="px-4 py-3 border-b border-neutral-100">
+                              <div className="text-sm font-semibold text-neutral-900">
+                                Notifications
+                              </div>
+                              
+                            </div>
+                            <div className="max-h-72 overflow-y-auto">
+                              {notificationTotal === 0 ? (
+                                <div className="px-4 py-6 text-sm text-neutral-500 text-center">
+                                  No expiring subscriptions right now.
+                                </div>
+                              ) : (
+                                expiryNotifications.map((item: any) => (
+                                  <div
+                                    key={item.id}
+                                    className="px-4 py-3 border-b border-neutral-100 last:border-none"
+                                  >
+                                    <div className="text-sm font-semibold text-neutral-800">
+                                      {item.packageName}
+                                    </div>
+                                    <div className="text-xs text-neutral-500 mt-1">
+                                      Purchased on {item.purchasedOn} • ₹
+                                      {Number(item.amount).toLocaleString("en-IN")}
+                                    </div>
+                                    <div className="text-xs text-red-600 mt-1 font-medium">
+                                      Expires on {item.expiresOn}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                   {["admin", "manager", "executive"].includes(user.role) && (
                     <Link

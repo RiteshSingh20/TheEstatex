@@ -197,13 +197,10 @@ export interface RentalProperty extends BaseProperty {
 
 // State and City types
 export interface State {
-  id: number;
   name: string;
-  iso2: string;
 }
 
 export interface City {
-  id: number;
   name: string;
 }
 

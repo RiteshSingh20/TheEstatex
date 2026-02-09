@@ -207,7 +207,7 @@ const Dashboard = () => {
       costSheets.forEach((sheet) => {
         const stationToCheck = sheet.station || sheet.location;
         const isApproved =
-          sheet.isApproved === true || sheet.approvalStatus === "approved";
+          sheet.isApproved === true || sheet.approvalStatus === "approved" || sheet.approvalWorkflow?.status === "approved";
 
         if (isApproved) {
           if (
@@ -292,7 +292,7 @@ const Dashboard = () => {
             : sheet.projectName;
 
         const isApproved =
-          sheet.isApproved === true || sheet.approvalStatus === "approved";
+          sheet.isApproved === true || sheet.approvalStatus === "approved" || sheet.approvalWorkflow?.status === "approved";
 
         if (fieldValue && isApproved) {
           let hasMatchingTypology = false;
@@ -407,7 +407,7 @@ const Dashboard = () => {
     if (propertyCategory === "New") {
       costSheets.forEach((sheet) => {
         const isApproved =
-          sheet.isApproved === true || sheet.approvalStatus === "approved";
+          sheet.isApproved === true || sheet.approvalStatus === "approved" || sheet.approvalWorkflow?.status === "approved";
 
         if (sheet.projectName && isApproved) {
           const isCompletelySoldOut =
@@ -441,8 +441,8 @@ const Dashboard = () => {
     if (propertyCategory !== "New") return [];
 
     return costSheets.filter((sheet) => {
-      // Check approval status first
-      const isApproved = sheet.isApproved === true || sheet.approvalStatus === "approved";
+      // Check approval status first - only show approved properties to regular users
+      const isApproved = sheet.isApproved === true || sheet.approvalStatus === "approved" || sheet.approvalWorkflow?.status === "approved";
       if (!isApproved) return false;
 
       const stationToCheck = sheet.station || sheet.location;

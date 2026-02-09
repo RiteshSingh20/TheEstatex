@@ -22,7 +22,7 @@ import app from "../../src/utils/firebase";
 
 declare global {
   interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
+    recaptchaVerifier: RecaptchaVerifier | undefined;
   }
 }
 
@@ -56,7 +56,7 @@ const Signup = () => {
   const [cities, setCities] = useState<City[]>([]);
   const [selectedStateCode, setSelectedStateCode] = useState("");
   const [markerPosition, setMarkerPosition] = useState(center);
-  const [step, setStep] = useState(1); // Step 1: Phone verification
+  const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otp, setOtp] = useState("");
@@ -66,21 +66,17 @@ const Signup = () => {
   const [showOtpField, setShowOtpField] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
 
-  // Initialize Firebase auth
   const auth = getAuth(app);
 
-  // Initialize Recaptcha
+  // Initialize Recaptcha once
   useEffect(() => {
-    window.recaptchaVerifier = new RecaptchaVerifier(
-      auth,
-      "recaptcha-container",
-      {
-        size: "invisible",
-        callback: () => {
-          // reCAPTCHA solved, allow sendOTP
-        },
-      }
-    );
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(
+        auth,
+        "recaptcha-container",
+        { size: "invisible" }
+      );
+    }
   }, [auth]);
 
   const {
@@ -89,7 +85,6 @@ const Signup = () => {
     watch,
     formState: { errors },
     trigger,
-    // setValue,
   } = useForm<SignupFormData>();
 
   const password = watch("password");
@@ -100,7 +95,6 @@ const Signup = () => {
   });
 
   useEffect(() => {
-    // If user is set after signup, navigate
     if (user && step === 3) {
       navigate("/subscription");
     }
@@ -111,15 +105,13 @@ const Signup = () => {
       try {
         const statesData = await fetchStates();
         setStates(statesData);
-      } catch (error: unknown) {
-        
+      } catch (error) {
         toast.error("Failed to load states. Please try again later.");
       }
     };
     loadStates();
   }, []);
 
-  // Send OTP to phone
   const sendOTP = async () => {
     if (!phone) {
       toast.error("Phone number is required");
@@ -131,18 +123,23 @@ const Signup = () => {
       return;
     }
 
-    // Check if phone number already exists
     const phoneExists = await checkPhoneExists(phone);
     if (phoneExists) {
       toast.error("This phone number is already registered. Please use a different number or try logging in.");
       return;
     }
 
-    // Show OTP field immediately
     setShowOtpField(true);
     setOtpSending(true);
 
     try {
+      // Recreate verifier before each send
+      window.recaptchaVerifier = new RecaptchaVerifier(
+        auth,
+        "recaptcha-container",
+        { size: "invisible" }
+      );
+
       const formattedPhone = `+91${phone}`;
       const confirmation = await signInWithPhoneNumber(
         auth,
@@ -155,29 +152,22 @@ const Signup = () => {
       setOtpSending(false);
       toast.success("OTP sent successfully!");
     } catch (error: unknown) {
-      
       setShowOtpField(false);
       setOtpSending(false);
-      toast.error(
-        `Failed to send OTP: ${
-          typeof error === "object" && error !== null && "message" in error
-            ? (error as { message: string }).message
-            : "Unknown error"
-        }`
-      );
+      window.recaptchaVerifier = undefined;
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to send OTP: ${errorMsg}`);
     }
   };
 
-  // Verify OTP
   const verifyOTP = async () => {
     if (!confirmationResult) return;
 
     try {
       await confirmationResult.confirm(otp);
       toast.success("Phone number verified!");
-      setStep(2); // Move to personal info step after verification
-    } catch (error: unknown) {
-      
+      setStep(2);
+    } catch (error) {
       toast.error("Invalid OTP. Please try again.");
     }
   };
@@ -189,8 +179,7 @@ const Signup = () => {
       try {
         const citiesData = await fetchCities(stateCode);
         setCities(citiesData);
-      } catch (error: unknown) {
-        
+      } catch (error) {
         toast.error("Failed to load cities. Please try again later.");
         setCities([]);
       }
@@ -219,16 +208,16 @@ const Signup = () => {
         "confirmPassword",
       ]);
       if (isValid) {
-        setStep(3); // Move to location step
+        setStep(3);
       }
     }
   };
 
   const prevStep = () => {
     if (step === 2) {
-      setStep(1); // Back to phone verification
+      setStep(1);
     } else if (step === 3) {
-      setStep(2); // Back to personal info
+      setStep(2);
     }
   };
 
@@ -245,7 +234,7 @@ const Signup = () => {
         id: generateId(),
         fullName: data.fullName,
         firmName: data.firmName,
-        phone: phone, // Use the phone from step 1
+        phone: phone,
         email: data.email,
         reraNumber: data.reraNumber,
         state: data.state,
@@ -257,7 +246,6 @@ const Signup = () => {
 
       const success = await signup(userData);
       if (success) {
-        // Set flag to indicate recent signup
         localStorage.setItem('justSignedUp', 'true');
         toast.success("Account created successfully!");
         navigate("/subscription");
@@ -269,7 +257,6 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
-      {/* Recaptcha container (invisible) */}
       <div id="recaptcha-container"></div>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
@@ -291,7 +278,6 @@ const Signup = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
         <Card>
-          {/* Step indicators */}
           <div className="mb-6">
             <div className="flex items-center">
               <div
@@ -346,7 +332,6 @@ const Signup = () => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)}>
-            {/* Step 1: Phone Verification */}
             {step === 1 && (
               <div className="space-y-4">
                 <div className="text-center">
@@ -431,7 +416,6 @@ const Signup = () => {
               </div>
             )}
 
-            {/* Step 2: Personal Info */}
             {step === 2 && (
               <div className="space-y-4">
                 <Input
@@ -498,9 +482,6 @@ const Signup = () => {
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                       onClick={() => setShowPassword(!showPassword)}
                       tabIndex={-1}
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
                     >
                       {showPassword ? (
                         <EyeOff className="h-5 w-5 text-neutral-500" />
@@ -530,11 +511,6 @@ const Signup = () => {
                         setShowConfirmPassword(!showConfirmPassword)
                       }
                       tabIndex={-1}
-                      aria-label={
-                        showConfirmPassword
-                          ? "Hide confirm password"
-                          : "Show confirm password"
-                      }
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-5 w-5 text-neutral-500" />
@@ -565,7 +541,6 @@ const Signup = () => {
               </div>
             )}
 
-            {/* Step 3: Location */}
             {step === 3 && (
               <div className="space-y-4">
                 <Select
@@ -591,7 +566,7 @@ const Signup = () => {
                   options={cities.map((city) => ({
                     value: city.name,
                     label: city.name,
-                    key: `${city.id}-${city.name}`, // Ensure unique keys
+                    key: `${city.id}-${city.name}`,
                   }))}
                   error={errors.city?.message}
                   disabled={!selectedStateCode}

@@ -12,6 +12,7 @@ import {
   updateRentalProperty,
   updateUserRole,
 } from "../../utils/firestoreListings";
+import { approvePropertyInFirestore, rejectPropertyInFirestore } from "../../utils/propertyApprovalService";
 import { User } from "../../types";
 import { useAuth } from "../../utils/authContext";
 import CostSheetForm from "./CostSheetForm";
@@ -28,7 +29,7 @@ import {
   onSnapshot,
   collection,
   doc,
-  // getDoc,
+  getDoc,
   Timestamp,
   getDocs,
   deleteDoc,
@@ -565,6 +566,7 @@ const Admin = () => {
           (snapshot) => {
             const updatedNewProperties = snapshot.docs.map((doc) => ({
               id: doc.id,
+              docId: doc.id,
               ...doc.data(),
             }));
             setInventory((prev) => ({
@@ -661,7 +663,7 @@ const Admin = () => {
           ),
           newProperties: sortNewPropertiesByCreatedAt(
             inventory.newProperties?.filter(
-              (p: any) => !p.isApproved && !p.isRejected
+              (p: any) => !p.isApproved && !p.isRejected && (!p.approvalWorkflow || p.approvalWorkflow.status !== "approved")
             ) || []
           ),
         },
@@ -673,7 +675,7 @@ const Admin = () => {
             inventory.rental.filter((p: Property) => p.isApproved)
           ),
           newProperties: sortNewPropertiesByCreatedAt(
-            inventory.newProperties?.filter((p: any) => p.isApproved) || []
+            inventory.newProperties?.filter((p: any) => p.isApproved || p.approvalWorkflow?.status === "approved") || []
           ),
         },
         rejected: {
@@ -717,7 +719,8 @@ const Admin = () => {
               (p: any) =>
                 !p.isApproved &&
                 !p.isRejected &&
-                (p.submitterRole === "executive" || p.submittedBy === user?.id)
+                (p.submitterRole === "executive" || p.submittedBy === user?.id) &&
+                (!p.approvalWorkflow || p.approvalWorkflow.status !== "approved")
             ) || []
           ),
         },
@@ -787,7 +790,7 @@ const Admin = () => {
           newProperties: sortNewPropertiesByCreatedAt(
             inventory.newProperties?.filter(
               (p: any) =>
-                !p.isApproved && !p.isRejected && p.submittedBy === user?.id
+                !p.isApproved && !p.isRejected && p.submittedBy === user?.id && (!p.approvalWorkflow || p.approvalWorkflow.status !== "approved")
             ) || []
           ),
         },
@@ -1232,7 +1235,13 @@ const Admin = () => {
     try {
       setActionLoading(true);
 
-      // Find the property in pending list using document ID
+      if (!docId?.trim()) {
+        toast.error("Invalid document ID");
+        setActionLoading(false);
+        return;
+      }
+
+      // Find the property in pending list
       const property = pendingProperties[category]?.find(
         (p: Property) => p.docId === docId || p.id === docId
       );
@@ -1249,12 +1258,21 @@ const Admin = () => {
         return;
       }
 
-      // Use the actual Firestore document ID, not the internal id field
-      await updatePropertyStatus(property.userId, category, docId, {
-        isApproved: true,
-      });
+      if (!user?.id) {
+        toast.error("Admin information not available");
+        setActionLoading(false);
+        return;
+      }
 
-      // Update local state to remove from pending and add to approved list
+      // Use the new approval service
+      await approvePropertyInFirestore(
+        property.userId,
+        category,
+        docId,
+        user.id
+      );
+
+      // Update local state
       setInventory((prev) => {
         const approvedProperty = { ...property, isApproved: true };
         return {
@@ -1268,7 +1286,8 @@ const Admin = () => {
 
       toast.success("Property approved!");
     } catch (error) {
-      toast.error("Failed to approve property - " + (error as Error).message);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error("Failed to approve property - " + errorMsg);
     } finally {
       setActionLoading(false);
     }
@@ -1282,25 +1301,48 @@ const Admin = () => {
     try {
       setActionLoading(true);
 
+      if (!docId?.trim()) {
+        toast.error("Invalid document ID");
+        setActionLoading(false);
+        return;
+      }
+
+      if (!reason?.trim()) {
+        toast.error("Rejection reason is required");
+        setActionLoading(false);
+        return;
+      }
+
+      if (!user?.id) {
+        toast.error("Admin information not available");
+        setActionLoading(false);
+        return;
+      }
+
       if (category === "newProperty") {
-        // Update costSheets document for new properties
         const propertyRef = doc(db, "TestingCostSheets", docId);
+        const docSnapshot = await getDoc(propertyRef);
+        if (!docSnapshot.exists()) {
+          toast.error("Property document not found in database");
+          setActionLoading(false);
+          return;
+        }
+        
         await updateDoc(propertyRef, {
           isApproved: false,
           isRejected: true,
           rejectedAt: serverTimestamp(),
-          rejectedBy: user?.id || null,
-          rejectorRole: user?.role || null,
+          rejectedBy: user.id,
+          rejectorRole: user.role || null,
           rejectionReason: reason,
           updatedAt: serverTimestamp(),
         });
 
-        // Update local state
         setInventory((prev) => ({
           ...prev,
           newProperties:
             prev.newProperties?.map((p: any) =>
-              p.id === docId
+              p.id === docId || p.docId === docId
                 ? {
                     ...p,
                     isApproved: false,
@@ -1312,7 +1354,6 @@ const Admin = () => {
         }));
         toast.success("Property rejected!");
       } else {
-        // Find the property in pending list using document ID
         const property = pendingProperties[category]?.find(
           (p: Property) => p.docId === docId || p.id === docId
         );
@@ -1329,24 +1370,24 @@ const Admin = () => {
           return;
         }
 
-        // Use the actual Firestore document ID, not the internal id field
-        await updatePropertyStatus(property.userId, category, docId, {
-          isApproved: false,
-          rejectedAt: serverTimestamp(),
-          rejectedBy: user?.id || null,
-          rejectorRole: user?.role || null,
-          rejectionReason: reason,
-        });
+        // Use the new rejection service
+        await rejectPropertyInFirestore(
+          property.userId,
+          category,
+          docId,
+          user.id,
+          reason,
+          user.role || "admin"
+        );
 
-        // Update local state to remove from pending and add to rejected list
         setInventory((prev) => {
           const rejectedProperty = {
             ...property,
             isApproved: false,
             isRejected: true,
             rejectedAt: new Date(),
-            rejectedBy: user?.id || null,
-            rejectorRole: user?.role || null,
+            rejectedBy: user.id,
+            rejectorRole: user.role,
             rejectionReason: reason,
           };
           return {
@@ -1361,7 +1402,8 @@ const Admin = () => {
         toast.success("Property rejected!");
       }
     } catch (error) {
-      toast.error("Failed to reject property - " + (error as Error).message);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error("Failed to reject property - " + errorMsg);
     } finally {
       setActionLoading(false);
     }
@@ -1370,38 +1412,41 @@ const Admin = () => {
   const handleApproveNewProperty = async (id: string) => {
     try {
       setActionLoading(true);
-      const property = inventory.newProperties?.find((p: any) => p.id === id);
+      const property = inventory.newProperties?.find((p: any) => p.id === id || p.docId === id);
       if (!property) {
-        toast.error("Property not found");
+        toast.error("Property not found in inventory");
         setActionLoading(false);
         return;
       }
 
-      // Check if user has permission to approve new properties
-      if (!permissions.canApproveNewProperty()) {
-        toast.error("You do not have permission to approve new properties.");
+      if (!user?.id) {
+        toast.error("User information not available");
         setActionLoading(false);
         return;
       }
 
-      // Update property approval status
-      const { updateCostSheet } = await import("../../utils/firestoreListings");
-      const updatedProperty = {
-        ...property,
+      const docId = property.docId || property.id;
+      const propertyRef = doc(db, "TestingCostSheets", docId);
+      
+      // Check if document exists before updating
+      const docSnapshot = await getDoc(propertyRef);
+      if (!docSnapshot.exists()) {
+        toast.error("Property document not found in database");
+        setActionLoading(false);
+        return;
+      }
+      
+      await updateDoc(propertyRef, {
         isApproved: true,
         approvalStatus: "approved",
-        approvedBy: user!.id,
-        approvedAt: new Date().toISOString(),
-        nextApprovalLevel: null,
-      };
+        approvedBy: user.id,
+        approvedAt: serverTimestamp(),
+      });
 
-      await updateCostSheet(id, updatedProperty);
-
-      // Update local UI state
       setInventory((prevInventory) => {
         const updatedNewProperties =
           prevInventory.newProperties?.map((p: any) =>
-            p.id === id ? updatedProperty : p
+            p.id === id ? { ...p, isApproved: true, approvalStatus: "approved" } : p
           ) || [];
 
         return {
@@ -1412,9 +1457,8 @@ const Admin = () => {
 
       toast.success("New property approved successfully!");
     } catch (error) {
-      toast.error(
-        "Failed to approve new property - " + (error as Error).message
-      );
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error("Failed to approve property: " + errorMsg);
     } finally {
       setActionLoading(false);
     }
@@ -1433,6 +1477,15 @@ const Admin = () => {
       if (category === "newProperty") {
         // Handle new property approval
         const propertyRef = doc(db, "TestingCostSheets", propertyId);
+        
+        // Check if document exists before updating
+        const docSnapshot = await getDoc(propertyRef);
+        if (!docSnapshot.exists()) {
+          toast.error("Property document not found in database");
+          setActionLoading(false);
+          return;
+        }
+        
         await updateDoc(propertyRef, {
           isApproved: true,
           isRejected: false,

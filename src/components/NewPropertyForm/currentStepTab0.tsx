@@ -2,6 +2,7 @@ import React from "react";
 import { FormDataType, toTitleCase } from "../../pages/CostSheetFormProps";
 import { State, City } from "../../types";
 import LocationDropdown from "../ui/LocationDropdown";
+import { fetchLocationContextByValue } from "../../utils/api";
 import { useLocationData } from "../../hooks/useLocationData";
 
 export function currentStepTab0(
@@ -19,13 +20,11 @@ export function currentStepTab0(
   locationData?: {
     locationSuggestions: string[];
     subLocationSuggestions: string[];
-    roadSuggestions: string[];
     landmarkSuggestions: string[];
     isLoading: boolean;
     searchLocations: (term: string) => void;
-    searchSubLocations: (term: string) => void;
-    searchRoads: (term: string) => void;
-    searchLandmarks: (term: string) => void;
+    searchSubLocations: (term: string, locationFilter?: string) => void;
+    searchLandmarks: (term: string, locationFilter?: string, subLocationFilter?: string) => void;
   }
 ): React.ReactNode {
   // Ensure cities is always an array
@@ -34,12 +33,10 @@ export function currentStepTab0(
   const {
     locationSuggestions = [],
     subLocationSuggestions = [],
-    roadSuggestions = [],
     landmarkSuggestions = [],
     isLoading = false,
     searchLocations = () => {},
     searchSubLocations = () => {},
-    searchRoads = () => {},
     searchLandmarks = () => {},
   } = locationData || {};
   return (
@@ -55,20 +52,19 @@ export function currentStepTab0(
 
         {/* Header Row */}
         <div className="bg-neutral-100 p-2 rounded-t border">
-          <div className="grid grid-cols-7 gap-2 text-sm font-medium text-neutral-700">
+          <div className="grid grid-cols-6 gap-2 text-sm font-medium text-neutral-700">
             <div>Update Date *</div>
             <div>Project Name *</div>
             <div>Developer Name *</div>
             <div>Location *</div>
             <div>Sub-Location *</div>
-            <div>Road *</div>
             <div>Landmark *</div>
           </div>
         </div>
 
         {/* Data Row */}
         <div className="bg-white border-x border-b rounded-b p-2">
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-6 gap-2">
             <div>
               <input
                 type="date"
@@ -113,6 +109,8 @@ export function currentStepTab0(
                     setFormData((prev) => ({
                       ...prev,
                       location: value,
+                      subLocation: "",
+                      landmark: "",
                     }));
                   }}
                   suggestions={locationSuggestions}
@@ -143,10 +141,13 @@ export function currentStepTab0(
                     setFormData((prev) => ({
                       ...prev,
                       subLocation: value,
+                      landmark: "",
                     }));
                   }}
                   suggestions={subLocationSuggestions}
-                  onSearch={searchSubLocations}
+                  onSearch={(term) =>
+                    searchSubLocations(term, String(formData.location || ""))
+                  }
                   placeholder="Type sub-location..."
                   isLoading={isLoading}
                 />
@@ -168,45 +169,33 @@ export function currentStepTab0(
             <div>
               {locationData ? (
                 <LocationDropdown
-                  value={String(formData.road || "")}
-                  onChange={(value) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      road: value,
-                    }));
-                  }}
-                  suggestions={roadSuggestions}
-                  onSearch={searchRoads}
-                  placeholder="Type road..."
-                  isLoading={isLoading}
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={String(formData.road || "")}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      road: toTitleCase(e.target.value),
-                    }));
-                  }}
-                  className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
-                  required
-                />
-              )}
-            </div>
-            <div>
-              {locationData ? (
-                <LocationDropdown
                   value={String(formData.landmark || "")}
-                  onChange={(value) => {
+                  onChange={async (value) => {
                     setFormData((prev) => ({
                       ...prev,
                       landmark: value,
                     }));
+                    const context = await fetchLocationContextByValue(
+                      "landmark",
+                      value
+                    );
+                    if (context?.location || context?.subLocation) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        location: context.location || prev.location,
+                        subLocation: context.subLocation || prev.subLocation,
+                        landmark: value,
+                      }));
+                    }
                   }}
                   suggestions={landmarkSuggestions}
-                  onSearch={searchLandmarks}
+                  onSearch={(term) =>
+                    searchLandmarks(
+                      term,
+                      String(formData.location || ""),
+                      String(formData.subLocation || "")
+                    )
+                  }
                   placeholder="Type landmark..."
                   isLoading={isLoading}
                 />

@@ -233,8 +233,10 @@ export const fetchLocalitiesByCity = async (
 // API to fetch location suggestions from TestingCostSheets database
 export const fetchLocationSuggestions = async (
   searchTerm: string,
-  field: 'location' | 'subLocation' | 'road' | 'landmark',
-  database: string = 'TestingCostSheets'
+  field: "location" | "subLocation" | "road" | "landmark",
+  database: string = "TestingCostSheets",
+  locationFilter?: string,
+  subLocationFilter?: string
 ): Promise<string[]> => {
   try {
     const { getDocs, collection } = await import('firebase/firestore');
@@ -243,15 +245,32 @@ export const fetchLocationSuggestions = async (
     const snapshot = await getDocs(collection(db, database));
     const suggestions = new Set<string>();
     const searchLower = searchTerm.toLowerCase().trim();
+    const locationLower = locationFilter?.toLowerCase().trim();
+    const subLocationLower = subLocationFilter?.toLowerCase().trim();
     
     snapshot.forEach(doc => {
       const data = doc.data();
+      if ((field === "subLocation" || field === "road" || field === "landmark") && locationLower) {
+        const docLocation = typeof data.location === "string" ? data.location : "";
+        if (docLocation.toLowerCase().trim() !== locationLower) {
+          return;
+        }
+      }
+      if ((field === "road" || field === "landmark") && subLocationLower) {
+        const docSubLocation = typeof data.subLocation === "string" ? data.subLocation : "";
+        if (docSubLocation.toLowerCase().trim() !== subLocationLower) {
+          return;
+        }
+      }
       const fieldValue = data[field];
       
       if (fieldValue && typeof fieldValue === 'string') {
         const valueLower = fieldValue.toLowerCase().trim();
-        
-        if (valueLower.startsWith(searchLower) || valueLower.includes(searchLower)) {
+        if (
+          !searchLower ||
+          valueLower.startsWith(searchLower) ||
+          valueLower.includes(searchLower)
+        ) {
           suggestions.add(fieldValue);
         }
       }
@@ -263,5 +282,36 @@ export const fetchLocationSuggestions = async (
   } catch (error) {
     console.error('Error fetching location suggestions:', error);
     return [];
+  }
+};
+
+export const fetchLocationContextByValue = async (
+  field: "road" | "landmark",
+  value: string,
+  database: string = "TestingCostSheets"
+): Promise<{ location?: string; subLocation?: string } | null> => {
+  try {
+    const { getDocs, collection } = await import("firebase/firestore");
+    const { db } = await import("../utils/firebase");
+
+    const snapshot = await getDocs(collection(db, database));
+    const valueLower = value.toLowerCase().trim();
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const fieldValue = typeof data[field] === "string" ? data[field] : "";
+      if (fieldValue.toLowerCase().trim() === valueLower) {
+        const location =
+          typeof data.location === "string" ? data.location : undefined;
+        const subLocation =
+          typeof data.subLocation === "string" ? data.subLocation : undefined;
+        return { location, subLocation };
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error fetching location context:", error);
+    return null;
   }
 };

@@ -539,10 +539,11 @@ export const getRentalPropertiesByLocations = async (
 // ==================== Cost Sheet Functions ====================
 export const addCostSheet = async (data: any) => {
   const costSheetCollection = collection(db, "TestingCostSheets");
-  await addDoc(costSheetCollection, {
+  const docRef = await addDoc(costSheetCollection, {
     ...data,
     createdAt: serverTimestamp(),
   });
+  return docRef.id;
 };
 
 export const getCostSheets = async (): Promise<any[]> => {

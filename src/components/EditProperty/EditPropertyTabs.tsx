@@ -246,9 +246,9 @@ export function handleEditPropertyForm(
     landmarkSuggestions: string[];
     isLoading: boolean;
     searchLocations: (term: string) => void;
-    searchSubLocations: (term: string) => void;
-    searchRoads: (term: string) => void;
-    searchLandmarks: (term: string) => void;
+    searchSubLocations: (term: string, locationFilter?: string) => void;
+    searchRoads: (term: string, locationFilter?: string, subLocationFilter?: string) => void;
+    searchLandmarks: (term: string, locationFilter?: string, subLocationFilter?: string) => void;
   }
 ) {
   return (
@@ -277,8 +277,8 @@ export function handleEditPropertyForm(
           label: step.label,
           disabled: !allowedSteps[index],
           content: (
-            <div className="p-6">
-              <div className="space-y-6">
+            <div className="p-6 overflow-visible">
+              <div className="space-y-6 overflow-visible">
                 {currentStep === 0
                   ? currentStepEditTab0(
                       formData,
