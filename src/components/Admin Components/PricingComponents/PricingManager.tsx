@@ -6,7 +6,7 @@ import StationModal from "./StationModal";
 import PackageModal from "./PackageModal";
 import PackagesTable from "./PackagesTable";
 import { fetchResaleRentalStations, fetchNewPropertyStations, clearStationCache } from "./StationService";
-import { updateStationPricing, getPricingData, updateDurationDiscounts, updatePackage, Station } from "./PricingService";
+import { updateStationPricing, getPricingData, updateDurationDiscounts, updatePackage, deletePackage, Station } from "./PricingService";
 
 const PricingManager: React.FC = () => {
   const [showAddStationModal, setShowAddStationModal] = useState(false);
@@ -27,13 +27,11 @@ const PricingManager: React.FC = () => {
   const [showPackageModal, setShowPackageModal] = useState(false);
   const [editingStation, setEditingStation] = useState<Station | null>(null);
   
-  // Separate states for resale-rental tab
   const [resaleSearchTerm, setResaleSearchTerm] = useState("");
   const [resaleSelectedState, setResaleSelectedState] = useState("");
   const [resaleSelectedDistrict, setResaleSelectedDistrict] = useState("");
   const [resaleSelectedRows, setResaleSelectedRows] = useState<string[]>([]);
   
-  // Separate states for new-properties tab
   const [newSearchTerm, setNewSearchTerm] = useState("");
   const [newSelectedState, setNewSelectedState] = useState("");
   const [newSelectedDistrict, setNewSelectedDistrict] = useState("");
@@ -73,8 +71,6 @@ const PricingManager: React.FC = () => {
     loadPricingData();
   }, []);
 
-
-
   const handleUpdatePricing = (stationId: string, pricing: any) => {
     if (activeTab === "resale-rental") {
       setResaleRentalPricing(prev => ({ ...prev, [stationId]: pricing }));
@@ -96,8 +92,6 @@ const PricingManager: React.FC = () => {
   const handleSaveStation = async (stationData: { name: string; actual: number; offer: number; district?: string; state?: string; isCustom?: boolean }) => {
     try {
       const type = activeTab === "resale-rental" ? "resaleRental" : "newProperty";
-      
-      // Create station key with custom prefix if it's a new custom station
       const stationKey = stationData.isCustom ? `custom_${stationData.name}` : stationData.name;
       
       await updateStationPricing(type, stationKey, {
@@ -107,7 +101,6 @@ const PricingManager: React.FC = () => {
         state: stationData.state
       });
       
-      // Update local pricing state
       if (activeTab === "resale-rental") {
         setResaleRentalPricing(prev => ({
           ...prev,
@@ -126,7 +119,6 @@ const PricingManager: React.FC = () => {
         }));
       }
       
-      // Clear cache and refresh stations list for real-time sync
       clearStationCache();
       const stations = activeTab === "resale-rental" 
         ? await fetchResaleRentalStations()
@@ -146,9 +138,7 @@ const PricingManager: React.FC = () => {
     
     const currentPricing = activeTab === "resale-rental" ? resaleRentalPricing : newPropertyPricing;
     
-    // Check if any selected station has 0 actual or 0 offer price
     const stationsWithoutPricing = selectedStations.filter(station => {
-      // Try multiple key formats: station.id, station.name, and custom_ prefix
       const pricing = currentPricing[station.id] || 
                      currentPricing[station.name] || 
                      currentPricing[`custom_${station.name}`];
@@ -167,11 +157,12 @@ const PricingManager: React.FC = () => {
     try {
       await updatePackage(category, packageId, {
         ...updates,
-        actual: updates.actual || 0, // Keep existing actual or set to 0
-        createdAt: new Date().toISOString()
+        isFreemium: updates.isFreemium || false,
+        freemiumDuration: updates.freemiumDuration || null,
+        actual: updates.actual || 0,
+        createdAt: updates.createdAt || new Date().toISOString()
       });
       
-      // Update local packages state
       setPackages(prev => ({
         ...prev,
         [category]: {
@@ -179,7 +170,9 @@ const PricingManager: React.FC = () => {
           [packageId]: {
             ...prev[category][packageId],
             ...updates,
-            createdAt: new Date().toISOString()
+            isFreemium: updates.isFreemium || false,
+            freemiumDuration: updates.freemiumDuration || null,
+            createdAt: updates.createdAt || new Date().toISOString()
           }
         }
       }));
@@ -200,10 +193,11 @@ const PricingManager: React.FC = () => {
         actual: packageData.actual,
         offer: packageData.offer,
         stations: packageData.stations,
+        isFreemium: false,
+        freemiumDuration: null,
         createdAt: new Date().toISOString()
       });
       
-      // Update local packages state for real-time validation
       setPackages(prev => ({
         ...prev,
         [type]: {
@@ -213,6 +207,8 @@ const PricingManager: React.FC = () => {
             actual: packageData.actual,
             offer: packageData.offer,
             stations: packageData.stations,
+            isFreemium: false,
+            freemiumDuration: null,
             createdAt: new Date().toISOString()
           }
         }
@@ -233,15 +229,32 @@ const PricingManager: React.FC = () => {
     }
   };
 
+  const handleDeletePackage = async (pkg: any) => {
+    if (!window.confirm(`Are you sure you want to delete "${pkg.name}" package?`)) {
+      return;
+    }
+    try {
+      await deletePackage(pkg.category, pkg.id);
+      setPackages((prev: any) => ({
+        ...prev,
+        [pkg.category]: Object.fromEntries(
+          Object.entries(prev?.[pkg.category] || {}).filter(([id]) => id !== pkg.id)
+        ),
+      }));
+      console.log("Package deleted successfully:", pkg.name);
+    } catch (error) {
+      console.error("Error deleting package:", error);
+    }
+  };
+
   const handleDeleteStation = async (station: Station) => {
     if (window.confirm(`Are you sure you want to delete "${station.name}" station?`)) {
       try {
         const type = activeTab === "resale-rental" ? "resaleRental" : "newProperty";
         const stationKey = `custom_${station.name}`;
         
-        await updateStationPricing(type, stationKey, null); // Pass null to delete
+        await updateStationPricing(type, stationKey, null);
         
-        // Clear cache and refresh stations list
         clearStationCache();
         const stations = activeTab === "resale-rental" 
           ? await fetchResaleRentalStations()
@@ -255,15 +268,11 @@ const PricingManager: React.FC = () => {
     }
   };
 
-
-
-  // Check if there are any packages to show Custom Packages tab
   const hasPackages = packages.resaleRental && Object.keys(packages.resaleRental).length > 0 ||
                      packages.newProperty && Object.keys(packages.newProperty).length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation Tabs */}
       <div className="bg-white border-b border-gray-200 px-6">
         <div className="flex items-center justify-between">
           <nav className="flex space-x-8">
@@ -314,7 +323,6 @@ const PricingManager: React.FC = () => {
             {activeTab === "packages" ? (
               <button
                 onClick={() => {
-                  // Pass the edit modal state to PackagesTable
                   const event = new CustomEvent('createPackageFromTab', {
                     detail: { category: 'resaleRental' }
                   });
@@ -349,11 +357,9 @@ const PricingManager: React.FC = () => {
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-6">
         {(activeTab === "resale-rental" || activeTab === "new-properties") && (
           <div className="space-y-6">
-            {/* Stations Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               {loading ? (
                 <div className="p-8 text-center">
@@ -403,6 +409,7 @@ const PricingManager: React.FC = () => {
             <PackagesTable 
               packages={packages} 
               onUpdatePackage={handleUpdatePackage}
+              onDeletePackage={handleDeletePackage}
             />
           </div>
         )}

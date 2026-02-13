@@ -39,17 +39,17 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      document.addEventListener("keydown", handleEscape);
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [isOpen, onClose]);
 
@@ -59,16 +59,16 @@ const PackageModal: React.FC<PackageModalProps> = ({
     }
   }, [isOpen]);
 
-  // Calculate total actual price
   const totalActualPrice = selectedStations.reduce((total, station) => {
-    const stationKey = station.source === "custom" ? `custom_${station.name}` : station.name;
+    const stationKey =
+      station.source === "custom" ? `custom_${station.name}` : station.name;
     const pricing = stationPricing[stationKey] || { actual: 0, offer: 0 };
     return total + pricing.actual;
   }, 0);
 
-  // Calculate total offer price
   const totalOfferPrice = selectedStations.reduce((total, station) => {
-    const stationKey = station.source === "custom" ? `custom_${station.name}` : station.name;
+    const stationKey =
+      station.source === "custom" ? `custom_${station.name}` : station.name;
     const pricing = stationPricing[stationKey] || { actual: 0, offer: 0 };
     return total + pricing.offer;
   }, 0);
@@ -76,12 +76,11 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setFormData({ ...formData, name });
-    
-    // Check if package name already exists
+
     const packageExists = Object.values(existingPackages || {}).some(
       (pkg: any) => pkg.name?.toLowerCase() === name.toLowerCase()
     );
-    
+
     if (packageExists && name.trim()) {
       setNameError("This package name already exist.");
     } else {
@@ -91,16 +90,16 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (nameError) {
       return;
     }
-    
+
     onSave({
       name: formData.name,
       actual: totalActualPrice,
       offer: Number(formData.offer) || 0,
-      stations: selectedStations.map(s => s.id)
+      stations: selectedStations.map((s) => s.id),
     });
     onClose();
   };
@@ -108,32 +107,28 @@ const PackageModal: React.FC<PackageModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-semibold mb-4">Create Custom Package</h2>
-        
-        {/* Selected Stations */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Selected Stations ({selectedStations.length})</label>
-          <div className="max-h-32 overflow-y-auto bg-gray-50 rounded-md p-3 space-y-1">
-            {selectedStations.map((station) => (
-              <div key={station.id} className="text-sm text-gray-700">
-                {station.name} - {station.district}, {station.state}
-              </div>
-            ))}
-          </div>
-        </div>
-        
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-semibold mb-4">Create Package</h2>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Package Name</label>
+            <label className="block text-sm font-medium mb-1">
+              Package Name
+            </label>
             <input
               type="text"
               value={formData.name}
               onChange={handleNameChange}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                nameError 
-                  ? "border-red-300 focus:ring-red-500" 
+                nameError
+                  ? "border-red-300 focus:ring-red-500"
                   : "border-gray-300 focus:ring-blue-500"
               }`}
               placeholder="Enter package name"
@@ -143,32 +138,51 @@ const PackageModal: React.FC<PackageModalProps> = ({
               <p className="text-red-500 text-sm mt-1">{nameError}</p>
             )}
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Total Actual Price (₹)</label>
+              <label className="block text-sm font-medium mb-1">
+                Total Actual Price (₹)
+              </label>
               <input
                 type="number"
                 value={totalActualPrice}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
                 disabled
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium mb-1">Offer Price (₹)</label>
+              <label className="block text-sm font-medium mb-1">
+                Offer Price (₹)
+              </label>
               <input
                 type="number"
                 value={formData.offer}
-                onChange={(e) => setFormData({ ...formData, offer: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, offer: e.target.value })
+                }
                 onWheel={(e) => e.currentTarget.blur()}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter offer price"
                 required
               />
             </div>
           </div>
-          
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Select Stations ({selectedStations.length} selected)
+            </label>
+            <div className="max-h-32 overflow-y-auto bg-gray-50 rounded-md p-3 space-y-1 border border-gray-200">
+              {selectedStations.map((station) => (
+                <div key={station.id} className="text-sm text-gray-700">
+                  {station.name} - {station.district}, {station.state}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex gap-3 pt-4">
             <Button
               type="button"
@@ -181,8 +195,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
               type="submit"
               disabled={!!nameError}
               className={`flex-1 text-white ${
-                nameError 
-                  ? "bg-gray-400 cursor-not-allowed" 
+                nameError
+                  ? "bg-gray-400 cursor-not-allowed"
                   : "bg-orange-600 hover:bg-orange-700"
               }`}
             >

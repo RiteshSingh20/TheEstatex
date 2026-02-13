@@ -29,6 +29,7 @@ interface CommercialRentalFormData {
   exitDirection: string;
   plusProperty: string;
   plusPropertyType: string;
+  keyAvailable: string;
   additionalInformation: string;
   ownerName: string;
   ownerNumber: string;
@@ -71,6 +72,7 @@ const CommercialRentalPropertyForm: React.FC<CommercialRentalPropertyFormProps> 
     exitDirection: '',
     plusProperty: '',
     plusPropertyType: '',
+    keyAvailable: '',
     additionalInformation: '',
     ownerName: '',
     ownerNumber: '',

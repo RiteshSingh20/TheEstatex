@@ -44,6 +44,7 @@ export interface Property {
   // Contact fields
   ownerName: string;
   ownerNumber: string;
+  keyAvailable?: boolean;
   connectedPerson?: string;
   
   // Media fields

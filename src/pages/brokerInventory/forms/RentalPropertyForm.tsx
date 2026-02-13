@@ -39,6 +39,7 @@ interface RentalFormData {
   amenities: string[];
   ownerName: string;
   ownerNumber: string;
+  keyAvailable: string;
   image: FileList | null;
   video: FileList | null;
 }
@@ -90,6 +91,7 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack, editPro
     amenities: [],
     ownerName: '',
     ownerNumber: '',
+    keyAvailable: '',
     image: null,
     video: null
   });
@@ -284,6 +286,7 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack, editPro
         amenities: editProperty.amenities || [],
         ownerName: editProperty.ownerName || '',
         ownerNumber: editProperty.ownerNumber || '',
+        keyAvailable: editProperty.keyAvailable ? 'Yes' : 'No',
         image: null,
         video: null
       });
@@ -732,6 +735,18 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack, editPro
                         <div className="flex gap-2">
                           <input name="ownerName" value={formData.ownerName} onChange={handleInputChange} placeholder="Owner Name (Optional)" className="flex-1 p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
                           <input name="ownerNumber" value={formData.ownerNumber} onChange={handleInputChange} placeholder="Owner Number (Optional)" className="flex-1 p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white" />
+                        </div>
+                        <div className="mt-2">
+                          <select
+                            name="keyAvailable"
+                            value={formData.keyAvailable}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white cursor-pointer"
+                          >
+                            <option value="">Key Available</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
                         </div>
                       </div>
                       <div className="p-1">

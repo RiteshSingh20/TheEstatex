@@ -311,7 +311,7 @@ export function currentStepTab0(
                 required
               />
             </div>
-            <div>
+            <div className="flex gap-1 items-center w-full min-w-0">
               <input
                 type="text"
                 value={String(formData.landParcel || "")}
@@ -324,9 +324,24 @@ export function currentStepTab0(
                     landParcel: filtered,
                   }));
                 }}
-                className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                className="w-20 border border-neutral-300 rounded px-2 py-1 text-sm"
                 required
               />
+              <select
+                value={String(formData.landParcelUnit || "sqft")}
+                onChange={(e) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    landParcelUnit: e.target.value,
+                  }));
+                }}
+                className="border border-neutral-300 rounded px-2 py-1 text-sm w-24"
+              >
+                <option value="sqft">sq.ft</option>
+                <option value="sqm">sq.m</option>
+                <option value="acre">acre</option>
+                <option value="guntha">guntha</option>
+              </select>
             </div>
             <div>
               <input

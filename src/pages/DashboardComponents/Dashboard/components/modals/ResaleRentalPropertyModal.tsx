@@ -1,5 +1,6 @@
 import React from "react";
 import { X } from "lucide-react";
+import PropertyNameWithKey from "../../../../../components/PropertyNameWithKey";
 
 interface ResaleProperty {
   id: string;
@@ -18,6 +19,7 @@ interface ResaleProperty {
   ownerName?: string;
   userFullName?: string;
   ownerNumber?: string;
+  keyAvailable?: boolean | string;
   userMarketingPhoneNumber?: string;
   contactNumber?: string;
   type?: string;
@@ -84,7 +86,12 @@ const ResaleRentalPropertyModal: React.FC<ResaleRentalPropertyModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-200">
-          <h2 className="text-2xl font-semibold">{property.society}</h2>
+          <h2 className="text-2xl font-semibold">
+            <PropertyNameWithKey
+              name={property.society || "-"}
+              keyAvailable={property.keyAvailable}
+            />
+          </h2>
           <button onClick={onClose}>
             <X className="h-6 w-6 text-neutral-500" />
           </button>
@@ -130,6 +137,7 @@ const ResaleRentalPropertyModal: React.FC<ResaleRentalPropertyModalProps> = ({
                 "connectedPerson",
                 "imageUrl",
                 "videoUrl",
+                "keyAvailable",
                 ...(property.userId === user?.id
                   ? ["ownerName", "ownerNumber"]
                   : ["userFullName", "userMarketingPhoneNumber"]),

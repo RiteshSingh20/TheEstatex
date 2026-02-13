@@ -1,6 +1,7 @@
 import React from "react";
 import Card from "../../../../../components/ui/Card";
 import { getFloorCategory } from "../../utils/propertyFormatters";
+import PropertyNameWithKey from "../../../../../components/PropertyNameWithKey";
 
 interface ResaleProperty {
   id: string;
@@ -30,6 +31,7 @@ interface ResaleProperty {
   terrace?: boolean;
   directBroker?: string;
   totalFloors?: string | number;
+  keyAvailable?: boolean | string;
 }
 
 interface ResaleRentalTableProps {
@@ -205,7 +207,12 @@ const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
                         title={property.society?.toString()}
                       >
                         <div className="relative">
-                          <div>{property.society}</div>
+                          <div>
+                            <PropertyNameWithKey
+                              name={property.society || "-"}
+                              keyAvailable={property.keyAvailable}
+                            />
+                          </div>
                           {(property as any).plusProperty && (
                             <div className="absolute -top-3 right-0 text-[9px] font-semibold text-white leading-none bg-amber-500 px-1 py-0.5 rounded-full">
                               {(property as any).plusProperty}
@@ -267,7 +274,10 @@ const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
                         onClick={() => handlePropertyClick(property)}
                         title={property.society?.toString()}
                       >
-                        {property.society}
+                        <PropertyNameWithKey
+                          name={property.society || "-"}
+                          keyAvailable={property.keyAvailable}
+                        />
                       </td>
                       <td
                         className="px-3 py-3 text-xs text-neutral-900 truncate"

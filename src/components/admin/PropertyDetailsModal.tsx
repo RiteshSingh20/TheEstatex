@@ -95,6 +95,14 @@ const PropertyDetailsModal = ({
   saveEditedProperty,
 }: Props) => {
   if (!open || !showPropertyDetails) return null;
+  const isKeyAvailable = (value: any) => {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      return normalized === "yes" || normalized === "true";
+    }
+    return false;
+  };
 
   const headerRight = () => {
     if (showPropertyDetails.category === "newProperty") {
@@ -511,6 +519,14 @@ const PropertyDetailsModal = ({
                         <Field
                           label="Video URL"
                           value={showPropertyDetails.videoUrl}
+                        />
+                        <Field
+                          label="Key Available"
+                          value={
+                            isKeyAvailable(showPropertyDetails.keyAvailable)
+                              ? "Yes"
+                              : "No"
+                          }
                         />
                       </div>
                     </div>

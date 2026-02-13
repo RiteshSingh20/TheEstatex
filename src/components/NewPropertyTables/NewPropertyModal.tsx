@@ -44,6 +44,15 @@ export function NewPropertyModal({
 }: NewPropertyModalProps) {
   const [mediaModal, setMediaModal] = useState<{isOpen: boolean, title: string, files: string[], type: 'image' | 'video' | 'pdf'}>({isOpen: false, title: '', files: [], type: 'image'});
   const [fullViewer, setFullViewer] = useState<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>({isOpen: false, files: [], currentIndex: 0, type: 'image'});
+
+  const formatLandParcel = (parcel: any, unit: any) => {
+    if (parcel === undefined || parcel === null || String(parcel).trim() === "") {
+      return "-";
+    }
+    const normalizedUnit =
+      unit === "sqft" ? "sq.ft" : unit === "sqm" ? "sq.m" : unit || "";
+    return `${parcel}${normalizedUnit ? ` ${normalizedUnit}` : ""}`;
+  };
   
   // Helper function to format storey data
   const formatStorey = (storey: string) => {
@@ -361,7 +370,7 @@ export function NewPropertyModal({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
       {/* Section 1: Basic Details */}
-      <Section title="Basic Details">
+      <Section title="Basic Detail">
         <Field label="Update date" value={(() => {
           const getValidDate = (value: any) => {
             if (!value) return null;
@@ -381,7 +390,13 @@ export function NewPropertyModal({
         <Field label="Location" value={selectedSheet.location} />
         <Field label="District" value={`${selectedSheet.district || "-"}${selectedSheet.pinCode ? ` - ${selectedSheet.pinCode}` : ""}`} />
         <Field label="State" value={selectedSheet.state} />
-        <Field label="Land Parcel" value={selectedSheet.landParcel} />
+        <Field
+          label="Land Parcel"
+          value={formatLandParcel(
+            selectedSheet.landParcel,
+            (selectedSheet as any).landParcelUnit
+          )}
+        />
         <Field label="Total Towers" value={selectedSheet.towers} />
         <Field label="Total Storey" value={formatStorey(selectedSheet.storey)} />
       </Section>

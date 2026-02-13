@@ -1502,7 +1502,8 @@ const Dashboard = () => {
                                   ? "bg-primary text-white"
                                   : "hover:bg-neutral-100"
                               }`}
-                              onClick={() => {
+                              onMouseDown={(e) => {
+                                e.preventDefault();
                                 setSelectedQuickSendProperty(sheet);
                                 setQuickSendSearch("");
                                 setShowQuickSendDropdown(false);

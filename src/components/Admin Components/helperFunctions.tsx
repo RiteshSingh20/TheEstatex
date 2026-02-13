@@ -66,6 +66,7 @@ export interface Property {
   state?: string;
   ownerName?: string;
   ownerNumber?: string;
+  keyAvailable?: boolean | string;
   ocAvailable?: boolean;
   terraceGallery?: string;
   cosmoSociety?: boolean;

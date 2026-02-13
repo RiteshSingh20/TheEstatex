@@ -25,7 +25,9 @@ import { db } from "../utils/firebase";
 import SearchableDropdown from "../components/ui/SearchableDropdown";
 import { ListingState, ResaleProperty, RentalProperty } from "../types";
 import Tabs from "../types/tab";
-import TagInput from "../utils/rrAmenitiesInput";
+import KeyAvailableIcon from "../components/KeyAvailableIcon";
+import PropertyDetailsModal from "../components/PropertyDetailsModal";
+import PropertyNameWithKey from "../components/PropertyNameWithKey";
 import {
   ResaleFormData,
   RentalFormData,
@@ -40,6 +42,22 @@ const toTitleCase = (str: string): string => {
     /\w\S*/g,
     (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
   );
+};
+
+const decodeHtmlEntities = (str: string): string => {
+  if (typeof str !== 'string') return str;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = str;
+  return textarea.value;
+};
+
+const isBooleanTrue = (value: any): boolean => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const decoded = decodeHtmlEntities(value).toLowerCase().trim();
+    return decoded === 'true' || decoded === 'yes';
+  }
+  return value === true || value === 1;
 };
 
 const formatPriceDisplay = (value: string | number): string => {
@@ -181,6 +199,7 @@ const Inventory = () => {
       ownerName: "",
       ownerNumber: "",
       connectedPerson: "",
+      keyAvailable: "",
       imageUrl: "",
       videoUrl: "",
     },
@@ -222,6 +241,7 @@ const Inventory = () => {
       ownerName: "",
       ownerNumber: "",
       connectedPerson: "",
+      keyAvailable: "",
       imageUrl: "",
       videoUrl: "",
     },
@@ -432,10 +452,11 @@ const Inventory = () => {
       const processedData: Partial<ResaleProperty> = {
         ...data,
         terrace: data.terrace === "true",
-        cosmoSociety: data.cosmoSociety,
+        cosmoSociety: data.cosmoSociety === "true",
         ocStatus: data.ocAvailable === "true" ? "Available" : "Not Available",
         pincode: data.pincode,
         station: data.station || selectedStation,
+        keyAvailable: data.keyAvailable === "true",
         amenities: Array.isArray(data.amenities) ? data.amenities : [],
         ...(data.masterBed && { masterBed: data.masterBed === "true" }),
         plusProperty: data.plusProperty || null,
@@ -542,6 +563,7 @@ const Inventory = () => {
         cosmo: data.cosmoSociety === "true",
         pincode: data.pincode,
         station: data.station || selectedStation,
+        keyAvailable: data.keyAvailable === "true",
         amenities: data.amenities || [],
         ...(data.masterBed && { masterBed: data.masterBed === "true" }),
         contactName: data.ownerName,
@@ -1585,6 +1607,32 @@ const Inventory = () => {
             })}
           />
 
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Key Available
+            </label>
+            <div className="flex gap-4 mt-1">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  value="true"
+                  {...registerResale("keyAvailable")}
+                  className="h-4 w-4 text-primary border-neutral-300"
+                />
+                <span className="ml-2">Yes</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  value="false"
+                  {...registerResale("keyAvailable")}
+                  className="h-4 w-4 text-primary border-neutral-300"
+                />
+                <span className="ml-2">No</span>
+              </label>
+            </div>
+          </div>
+
           <Input
             id="resale-imageUrl"
             label="Image URL"
@@ -2465,6 +2513,32 @@ const Inventory = () => {
             })}
           />
 
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Key Available
+            </label>
+            <div className="flex gap-4 mt-1">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  value="true"
+                  {...registerRental("keyAvailable")}
+                  className="h-4 w-4 text-primary border-neutral-300"
+                />
+                <span className="ml-2">Yes</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  value="false"
+                  {...registerRental("keyAvailable")}
+                  className="h-4 w-4 text-primary border-neutral-300"
+                />
+                <span className="ml-2">No</span>
+              </label>
+            </div>
+          </div>
+
           <Input
             id="rental-imageUrl"
             label="Image URL"
@@ -2882,6 +2956,7 @@ const Inventory = () => {
       .replace(/^./, (str) => str.toUpperCase()) // capitalize first letter
       .replace(/Url$/, "URL"); // cleanup URL casing
 
+
   return (
     <div className="min-h-screen bg-neutral-50 py-8 px-4">
       <div className="container mx-auto">
@@ -3138,7 +3213,10 @@ const Inventory = () => {
                                                   {property.terrace ? "Yes" : "No"}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                  {property.society}
+                                                  <PropertyNameWithKey
+                                                    name={property.society}
+                                                    keyAvailable={property.keyAvailable}
+                                                  />
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                   {property.sublocation}
@@ -3408,7 +3486,10 @@ const Inventory = () => {
                                                   {property.terrace ? "Yes" : "No"}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                  {property.society}
+                                                  <PropertyNameWithKey
+                                                    name={property.society}
+                                                    keyAvailable={property.keyAvailable}
+                                                  />
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                   {property.sublocation}
@@ -3702,7 +3783,10 @@ const Inventory = () => {
                                                   {property.terrace ? "Yes" : "No"}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                  {property.society}
+                                                  <PropertyNameWithKey
+                                                    name={property.society}
+                                                    keyAvailable={property.keyAvailable}
+                                                  />
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                   {property.sublocation}
@@ -3972,7 +4056,10 @@ const Inventory = () => {
                                                   {property.terrace ? "Yes" : "No"}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                  {property.society}
+                                                  <PropertyNameWithKey
+                                                    name={property.society}
+                                                    keyAvailable={property.keyAvailable}
+                                                  />
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                   {property.sublocation}
@@ -4266,7 +4353,10 @@ const Inventory = () => {
                                                   {property.terrace ? "Yes" : "No"}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                  {property.society}
+                                                  <PropertyNameWithKey
+                                                    name={property.society}
+                                                    keyAvailable={property.keyAvailable}
+                                                  />
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                   {property.sublocation}
@@ -4536,7 +4626,10 @@ const Inventory = () => {
                                                   {property.terrace ? "Yes" : "No"}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                  {property.society}
+                                                  <PropertyNameWithKey
+                                                    name={property.society}
+                                                    keyAvailable={property.keyAvailable}
+                                                  />
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                   {property.sublocation}
@@ -4866,7 +4959,10 @@ const Inventory = () => {
                           Building/Society Name
                         </span>
                         <span className="text-sm font-medium text-neutral-900">
-                          {viewProperty.society || "N/A"}
+                          <PropertyNameWithKey
+                            name={viewProperty.society || "N/A"}
+                            keyAvailable={viewProperty.keyAvailable}
+                          />
                         </span>
                       </div>
                       <div className="flex flex-col gap-1">
@@ -5110,6 +5206,14 @@ const Inventory = () => {
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-sm text-neutral-500">
+                          Key Available
+                        </span>
+                        <span className="text-sm font-medium text-neutral-900">
+                          {isBooleanTrue(viewProperty.keyAvailable) ? "Yes" : "No"}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm text-neutral-500">
                           Image URL
                         </span>
                         <span className="text-sm font-medium text-neutral-900">
@@ -5262,7 +5366,10 @@ const Inventory = () => {
                           Building/Society Name
                         </span>
                         <span className="text-sm font-medium text-neutral-900">
-                          {viewRentalProperty.society || "N/A"}
+                          <PropertyNameWithKey
+                            name={viewRentalProperty.society || "N/A"}
+                            keyAvailable={viewRentalProperty.keyAvailable}
+                          />
                         </span>
                       </div>
                       <div className="flex flex-col gap-1">
@@ -5478,6 +5585,16 @@ const Inventory = () => {
                         </span>
                         <span className="text-sm font-medium text-neutral-900">
                           {viewRentalProperty.connectedPerson || "N/A"}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm text-neutral-500">
+                          Key Available
+                        </span>
+                        <span className="text-sm font-medium text-neutral-900">
+                          {isBooleanTrue(viewRentalProperty.keyAvailable)
+                            ? "Yes"
+                            : "No"}
                         </span>
                       </div>
                       <div className="flex flex-col gap-1">

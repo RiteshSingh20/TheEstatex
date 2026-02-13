@@ -341,6 +341,35 @@ export const getResaleProperties = async (userId: string, propertyType?: string)
     })
     .map((doc) => ({ docId: doc.id, ...doc.data() }));
 
+  // Get user's active freemium subscriptions to filter properties
+  const pricingRef = doc(db, "settings", "pricing");
+  const pricingSnap = await getDoc(pricingRef);
+  const allowedStations = new Set<string>();
+  
+  if (pricingSnap.exists()) {
+    const userSubscriptions = pricingSnap.data()?.userSubscriptions?.[userId] || {};
+    const now = Date.now();
+    
+    Object.values(userSubscriptions).forEach((sub: any) => {
+      if (sub.isFreemium && !sub.used && sub.endDate) {
+        const endTime = new Date(sub.endDate).getTime();
+        if (!Number.isNaN(endTime) && endTime >= now) {
+          const locations = sub.locations || [];
+          locations.forEach((loc: string) => allowedStations.add(loc));
+        }
+      }
+    });
+  }
+
+  // If user has active freemium subscriptions, filter properties by allowed stations
+  if (allowedStations.size > 0) {
+    const filtered = [...oldProperties, ...newProperties].filter(prop => {
+      const station = prop.station || "";
+      return allowedStations.has(station);
+    });
+    return filtered;
+  }
+
   return [...oldProperties, ...newProperties];
 };
 
@@ -368,6 +397,35 @@ export const getRentalProperties = async (userId: string, propertyType?: string)
   // All old source properties (they don't have propertyType field)
   const oldProperties = oldSnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
   const newProperties = newSnapshot.docs.map((doc) => ({ docId: doc.id, ...doc.data() }));
+
+  // Get user's active freemium subscriptions to filter properties
+  const pricingRef = doc(db, "settings", "pricing");
+  const pricingSnap = await getDoc(pricingRef);
+  const allowedStations = new Set<string>();
+  
+  if (pricingSnap.exists()) {
+    const userSubscriptions = pricingSnap.data()?.userSubscriptions?.[userId] || {};
+    const now = Date.now();
+    
+    Object.values(userSubscriptions).forEach((sub: any) => {
+      if (sub.isFreemium && !sub.used && sub.endDate) {
+        const endTime = new Date(sub.endDate).getTime();
+        if (!Number.isNaN(endTime) && endTime >= now) {
+          const locations = sub.locations || [];
+          locations.forEach((loc: string) => allowedStations.add(loc));
+        }
+      }
+    });
+  }
+
+  // If user has active freemium subscriptions, filter properties by allowed stations
+  if (allowedStations.size > 0) {
+    const filtered = [...oldProperties, ...newProperties].filter(prop => {
+      const station = prop.station || "";
+      return allowedStations.has(station);
+    });
+    return filtered;
+  }
 
   return [...oldProperties, ...newProperties];
 };

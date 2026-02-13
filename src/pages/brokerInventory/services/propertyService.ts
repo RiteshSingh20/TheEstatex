@@ -222,6 +222,7 @@ export class PropertyService {
       // Contact fields
       ownerName: formData.ownerName || '',
       ownerNumber: formData.ownerNumber || '',
+      keyAvailable: formData.keyAvailable === 'Yes' || formData.keyAvailable === true,
       connectedPerson: formData.connectedPerson || '',
       
       // Media fields (will be set by file upload service)

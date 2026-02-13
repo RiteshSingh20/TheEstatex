@@ -3,6 +3,7 @@ import { User } from "firebase/auth";
 import { Eye, Check } from "lucide-react";
 import Button from "../../../../ui/Button";
 import { Property } from "../../../helperFunctions";
+import PropertyNameWithKey from "../../../../PropertyNameWithKey";
 
 export function handleRentalRejected(rejectedSearchTerms: { resale: string; rental: string; newProperty: string; }, setRejectedSearchTerms: any, rejectedFilters: { resale: { type: string; sort: string; }; rental: { type: string; sort: string; }; newProperty: { bhk: string; sort: string; }; }, setRejectedFilters: any, getRejectedRentalTypes: () => string[], filteredRejectedProperties: { resale: Property[]; rental: Property[]; newProperties: any[]; }, setShowPropertyDetails: any, user: User | null, handleApproveRejectedProperty: (propertyId: string, category: "resale" | "rental" | "newProperty") => Promise<void>, actionLoading: boolean) {
   return <div className="space-y-4">
@@ -218,7 +219,10 @@ export function handleRentalRejected(rejectedSearchTerms: { resale: string; rent
                     <td className="px-3 py-3 border-r border-neutral-100">
                       <div className="max-w-xs">
                         <div className="text-sm font-medium text-neutral-900 truncate">
-                          {property.society}
+                          <PropertyNameWithKey
+                            name={property.society || "-"}
+                            keyAvailable={property.keyAvailable}
+                          />
                         </div>
                         <div className="text-xs text-neutral-500">
                           {property.roadLocation}

@@ -141,6 +141,7 @@ export interface ResaleProperty extends BaseProperty {
   masterBed?: boolean;
   sublocation?: string; // New field for sublocation
   cosmoSociety?: string; // New field for cosmo society
+  keyAvailable?: string | boolean; // Key available field
   ownerName: string;
   ownerNumber: string;
   pincode: string;
@@ -178,6 +179,7 @@ export interface RentalProperty extends BaseProperty {
   landmark?: string;
   propertyAge: number;
   sublocation: string; // New field for sublocation
+  keyAvailable?: string | boolean; // Key available field
   amenities: string[];
   parking: "Open" | "Covered" | "None";
   availableFrom: string;

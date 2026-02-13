@@ -92,6 +92,20 @@ export function handlePropertyDetails(
   fullViewer: {isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'},
   setFullViewer: React.Dispatch<React.SetStateAction<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>>
 ) {
+  const formatLandParcel = (parcel: any, unit: any) => {
+    if (parcel === undefined || parcel === null || String(parcel).trim() === "") {
+      return "-";
+    }
+    const unitValue = String(unit || "").trim().toLowerCase();
+    const normalizedUnit =
+      unitValue === "sqft" || unitValue === "sq ft" || unitValue === "sq.ft"
+        ? "sq.ft"
+        : unitValue === "sqm" || unitValue === "sq m" || unitValue === "sq.m"
+        ? "sq.m"
+        : String(unit || "").trim();
+    return `${parcel}${normalizedUnit ? ` ${normalizedUnit}` : ""}`;
+  };
+
   const openMediaModal = (title: string, files: string[], type: 'image' | 'video' | 'pdf' = 'image') => {
     setMediaModal({isOpen: true, title, files, type});
   };
@@ -603,7 +617,13 @@ export function handlePropertyDetails(
                           <Field label="Location" value={showPropertyDetails.location} />
                           <Field label="District" value={`${showPropertyDetails.district || "-"}${showPropertyDetails.pinCode ? ` - ${showPropertyDetails.pinCode}` : ""}`} />
                           <Field label="State" value={showPropertyDetails.state} />
-                          <Field label="Land Parcel" value={showPropertyDetails.landParcel} />
+                          <Field
+                            label="Land Parcel"
+                            value={formatLandParcel(
+                              showPropertyDetails.landParcel,
+                              showPropertyDetails.landParcelUnit
+                            )}
+                          />
                           <Field label="Total Towers" value={showPropertyDetails.towers} />
                           <Field label="Total Storey" value={(() => {
                             const formatStorey = (storey: string) => {

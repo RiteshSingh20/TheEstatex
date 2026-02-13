@@ -12,6 +12,7 @@ interface Package {
   stations: string[];
   createdAt: string;
   category: "resaleRental" | "newProperty";
+  isFreemium?: boolean;
 }
 
 interface PackagesTableProps {
@@ -34,7 +35,9 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
   const [editForm, setEditForm] = useState({
     name: "",
     offer: "",
-    selectedStations: [] as string[]
+    selectedStations: [] as string[],
+    isFreemium: false,
+    freemiumDuration: 1
   });
   const [allStations, setAllStations] = useState<{ resaleRental: any[], newProperty: any[] }>({
     resaleRental: [],
@@ -150,7 +153,8 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
         offer: pkg.offer,
         stations: pkg.stations || [],
         createdAt: pkg.createdAt,
-        category: "resaleRental"
+        category: "resaleRental",
+        isFreemium: Boolean(pkg.isFreemium)
       });
     });
   }
@@ -164,7 +168,8 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
         offer: pkg.offer,
         stations: pkg.stations || [],
         createdAt: pkg.createdAt,
-        category: "newProperty"
+        category: "newProperty",
+        isFreemium: Boolean(pkg.isFreemium)
       });
     });
   }
@@ -174,7 +179,9 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
     setEditForm({
       name: pkg.name,
       offer: pkg.offer.toString(),
-      selectedStations: pkg.stations
+      selectedStations: pkg.stations,
+      isFreemium: (pkg as any).isFreemium || false,
+      freemiumDuration: (pkg as any).freemiumDuration || 1
     });
   };
 
@@ -193,22 +200,23 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
         return total;
       }, 0);
 
+      const packageData = {
+        name: editForm.name,
+        actual: totalActual,
+        offer: editForm.isFreemium ? 0 : Number(editForm.offer),
+        stations: editForm.selectedStations,
+        isFreemium: editForm.isFreemium,
+        freemiumDuration: editForm.isFreemium ? editForm.freemiumDuration : null
+      };
+
       if (editingPackage.id) {
         // Update existing package
-        onUpdatePackage(editingPackage.id, editingPackage.category, {
-          name: editForm.name,
-          actual: totalActual,
-          offer: Number(editForm.offer),
-          stations: editForm.selectedStations
-        });
+        onUpdatePackage(editingPackage.id, editingPackage.category, packageData);
       } else {
         // Create new package
         const packageId = `package_${Date.now()}`;
         onUpdatePackage(packageId, editingPackage.category, {
-          name: editForm.name,
-          actual: totalActual,
-          offer: Number(editForm.offer),
-          stations: editForm.selectedStations,
+          ...packageData,
           createdAt: new Date().toISOString()
         });
       }
@@ -406,7 +414,14 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
                 <div key={pkg.id} className="grid gap-4 px-4 py-3 hover:bg-gray-50/50 transition-colors" style={{gridTemplateColumns: '120px 1fr 1fr 1fr 1fr 1fr 100px'}}>
                   <div className="text-sm text-gray-500">{formatDate(pkg.createdAt)}</div>
                   <div className="min-w-0">
-                    <div className="font-medium text-sm text-gray-900 truncate">{pkg.name}</div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="font-medium text-sm text-gray-900 truncate">{pkg.name}</div>
+                      {pkg.isFreemium && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap">
+                          Freemium
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-sm text-gray-600">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -450,12 +465,25 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
                       </svg>
                     </button>
                     <button
-                      onClick={() => setAssigningPackage(pkg)}
-                      className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                      title="Assign package"
+                      onClick={() => {
+                        if (pkg.isFreemium) return;
+                        setAssigningPackage(pkg);
+                      }}
+                      disabled={pkg.isFreemium}
+                      className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent"
+                      title={pkg.isFreemium ? "Freemium package cannot be assigned to users" : "Assign package"}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => onDeletePackage?.(pkg)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete package"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" />
                       </svg>
                     </button>
                   </div>
@@ -576,17 +604,47 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
                         />
                       </div>
                     )}
+
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-md border border-blue-200">
+                    <input
+                      type="checkbox"
+                      id="freemium"
+                      checked={editForm.isFreemium}
+                      onChange={(e) => setEditForm({...editForm, isFreemium: e.target.checked, offer: e.target.checked ? "0" : editForm.offer})}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="freemium" className="text-sm font-medium text-gray-900 cursor-pointer">Freemium Package</label>
+                  </div>
+                  
+                  {editForm.isFreemium && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Duration (Months)</label>
+                      <select
+                        value={editForm.freemiumDuration}
+                        onChange={(e) => setEditForm({...editForm, freemiumDuration: Number(e.target.value)})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value={1}>1 Month</option>
+                        <option value={3}>3 Months</option>
+                        <option value={6}>6 Months</option>
+                        <option value={12}>12 Months</option>
+                      </select>
+                    </div>
+                  )}
                     <div>
                       <label className="block text-sm font-medium mb-1">Offer Price (₹)</label>
                       <input
                         type="number"
                         value={editForm.offer}
                         onChange={(e) => setEditForm({...editForm, offer: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        disabled={editForm.isFreemium}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                         placeholder="Enter offer price"
                       />
                     </div>
                   </div>
+                  
+                  
                   
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -670,7 +728,7 @@ const PackagesTable: React.FC<PackagesTableProps> = ({
                 </button>
                 <button
                   onClick={handleUpdatePackage}
-                  disabled={!editForm.name || !editForm.offer || editForm.selectedStations.length === 0}
+                  disabled={!editForm.name || (!editForm.isFreemium && !editForm.offer) || editForm.selectedStations.length === 0}
                   className="flex-1 bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors"
                 >
                   {editingPackage.id ? 'Update Package' : 'Create Package'}

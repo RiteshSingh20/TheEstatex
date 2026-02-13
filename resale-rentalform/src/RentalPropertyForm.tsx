@@ -29,6 +29,7 @@ interface RentalFormData {
   maintenancePerMonth: string;
   plusProperty: string;
   plusPropertyType: string;
+  keyAvailable: string;
   amenities: string[];
   ownerName: string;
   ownerNumber: string;
@@ -78,6 +79,7 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack }) => {
     maintenancePerMonth: '',
     plusProperty: '',
     plusPropertyType: '',
+    keyAvailable: '',
     amenities: [],
     ownerName: '',
     ownerNumber: '',
@@ -403,6 +405,7 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack }) => {
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Furnishing *</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Parking *</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Pet Friendly *</div>
+                      <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Key Available *</div>
                       <div className="bg-gray-100 px-2 py-2 font-semibold text-sm text-slate-700 text-center rounded-sm">Cosmo Society *</div>
                       
                       <div className="p-1">
@@ -440,6 +443,13 @@ const RentalPropertyForm: React.FC<RentalPropertyFormProps> = ({ onBack }) => {
                       <div className="p-1">
                         <select name="petFriendly" value={formData.petFriendly} onChange={handleInputChange} required className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white cursor-pointer">
                           <option value="">Pet Friendly?</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                      </div>
+                      <div className="p-1">
+                        <select name="keyAvailable" value={formData.keyAvailable} onChange={handleInputChange} required className="w-full p-2 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:shadow-sm bg-white cursor-pointer">
+                          <option value="">Key Available?</option>
                           <option value="Yes">Yes</option>
                           <option value="No">No</option>
                         </select>

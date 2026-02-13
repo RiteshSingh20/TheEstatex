@@ -630,6 +630,26 @@ const Admin = () => {
 
   const getFilteredProperties = () => {
     const userRole = user?.role;
+    const isPropertyApproved = (property: Property) => {
+      const propertyData = property as any;
+      return (
+        propertyData?.isApproved === true ||
+        propertyData?.status === "approved" ||
+        propertyData?.approvalStatus === "approved" ||
+        propertyData?.approvalWorkflow?.status === "approved"
+      );
+    };
+
+    const isPropertyRejected = (property: Property) => {
+      const propertyData = property as any;
+      return (
+        propertyData?.isRejected === true ||
+        propertyData?.status === "rejected" ||
+        propertyData?.approvalStatus === "rejected" ||
+        propertyData?.approvalWorkflow?.status === "rejected" ||
+        Boolean(propertyData?.rejectedAt)
+      );
+    };
 
     // Helper function to sort properties by createdAt (newest first)
     const sortByCreatedAt = (properties: Property[]) => {
@@ -653,12 +673,12 @@ const Admin = () => {
         pending: {
           resale: sortByCreatedAt(
             inventory.resale.filter(
-              (p: Property) => !p.isApproved && !p.isRejected
+              (p: Property) => !isPropertyApproved(p) && !isPropertyRejected(p)
             )
           ),
           rental: sortByCreatedAt(
             inventory.rental.filter(
-              (p: Property) => !p.isApproved && !p.isRejected
+              (p: Property) => !isPropertyApproved(p) && !isPropertyRejected(p)
             )
           ),
           newProperties: sortNewPropertiesByCreatedAt(
@@ -669,10 +689,10 @@ const Admin = () => {
         },
         approved: {
           resale: sortByCreatedAt(
-            inventory.resale.filter((p: Property) => p.isApproved)
+            inventory.resale.filter((p: Property) => isPropertyApproved(p))
           ),
           rental: sortByCreatedAt(
-            inventory.rental.filter((p: Property) => p.isApproved)
+            inventory.rental.filter((p: Property) => isPropertyApproved(p))
           ),
           newProperties: sortNewPropertiesByCreatedAt(
             inventory.newProperties?.filter((p: any) => p.isApproved || p.approvalWorkflow?.status === "approved") || []
@@ -680,14 +700,10 @@ const Admin = () => {
         },
         rejected: {
           resale: sortByCreatedAt(
-            inventory.resale.filter(
-              (p: Property) => p.isRejected || p.rejectedAt
-            )
+            inventory.resale.filter((p: Property) => isPropertyRejected(p))
           ),
           rental: sortByCreatedAt(
-            inventory.rental.filter(
-              (p: Property) => p.isRejected || p.rejectedAt
-            )
+            inventory.rental.filter((p: Property) => isPropertyRejected(p))
           ),
           newProperties: sortNewPropertiesByCreatedAt(
             inventory.newProperties?.filter((p: any) => p.isRejected) || []
@@ -701,16 +717,16 @@ const Admin = () => {
           resale: sortByCreatedAt(
             inventory.resale.filter(
               (p: Property) =>
-                !p.isApproved &&
-                !p.isRejected &&
+                !isPropertyApproved(p) &&
+                !isPropertyRejected(p) &&
                 (p.submitterRole === "executive" || p.userId === user?.id)
             )
           ),
           rental: sortByCreatedAt(
             inventory.rental.filter(
               (p: Property) =>
-                !p.isApproved &&
-                !p.isRejected &&
+                !isPropertyApproved(p) &&
+                !isPropertyRejected(p) &&
                 (p.submitterRole === "executive" || p.userId === user?.id)
             )
           ),
@@ -728,14 +744,14 @@ const Admin = () => {
           resale: sortByCreatedAt(
             inventory.resale.filter(
               (p: Property) =>
-                p.isApproved &&
+                isPropertyApproved(p) &&
                 (p.submitterRole === "executive" || p.userId === user?.id)
             )
           ),
           rental: sortByCreatedAt(
             inventory.rental.filter(
               (p: Property) =>
-                p.isApproved &&
+                isPropertyApproved(p) &&
                 (p.submitterRole === "executive" || p.userId === user?.id)
             )
           ),
@@ -751,14 +767,14 @@ const Admin = () => {
           resale: sortByCreatedAt(
             inventory.resale.filter(
               (p: Property) =>
-                (p.isRejected || p.rejectedAt) &&
+                isPropertyRejected(p) &&
                 (p.submitterRole === "executive" || p.userId === user?.id)
             )
           ),
           rental: sortByCreatedAt(
             inventory.rental.filter(
               (p: Property) =>
-                (p.isRejected || p.rejectedAt) &&
+                isPropertyRejected(p) &&
                 (p.submitterRole === "executive" || p.userId === user?.id)
             )
           ),
@@ -778,13 +794,17 @@ const Admin = () => {
           resale: sortByCreatedAt(
             inventory.resale.filter(
               (p: Property) =>
-                !p.isApproved && !p.isRejected && p.userId === user?.id
+                !isPropertyApproved(p) &&
+                !isPropertyRejected(p) &&
+                p.userId === user?.id
             )
           ),
           rental: sortByCreatedAt(
             inventory.rental.filter(
               (p: Property) =>
-                !p.isApproved && !p.isRejected && p.userId === user?.id
+                !isPropertyApproved(p) &&
+                !isPropertyRejected(p) &&
+                p.userId === user?.id
             )
           ),
           newProperties: sortNewPropertiesByCreatedAt(
@@ -797,12 +817,12 @@ const Admin = () => {
         approved: {
           resale: sortByCreatedAt(
             inventory.resale.filter(
-              (p: Property) => p.isApproved && p.userId === user?.id
+              (p: Property) => isPropertyApproved(p) && p.userId === user?.id
             )
           ),
           rental: sortByCreatedAt(
             inventory.rental.filter(
-              (p: Property) => p.isApproved && p.userId === user?.id
+              (p: Property) => isPropertyApproved(p) && p.userId === user?.id
             )
           ),
           newProperties: sortNewPropertiesByCreatedAt(
@@ -815,13 +835,13 @@ const Admin = () => {
           resale: sortByCreatedAt(
             inventory.resale.filter(
               (p: Property) =>
-                (p.isRejected || p.rejectedAt) && p.userId === user?.id
+                isPropertyRejected(p) && p.userId === user?.id
             )
           ),
           rental: sortByCreatedAt(
             inventory.rental.filter(
               (p: Property) =>
-                (p.isRejected || p.rejectedAt) && p.userId === user?.id
+                isPropertyRejected(p) && p.userId === user?.id
             )
           ),
           newProperties: sortNewPropertiesByCreatedAt(

@@ -168,10 +168,30 @@ export const updatePackage = async (
   try {
     const docRef = doc(db, PRICING_DOC_PATH);
     await updateDoc(docRef, {
-      [`packages.${category}.${packageId}`]: packageData,
+      [`packages.${category}.${packageId}`]: {
+        ...packageData,
+        isFreemium: packageData.isFreemium || false,
+        freemiumDuration: packageData.freemiumDuration || null,
+      },
     });
   } catch (error) {
     console.error("Error updating package:", error);
+    throw error;
+  }
+};
+
+// Delete package
+export const deletePackage = async (
+  category: "resaleRental" | "newProperty",
+  packageId: string
+): Promise<void> => {
+  try {
+    const docRef = doc(db, PRICING_DOC_PATH);
+    await updateDoc(docRef, {
+      [`packages.${category}.${packageId}`]: deleteField(),
+    });
+  } catch (error) {
+    console.error("Error deleting package:", error);
     throw error;
   }
 };

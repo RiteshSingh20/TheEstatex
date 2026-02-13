@@ -2,6 +2,7 @@ import Tabs from "../../../ui/Tabs";
 import Input from "../../../ui/Input";
 import Button from "../../../ui/Button";
 import { format } from "date-fns";
+import PropertyNameWithKey from "../../../PropertyNameWithKey";
 
 type Property = any;
 
@@ -128,7 +129,10 @@ const RejectedSection = ({
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
                         <h4 className="font-semibold text-neutral-900 text-lg truncate">
-                          {property.society}
+                          <PropertyNameWithKey
+                            name={property.society || "-"}
+                            keyAvailable={property.keyAvailable}
+                          />
                         </h4>
                         <p className="text-neutral-600 text-sm">
                           {property.roadLocation}
@@ -456,7 +460,10 @@ const RejectedSection = ({
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
                         <h4 className="font-semibold text-neutral-900 text-lg truncate">
-                          {property.society}
+                          <PropertyNameWithKey
+                            name={property.society || "-"}
+                            keyAvailable={property.keyAvailable}
+                          />
                         </h4>
                         <p className="text-neutral-600 text-sm">
                           {property.roadLocation}

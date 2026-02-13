@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Shield } from "lucide-react";
-import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { doc, onSnapshot, Timestamp, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { useAuth } from "../utils/authContext";
 import Button from "../components/ui/Button";
@@ -22,6 +22,8 @@ interface SpecialPackage {
   actual: number;
   offer: number;
   createdAt?: string;
+  isFreemium?: boolean;
+  freemiumDuration?: number;
 }
 
 interface Assignment {
@@ -40,6 +42,7 @@ const SpecialPackageCheckout = () => {
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState<1 | 3 | 6 | 12>(1);
 
   const packageId = location.state?.packageId as string | undefined;
 
@@ -77,6 +80,8 @@ const SpecialPackageCheckout = () => {
           actual: Number(raw.actual || 0),
           offer: Number(raw.offer || 0),
           createdAt: raw.createdAt,
+          isFreemium: raw.isFreemium || false,
+          freemiumDuration: raw.freemiumDuration || 1,
         };
       } else if (pricingPackages.newProperty?.[packageId]) {
         const raw = pricingPackages.newProperty[packageId];
@@ -88,6 +93,8 @@ const SpecialPackageCheckout = () => {
           actual: Number(raw.actual || 0),
           offer: Number(raw.offer || 0),
           createdAt: raw.createdAt,
+          isFreemium: raw.isFreemium || false,
+          freemiumDuration: raw.freemiumDuration || 1,
         };
       }
 
@@ -117,7 +124,7 @@ const SpecialPackageCheckout = () => {
     return () => unsubscribe();
   }, [packageId, user?.id]);
 
-  const durationMonths = assignment?.duration ?? 1;
+  const durationMonths = pkg?.isFreemium ? (pkg?.freemiumDuration ?? 1) : (assignment?.duration ?? selectedDuration);
   const actualTotal = pkg ? pkg.actual * durationMonths : 0;
   const offerTotal = pkg ? pkg.offer * durationMonths : 0;
 
@@ -168,6 +175,8 @@ const SpecialPackageCheckout = () => {
         packageId: pkg.id,
         duration: durationMonths,
         subscriptions: [],
+        isFreemium: pkg.isFreemium || false,
+        freemiumDuration: pkg.freemiumDuration || null,
       };
 
       const subscriptionId = await createSubscription(user.id, subscription);
@@ -176,8 +185,29 @@ const SpecialPackageCheckout = () => {
         amount: offerTotal,
         currency: "INR",
         subscriptionId,
-        paymentMethod: "razorpay",
+        paymentMethod: pkg.isFreemium ? "freemium" : "razorpay",
       });
+
+      if (pkg.isFreemium) {
+        await completeSubscriptionPayment(
+          user.id,
+          subscriptionId,
+          paymentId,
+          "freemium"
+        );
+        // Mark freemium package as used in user document
+        const userRef = doc(db, "users", user.id);
+        const userSnap = await getDoc(userRef);
+        const usedFreemiumPackages = userSnap.data()?.usedFreemiumPackages || [];
+        if (!usedFreemiumPackages.includes(pkg.id)) {
+          usedFreemiumPackages.push(pkg.id);
+          await updateDoc(userRef, { usedFreemiumPackages });
+        }
+        await reloadUser();
+        toast.success("🎉 Congratulations! Free package activated.");
+        navigate("/dashboard");
+        return;
+      }
 
       const loadScript = () =>
         new Promise((resolve) => {
@@ -261,10 +291,6 @@ const SpecialPackageCheckout = () => {
     );
   }
 
-  if (!assignment) {
-    // Unassigned package: allow user to choose duration before checkout
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-5xl mx-auto">
@@ -290,19 +316,39 @@ const SpecialPackageCheckout = () => {
               </div>
 
               <div className="px-6 py-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
+                {assignment || pkg?.isFreemium ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        Selected Months
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {pkg?.isFreemium ? "Admin assigned duration" : "Assigned duration"}
+                      </div>
+                    </div>
                     <div className="text-sm font-semibold text-gray-900">
-                      Selected Months
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Assigned duration
+                      {durationMonths} Month{durationMonths > 1 ? "s" : ""}
                     </div>
                   </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {durationMonths} Month{durationMonths > 1 ? "s" : ""}
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                      Select Duration:
+                    </label>
+                    <select
+                      value={selectedDuration}
+                      onChange={(e) =>
+                        setSelectedDuration(parseInt(e.target.value) as 1 | 3 | 6 | 12)
+                      }
+                      className="px-2 py-1 border border-gray-300 rounded text-xs bg-white text-gray-900 cursor-pointer focus:outline-none focus:border-[#193867]"
+                    >
+                      <option value={1}>1 Month</option>
+                      <option value={3}>3 Months</option>
+                      <option value={6}>6 Months</option>
+                      <option value={12}>12 Months</option>
+                    </select>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-center justify-between">
                   <div>
@@ -342,22 +388,31 @@ const SpecialPackageCheckout = () => {
               Order Summary
             </h3>
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Actual Price</span>
-                <span className="font-semibold text-gray-900">
-                  ₹{actualTotal.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Offer Price</span>
-                <span className="font-semibold text-gray-900">
-                  ₹{offerTotal.toLocaleString()}
-                </span>
-              </div>
+              {pkg?.isFreemium ? (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Price</span>
+                  <span className="font-semibold text-green-600">FREE</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Actual Price</span>
+                    <span className="font-semibold text-gray-900">
+                      ₹{actualTotal.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Offer Price</span>
+                    <span className="font-semibold text-gray-900">
+                      ₹{offerTotal.toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="border-t border-gray-100 pt-3 flex justify-between text-base font-semibold">
                 <span>Total</span>
-                <span className="text-[#193867]">
-                  ₹{offerTotal.toLocaleString()}
+                <span className={pkg?.isFreemium ? "text-green-600" : "text-[#193867]"}>
+                  {pkg?.isFreemium ? "FREE" : `₹${offerTotal.toLocaleString()}`}
                 </span>
               </div>
             </div>
@@ -365,9 +420,17 @@ const SpecialPackageCheckout = () => {
             <Button
               onClick={handleCompleteOrder}
               disabled={isProcessing}
-              className="w-full mt-5 bg-[#B85817] hover:bg-[#9b4a12] text-white py-3 text-base font-semibold rounded-lg transition-colors"
+              className={`w-full mt-5 text-white py-3 text-base font-semibold rounded-lg transition-colors ${
+                pkg?.isFreemium
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-[#B85817] hover:bg-[#9b4a12]"
+              }`}
             >
-              {isProcessing ? "Processing..." : "Complete Order"}
+              {isProcessing
+                ? "Processing..."
+                : pkg?.isFreemium
+                ? "Activate Free Package"
+                : "Complete Order"}
             </Button>
 
             <div className="mt-4 flex items-center justify-center text-xs text-gray-500">

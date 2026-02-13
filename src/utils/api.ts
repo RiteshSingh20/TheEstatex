@@ -32,6 +32,7 @@ export interface ResaleFormData {
   ownerName: string;
   ownerNumber: string;
   connectedPerson?: string;
+  keyAvailable?: string;
   imageUrl?: string;
   videoUrl?: string;
   masterBed?: boolean;
@@ -68,6 +69,7 @@ export interface RentalFormData {
   ownerName: string;
   ownerNumber: string;
   connectedPerson?: string;
+  keyAvailable?: string;
   imageUrl?: string;
   videoUrl?: string;
 

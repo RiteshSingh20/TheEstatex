@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Building, Check, Clock, Zap, ChevronLeft, Shield } from "lucide-react";
+import { Building, Check, Clock, Zap, ChevronLeft, Shield, Package } from "lucide-react";
+import { collection, getDocs, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { db } from "../utils/firebase";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import { useAuth } from "../utils/authContext";
@@ -14,8 +16,6 @@ import { Timestamp } from "firebase/firestore";
 import { Subscription as SubscriptionType } from "../types";
 import { motion } from "framer-motion";
 import { stations, getMergedStations } from "../utils/stations";
-import { onSnapshot, doc, collection, getDocs, updateDoc } from "firebase/firestore";
-import { db } from "../utils/firebase";
 
 // Razorpay type definition
 interface RazorpayOptions {
@@ -94,6 +94,7 @@ const Subscription = () => {
     6: number;
     12: number;
   }>({ 3: 10, 6: 20, 12: 40 });
+  const [customPackages, setCustomPackages] = useState<any[]>([]);
 
   // Memoize station list to prevent unnecessary re-renders
   const memoizedNDStationsList = useMemo(
@@ -142,6 +143,21 @@ const Subscription = () => {
 
   const normalizeStationName = (name: string) => {
     return name.replace(/\s+(East|West)$/i, "").trim();
+  };
+
+  const fetchCustomPackages = async () => {
+    try {
+      const querySnapshot = await getDocs(
+        collection(db, "settings", "customPackages", "packages")
+      );
+      const packages: any[] = [];
+      querySnapshot.forEach((doc) => {
+        packages.push({ id: doc.id, ...doc.data() });
+      });
+      setCustomPackages(packages);
+    } catch (error) {
+      console.error("Error fetching custom packages:", error);
+    }
   };
 
   const fetchAvailableStations = async () => {
@@ -320,6 +336,7 @@ const Subscription = () => {
     });
 
     fetchAvailableStations();
+    fetchCustomPackages();
     return () => {
       unsubscribe();
       unsubscribeAdditionalOff();
@@ -1156,24 +1173,136 @@ const Subscription = () => {
         )}
 
         {!selectedPlan ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-          >
-            <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
-              {renderPlanCard("RR")}
-            </div>
-            <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
-              {renderPlanCard("ND")}
-            </div>
-            <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
-              {renderPlanCard("SP")}
-            </div>
-            <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
-              {renderPlanCard("Enterprise")}
-            </div>
-          </motion.div>
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+            >
+              <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
+                {renderPlanCard("RR")}
+              </div>
+              <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
+                {renderPlanCard("ND")}
+              </div>
+              <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
+                {renderPlanCard("SP")}
+              </div>
+              <div className={isFreeTrialActive() ? 'opacity-50 pointer-events-none' : ''}>
+                {renderPlanCard("Enterprise")}
+              </div>
+            </motion.div>
+
+            {customPackages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8"
+              >
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                      <Package className="h-6 w-6 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Custom Packages
+                    </h2>
+                  </div>
+                  <p className="text-gray-600">
+                    Tailored packages created specifically for your needs
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {customPackages.map((pkg) => (
+                    <motion.div
+                      key={pkg.id}
+                      whileHover={{ scale: 1.02 }}
+                      className="h-full"
+                    >
+                      <Card className="h-full border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 hover:shadow-lg transition-all">
+                        <div className="flex flex-col h-full p-6">
+                          <div className="mb-4">
+                            <div className="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold mb-2">
+                              Custom Package
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">
+                              {pkg.name}
+                            </h3>
+                            <p className="text-gray-600 text-sm">{pkg.description}</p>
+                          </div>
+
+                          <div className="bg-white rounded-lg p-4 mb-4">
+                            <div className="space-y-2">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Actual Price:</span>
+                                <span className="font-semibold line-through text-gray-500">
+                                  ₹{pkg.actualPrice.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Offer Price:</span>
+                                <span className="font-bold text-green-600 text-lg">
+                                  ₹{pkg.offerPrice.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Discount:</span>
+                                <span className="font-semibold text-green-600">
+                                  {Math.round(
+                                    ((pkg.actualPrice - pkg.offerPrice) /
+                                      pkg.actualPrice) *
+                                      100
+                                  )}
+                                  %
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                              Locations:
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {pkg.locations.slice(0, 3).map((loc: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs"
+                                >
+                                  {loc}
+                                </span>
+                              ))}
+                              {pkg.locations.length > 3 && (
+                                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                                  +{pkg.locations.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-auto">
+                            <Button
+                              variant="primary"
+                              fullWidth
+                              onClick={() => {
+                                navigate("/subscription/custom-checkout", {
+                                  state: { customPackage: pkg },
+                                });
+                              }}
+                              className="bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                              Select Package
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </>
         ) : (
           <div className="mb-8">
             <div className="flex items-center mb-6">

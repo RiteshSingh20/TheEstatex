@@ -1,0 +1,92 @@
+INSTRUCTIONS TO ADD FREEMIUM CHECKBOX TO PACKAGESTABLE.TSX:
+
+1. Find line 36 in PackagesTable.tsx where editForm state is defined:
+   const [editForm, setEditForm] = useState({
+     name: "",
+     offer: "",
+     selectedStations: [] as string[]
+   });
+
+2. Change it to:
+   const [editForm, setEditForm] = useState({
+     name: "",
+     offer: "",
+     selectedStations: [] as string[],
+     isFreemium: false,
+     freemiumDuration: 1 as 1 | 3 | 6 | 12
+   });
+
+3. Find the Category select in Edit Package Modal (around line 380):
+   {!editingPackage.id && (
+     <div>
+       <label className="block text-sm font-medium mb-1">Category</label>
+       <select
+         value={editingPackage.category}
+         onChange={(e) => setEditingPackage({...editingPackage, category: e.target.value as 'resaleRental' | 'newProperty'})}
+         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+       >
+         <option value="">Select Category</option>
+         <option value="resaleRental">Resale & Rental</option>
+         <option value="newProperty">New Property</option>
+       </select>
+     </div>
+   )}
+
+4. RIGHT AFTER the closing </div> of the category select, ADD THIS:
+
+   {!editingPackage.id && (
+     <div className="flex items-center gap-3 bg-blue-50 p-3 rounded-lg border-2 border-blue-300">
+       <input
+         type="checkbox"
+         id="freemium-pkg"
+         checked={editingPackage.isFreemium || false}
+         onChange={(e) => setEditingPackage({...editingPackage, isFreemium: e.target.checked})}
+         className="w-5 h-5 border-gray-300 rounded cursor-pointer accent-blue-600"
+       />
+       <label htmlFor="freemium-pkg" className="text-sm font-semibold cursor-pointer text-gray-900">
+         Freemium Package
+       </label>
+     </div>
+   )}
+
+   {!editingPackage.id && editingPackage.isFreemium && (
+     <div className="bg-green-50 p-3 rounded-lg border-2 border-green-300">
+       <label className="block text-sm font-semibold mb-2 text-gray-900">
+         Duration (Months)
+       </label>
+       <select
+         value={editingPackage.freemiumDuration || 1}
+         onChange={(e) => setEditingPackage({...editingPackage, freemiumDuration: parseInt(e.target.value) as 1 | 3 | 6 | 12})}
+         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+       >
+         <option value={1}>1 Month</option>
+         <option value={3}>3 Months</option>
+         <option value={6}>6 Months</option>
+         <option value={12}>12 Months</option>
+       </select>
+     </div>
+   )}
+
+5. Update handleUpdatePackage function to include freemium data:
+   Change the onUpdatePackage call from:
+   onUpdatePackage(packageId, editingPackage.category, {
+     name: editForm.name,
+     actual: totalActual,
+     offer: Number(editForm.offer),
+     stations: editForm.selectedStations,
+     createdAt: new Date().toISOString()
+   });
+
+   To:
+   const packagePayload: any = {
+     name: editForm.name,
+     actual: totalActual,
+     offer: editingPackage.isFreemium ? 0 : Number(editForm.offer),
+     stations: editForm.selectedStations,
+     createdAt: new Date().toISOString()
+   };
+   if (editingPackage.isFreemium) {
+     packagePayload.isFreemium = true;
+     packagePayload.freemiumDuration = editingPackage.freemiumDuration;
+   }
+   onUpdatePackage(packageId, editingPackage.category, packagePayload);

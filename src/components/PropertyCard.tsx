@@ -1,6 +1,7 @@
 import React from 'react';
 import { SecureImage } from './SecureImage';
 import { SecureMediaGallery } from './SecureMediaGallery';
+import GoldenKeyIcon from './GoldenKeyIcon';
 
 interface PropertyMedia {
   id: string;
@@ -18,6 +19,7 @@ interface PropertyCardProps {
   location: string;
   mainImage: string;
   gallery?: PropertyMedia[];
+  keyAvailable?: boolean | string;
   className?: string;
 }
 
@@ -29,11 +31,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   location,
   mainImage,
   gallery = [],
+  keyAvailable = false,
   className = ''
 }) => {
   const handleMediaError = (error: string) => {
     console.error(`Media error for property ${id}:`, error);
   };
+
+  const isKeyAvailable = typeof keyAvailable === 'string' 
+    ? keyAvailable.toLowerCase() === 'yes' 
+    : keyAvailable;
 
   return (
     <div className={`bg-white rounded-lg shadow-md overflow-hidden ${className}`}>
@@ -54,7 +61,13 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+          {title}
+          {typeof keyAvailable === 'string' 
+            ? keyAvailable.toLowerCase() === 'yes' && <GoldenKeyIcon isKeyAvailable={true} size="sm" />
+            : keyAvailable && <GoldenKeyIcon isKeyAvailable={true} size="sm" />
+          }
+        </h3>
         <p className="text-gray-600 text-sm mb-2">{location}</p>
         <p className="text-gray-700 text-sm mb-4 line-clamp-2">{description}</p>
 

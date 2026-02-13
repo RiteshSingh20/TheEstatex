@@ -29,7 +29,6 @@ export function currentStepEditTab0(
     searchLandmarks: (term: string, locationFilter?: string, subLocationFilter?: string) => void;
   }
 ): React.ReactNode {
-  // Ensure cities is always an array
   const safeCities = Array.isArray(cities) ? cities : [];
   
   const {
@@ -43,6 +42,7 @@ export function currentStepEditTab0(
     searchRoads = () => {},
     searchLandmarks = () => {},
   } = locationData || {};
+
   return (
     <div className="space-y-4">
       {/* Project Basic Information Section */}
@@ -365,22 +365,37 @@ export function currentStepEditTab0(
                 required
               />
             </div>
-            <div>
+            <div className="flex gap-1 items-center w-full min-w-0">
               <input
                 type="text"
                 value={String(formData.landParcel || "")}
                 onChange={(e) => {
                   const filtered = e.target.value
                     .replace(/[^0-9.]/g, "")
-                    .replace(/(\..*)\./g, "$1");
+                    .replace(/(\..*)\./, "$1");
                   setFormData((prev) => ({
                     ...prev,
                     landParcel: filtered,
                   }));
                 }}
-                className="w-full border border-neutral-300 rounded px-2 py-1 text-sm"
+                className="w-20 border border-neutral-300 rounded px-2 py-1 text-sm"
                 required
               />
+              <select
+                value={String(formData.landParcelUnit || "sqft")}
+                onChange={(e) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    landParcelUnit: e.target.value,
+                  }));
+                }}
+                className="border border-neutral-300 rounded px-2 py-1 text-sm w-24"
+              >
+                <option value="sqft">sq.ft</option>
+                <option value="sqm">sq.m</option>
+                <option value="acre">acre</option>
+                <option value="guntha">guntha</option>
+              </select>
             </div>
             <div>
               <input
@@ -430,6 +445,7 @@ export function currentStepEditTab0(
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

@@ -224,7 +224,7 @@ const Navbar: React.FC = () => {
                             <div className="max-h-72 overflow-y-auto">
                               {notificationTotal === 0 ? (
                                 <div className="px-4 py-6 text-sm text-neutral-500 text-center">
-                                  No expiring subscriptions right now.
+                                  No Notification For You.
                                 </div>
                               ) : (
                                 expiryNotifications.map((item: any) => (

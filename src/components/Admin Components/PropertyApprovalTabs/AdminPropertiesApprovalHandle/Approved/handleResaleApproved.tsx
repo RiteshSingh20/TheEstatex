@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { Eye } from "lucide-react";
 import Button from "../../../../ui/Button";
 import { Property } from "../../../helperFunctions";
+import PropertyNameWithKey from "../../../../PropertyNameWithKey";
 
 export function handleResaleApproved(
   approvedSearchTerms: { resale: string; rental: string; newProperty: string },
@@ -245,7 +246,10 @@ export function handleResaleApproved(
                       <td className="px-3 py-3 border-r border-neutral-100">
                         <div className="max-w-xs">
                           <div className="text-sm font-medium text-neutral-900 truncate">
-                            {property.society}
+                            <PropertyNameWithKey
+                              name={property.society || "-"}
+                              keyAvailable={property.keyAvailable}
+                            />
                           </div>
                           <div className="text-xs text-neutral-500">
                             {property.roadLocation}

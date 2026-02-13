@@ -15,6 +15,8 @@ interface SpecialPackage {
   actual: number;
   offer: number;
   createdAt?: string;
+  isFreemium?: boolean;
+  freemiumDuration?: number;
 }
 
 const getCategoryLabel = (category: PackageCategory) =>
@@ -48,6 +50,8 @@ const SpecialPackages = () => {
   const [showPackageDetailsFor, setShowPackageDetailsFor] = useState<
     string | null
   >(null);
+  const [usedFreemiumPackages, setUsedFreemiumPackages] = useState<Set<string>>(() => new Set());
+  const [expiringPackages, setExpiringPackages] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     const docRef = doc(db, "settings", "pricing");
@@ -110,6 +114,8 @@ const SpecialPackages = () => {
               actual: Number(pkg.actual || 0),
               offer: Number(pkg.offer || 0),
               createdAt: pkg.createdAt,
+              isFreemium: pkg.isFreemium || false,
+              freemiumDuration: pkg.freemiumDuration || 1,
             });
           }
         );
@@ -126,6 +132,8 @@ const SpecialPackages = () => {
               actual: Number(pkg.actual || 0),
               offer: Number(pkg.offer || 0),
               createdAt: pkg.createdAt,
+              isFreemium: pkg.isFreemium || false,
+              freemiumDuration: pkg.freemiumDuration || 1,
             });
           }
         );
@@ -150,6 +158,59 @@ const SpecialPackages = () => {
 
     return () => unsubscribe();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const userRef = doc(db, "users", user.id);
+    const unsubscribe = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        const usedPackages = snap.data()?.usedFreemiumPackages || [];
+        setUsedFreemiumPackages(new Set(usedPackages));
+      }
+    });
+    return () => unsubscribe();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const pricingRef = doc(db, "settings", "pricing");
+    const unsubscribe = onSnapshot(pricingRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const subscriptions = data.userSubscriptions?.[user.id] || {};
+      const expiring = new Map<string, string>();
+      const now = Date.now();
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+      Object.values(subscriptions).forEach((sub: any) => {
+        if (sub.isFreemium && sub.endDate) {
+          const endTime = new Date(sub.endDate).getTime();
+          if (!Number.isNaN(endTime) && endTime - now < sevenDaysMs && endTime >= now) {
+            expiring.set(sub.packageId, new Date(sub.endDate).toLocaleDateString());
+          }
+        }
+      });
+
+      setExpiringPackages(expiring);
+    });
+    return () => unsubscribe();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    expiringPackages.forEach((expireDate, packageId) => {
+      const notification = new Notification("Plan Expiring Soon", {
+        body: `Your plan is going to expire on ${expireDate}`,
+        icon: "/logo.png",
+      });
+      setTimeout(() => notification.close(), 5000);
+    });
+  }, [expiringPackages]);
 
   const visiblePackages = useMemo(() => {
     return packages.filter(
@@ -233,16 +294,24 @@ const SpecialPackages = () => {
               {visiblePackages.map((pkg) => {
                 const isActive = pkg.id === selectedPackageId;
                 const isAssigned = assignedPackageIds.has(pkg.id);
+                const isUsed = usedFreemiumPackages.has(pkg.id);
+                const isDisabled = pkg.isFreemium && isUsed;
+                
                 return (
                   <button
                     key={pkg.id}
                     type="button"
                     onClick={() => {
-                      setSelectedPackageId(pkg.id);
-                      setShowPackageDetailsFor(pkg.id);
+                      if (!isDisabled) {
+                        setSelectedPackageId(pkg.id);
+                        setShowPackageDetailsFor(pkg.id);
+                      }
                     }}
+                    disabled={isDisabled}
                     className={`relative text-left rounded-xl border p-4 transition-all shadow-sm ${
-                      isAssigned
+                      isDisabled
+                        ? "border-gray-300 bg-gray-100 opacity-60 cursor-not-allowed"
+                        : isAssigned
                         ? isActive
                           ? "border-emerald-400 bg-emerald-50"
                           : "border-emerald-200 bg-emerald-50/70 hover:border-emerald-400"
@@ -259,7 +328,11 @@ const SpecialPackages = () => {
                               type="radio"
                               name="selected-package"
                               checked={isActive}
-                              onChange={() => setSelectedPackageId(pkg.id)}
+                              onChange={() => {
+                                if (!isDisabled) {
+                                  setSelectedPackageId(pkg.id);
+                                }
+                              }}
                               onClick={(event) => event.stopPropagation()}
                               className="h-4 w-4 text-[#193867] focus:ring-[#193867]"
                             />
@@ -270,6 +343,11 @@ const SpecialPackages = () => {
                           {isAssigned && (
                             <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                               Only for you
+                            </span>
+                          )}
+                          {pkg.isFreemium && isUsed && (
+                            <span className="rounded-full bg-gray-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                              Already Used
                             </span>
                           )}
                         </div>
@@ -291,11 +369,14 @@ const SpecialPackages = () => {
                     <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
                       <span>{pkg.stations.length} stations</span>
                       <span className="text-xs font-semibold text-[#193867]">
-                        ₹{pkg.offer.toLocaleString()}
+                        {pkg.offer === 0 ? "FREE" : `₹${pkg.offer.toLocaleString()}`}
                       </span>
                     </div>
-
-
+                    {expiringPackages.has(pkg.id) && (
+                      <div className="mt-2 text-xs text-orange-600 font-medium">
+                        Your plan is going to expire soon on {expiringPackages.get(pkg.id)}
+                      </div>
+                    )}
                   </button>
                 );
               })}

@@ -28,6 +28,7 @@ interface ResaleProperty {
   ownerName?: string;
   userFullName?: string;
   ownerNumber?: string;
+  keyAvailable?: boolean | string;
   userMarketingPhoneNumber?: string;
   contactNumber?: string;
   type?: string;
@@ -69,12 +70,16 @@ interface RentalProperty {
   rent?: number;
   deposit?: number;
   connectedPerson?: string;
+  keyAvailable?: boolean | string;
   contactName?: string;
   contactNumber?: string;
   contact?: string;
   directBroker?: string;
   listingState?: string;
   userListingState?: string;
+  status?: string;
+  approvalStatus?: string;
+  approvalWorkflow?: { status?: string };
 }
 
 export const usePropertyData = () => {
@@ -137,6 +142,12 @@ export const usePropertyData = () => {
 
     const fetchInventoryData = async () => {
       try {
+        const isApprovedProperty = (property: any) =>
+          property?.isApproved === true ||
+          property?.status === "approved" ||
+          property?.approvalStatus === "approved" ||
+          property?.approvalWorkflow?.status === "approved";
+
         const allUsers = await getUsers();
 
         const propertyPromises = allUsers.map(async (u) => {
@@ -153,8 +164,8 @@ export const usePropertyData = () => {
         const allRental: RentalProperty[] = [];
 
         results.forEach(({ resale, rental }) => {
-          allResale.push(...resale.filter((p) => p.isApproved));
-          allRental.push(...rental.filter((p) => p.isApproved));
+          allResale.push(...resale.filter((p) => isApprovedProperty(p)));
+          allRental.push(...rental.filter((p) => isApprovedProperty(p)));
         });
 
         if (isMounted) {

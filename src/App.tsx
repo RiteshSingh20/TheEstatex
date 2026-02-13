@@ -65,7 +65,11 @@ const AdminRoute = ({ children }: { children: JSX.Element }) => {
   }
 
   // Allow admin, manager, and executive roles to access admin panel
-  if (!["admin", "manager", "executive"].includes(user.role)) {
+  if (![
+    "admin",
+    "manager",
+    "executive"
+  ].includes(user.role)) {
     return <Navigate to="/dashboard" state={{ from: location }} replace />;
   }
 
@@ -193,6 +197,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="admin"
             element={
