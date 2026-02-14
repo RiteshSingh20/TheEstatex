@@ -32,11 +32,13 @@ interface ResaleProperty {
   directBroker?: string;
   totalFloors?: string | number;
   keyAvailable?: boolean | string;
+  commercialType?: string;
 }
 
 interface ResaleRentalTableProps {
   filteredProperties: ResaleProperty[];
   propertyCategory: string;
+  selectedCategory: string;
   currentPage: number;
   itemsPerPage: number;
   user: any;
@@ -50,6 +52,7 @@ interface ResaleRentalTableProps {
 const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
   filteredProperties,
   propertyCategory,
+  selectedCategory,
   currentPage,
   itemsPerPage,
   user,
@@ -59,6 +62,53 @@ const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
   handlePropertyClick,
   setProcessedCount,
 }) => {
+  const isCommercialCategory = selectedCategory === "commercial";
+  const getCommercialHeaderLabel = () => {
+    const selectedType = appliedFilters?.bhkType;
+    if (selectedType === "Shop") return "Shop No";
+    if (selectedType === "Office") return "Office No";
+    if (selectedType === "Big Commercials") return "Commercial Type";
+    if (selectedType === "Industrial") return "Industrial Type";
+    return "Unit / Type";
+  };
+
+  const getCommercialValue = (property: ResaleProperty) => {
+    const normalizedType = String(
+      appliedFilters?.bhkType || property.type || ""
+    ).trim();
+
+    if (normalizedType === "Big Commercials" || normalizedType === "Industrial") {
+      return property.commercialType || "N/A";
+    }
+
+    const unitNumber =
+      property.flatNo ??
+      (property as any).shopNo ??
+      (property as any).officeNo ??
+      (property as any).unitNo;
+
+    return unitNumber || "N/A";
+  };
+  const getContactValue = (property: ResaleProperty) => {
+    if (property.userId === user?.id) {
+      return (
+        property.ownerNumber ||
+        property.contactNumber ||
+        property.userMarketingPhoneNumber ||
+        "N/A"
+      );
+    }
+    return (
+      property.userMarketingPhoneNumber ||
+      property.contactNumber ||
+      property.ownerNumber ||
+      "N/A"
+    );
+  };
+  const showCommercialFloorColumn =
+    isCommercialCategory &&
+    (appliedFilters?.bhkType === "Shop" || appliedFilters?.bhkType === "Office");
+
   // Update processed count when properties change
   React.useEffect(() => {
     if (setProcessedCount) {
@@ -107,15 +157,24 @@ const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
                   <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
                     Expected Price
                   </th>
+                  {showCommercialFloorColumn && (
+                    <th className="w-24 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
+                      Floor No
+                    </th>
+                  )}
                   <th className="w-28 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
-                    FLR No
+                    {isCommercialCategory ? getCommercialHeaderLabel() : "FLR No"}
                   </th>
-                  <th className="w-20 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
-                    FLAT No
-                  </th>
-                  <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
-                    Name
-                  </th>
+                  {!isCommercialCategory && (
+                    <>
+                      <th className="w-20 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
+                        FLAT No
+                      </th>
+                      <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
+                        Name
+                      </th>
+                    </>
+                  )}
                 </>
               )}
               {propertyCategory === "Rental" && (
@@ -135,12 +194,19 @@ const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
                   <th className="w-28 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
                     Deposit
                   </th>
+                  {showCommercialFloorColumn && (
+                    <th className="w-24 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
+                      Floor No
+                    </th>
+                  )}
                   <th className="w-20 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
-                    FLAT No
+                    {isCommercialCategory ? getCommercialHeaderLabel() : "FLAT No"}
                   </th>
-                  <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
-                    Name
-                  </th>
+                  {!isCommercialCategory && (
+                    <th className="w-32 px-3 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wide">
+                      Name
+                    </th>
+                  )}
                 </>
               )}
               <th className="w-28 px-3 py-3 text-center text-xs font-semibold text-blue-900 uppercase tracking-wide">
@@ -234,33 +300,42 @@ const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
                       <td className="px-3 py-3 text-xs text-neutral-900 font-semibold">
                         ₹{property.expectedPrice?.toLocaleString("en-IN")}
                       </td>
+                      {showCommercialFloorColumn && (
+                        <td className="px-3 py-3 text-xs text-neutral-900">
+                          {property.floorNo || "N/A"}
+                        </td>
+                      )}
                       <td className="px-3 py-3 text-xs text-neutral-900">
-                        {getFloorCategory(
-                          property.floorNo,
-                          property.totalFloors
-                        )}
+                        {isCommercialCategory
+                          ? getCommercialValue(property)
+                          : getFloorCategory(
+                              property.floorNo,
+                              property.totalFloors
+                            )}
                       </td>
-                      <td className="px-3 py-3 text-xs text-neutral-900">
-                        {property.userId !== user?.id
-                          ? "--"
-                          : property.flatNo || "N/A"}
-                      </td>
-                      <td
-                        className="px-3 py-3 text-xs text-neutral-900 truncate"
-                        title={
-                          property.userId === user?.id
-                            ? property.ownerName
-                            : property.userFullName
-                        }
-                      >
-                        {property.userId === user?.id
-                          ? property.ownerName
-                          : property.userFullName}
-                      </td>
+                      {!isCommercialCategory && (
+                        <>
+                          <td className="px-3 py-3 text-xs text-neutral-900">
+                            {property.userId !== user?.id
+                              ? "--"
+                              : property.flatNo || "N/A"}
+                          </td>
+                          <td
+                            className="px-3 py-3 text-xs text-neutral-900 truncate"
+                            title={
+                              property.userId === user?.id
+                                ? property.ownerName
+                                : property.userFullName
+                            }
+                          >
+                            {property.userId === user?.id
+                              ? property.ownerName
+                              : property.userFullName}
+                          </td>
+                        </>
+                      )}
                       <td className="px-3 py-3 text-xs text-neutral-900 text-center">
-                        {property.userId === user?.id
-                          ? property.ownerNumber
-                          : property.userMarketingPhoneNumber}
+                        {getContactValue(property)}
                       </td>
                     </>
                   )}
@@ -302,27 +377,34 @@ const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
                           ? property.deposit.toLocaleString("en-IN")
                           : "N/A"}
                       </td>
+                      {showCommercialFloorColumn && (
+                        <td className="px-3 py-3 text-xs text-neutral-900">
+                          {property.floorNo || "N/A"}
+                        </td>
+                      )}
                       <td className="px-3 py-3 text-xs text-neutral-900">
-                        {property.userId !== user?.id
+                        {isCommercialCategory
+                          ? getCommercialValue(property)
+                          : property.userId !== user?.id
                           ? "--"
                           : property.flatNo || "N/A"}
                       </td>
-                      <td
-                        className="px-3 py-3 text-xs text-neutral-900 truncate"
-                        title={
-                          property.userId === user?.id
+                      {!isCommercialCategory && (
+                        <td
+                          className="px-3 py-3 text-xs text-neutral-900 truncate"
+                          title={
+                            property.userId === user?.id
+                              ? property.ownerName
+                              : property.userFullName
+                          }
+                        >
+                          {property.userId === user?.id
                             ? property.ownerName
-                            : property.userFullName
-                        }
-                      >
-                        {property.userId === user?.id
-                          ? property.ownerName
-                          : property.userFullName}
-                      </td>
+                            : property.userFullName}
+                        </td>
+                      )}
                       <td className="px-3 py-3 text-xs text-neutral-900 text-center">
-                        {property.userId === user?.id
-                          ? property.ownerNumber
-                          : property.userMarketingPhoneNumber}
+                        {getContactValue(property)}
                       </td>
                     </>
                   )}
@@ -337,3 +419,4 @@ const ResaleRentalTable: React.FC<ResaleRentalTableProps> = ({
 };
 
 export default ResaleRentalTable;
+

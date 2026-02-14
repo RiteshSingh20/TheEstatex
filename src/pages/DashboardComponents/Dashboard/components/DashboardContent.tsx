@@ -126,8 +126,11 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
       ((propertyCategory === "New" && ndStationNames.length === 0) ||
         (propertyCategory !== "New" && rrStationNames.length === 0)));
 
-  // Coming Soon view for non-residential categories
-  if (selectedCategory !== "residential") {
+  // Coming Soon view for Plot, and for Commercial New
+  if (
+    selectedCategory === "plot" ||
+    (selectedCategory === "commercial" && propertyCategory === "New")
+  ) {
     return (
       <Card>
         <div className="text-center py-8">
@@ -305,6 +308,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         <ResaleRentalTable
           filteredProperties={filteredResaleRentalProperties}
           propertyCategory={propertyCategory}
+          selectedCategory={selectedCategory}
           currentPage={currentPage}
           itemsPerPage={ITEMS_PER_PAGE}
           user={user}

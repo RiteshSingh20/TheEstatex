@@ -73,7 +73,8 @@ export class PropertyBloc {
       // Prepare property data
       const propertyData = {
         ...event.payload.formData,
-        imageUrl: imageUrls.join(","),
+        imageUrl: imageUrls[0] || "",
+        imageUrls,
         videoUrl,
         propertyType: event.payload.propertyType,
         transactionType: event.payload.transactionType,

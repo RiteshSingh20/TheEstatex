@@ -83,6 +83,34 @@ const Dashboard = () => {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [locationSearchTerm, setLocationSearchTerm] = useState("");
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(-1);
+  const selectedPropertyType =
+    selectedCategory === "commercial"
+      ? "Commercial"
+      : selectedCategory === "plot"
+      ? "Plot"
+      : "Residential";
+  const getEffectivePropertyType = (property: any): "Residential" | "Commercial" | "Plot" => {
+    const explicitType = String(property?.propertyType || "").trim().toLowerCase();
+    if (explicitType === "commercial") return "Commercial";
+    if (explicitType === "plot") return "Plot";
+    if (explicitType === "residential") return "Residential";
+
+    const configType = String(property?.type || property?.configuration || "")
+      .trim()
+      .toLowerCase();
+
+    if (
+      configType === "shop" ||
+      configType === "office" ||
+      configType === "industrial" ||
+      configType === "big commercials" ||
+      configType === "big commercial"
+    ) {
+      return "Commercial";
+    }
+
+    return "Residential";
+  };
 
   // Custom hooks
   const {
@@ -256,7 +284,12 @@ const Dashboard = () => {
           : subscriptionFilteredProperties.resale;
 
       properties.forEach((property) => {
-        if (property.type && property.listingState !== "Hold") {
+        const propertyType = getEffectivePropertyType(property);
+        if (
+          property.type &&
+          property.listingState !== "Hold" &&
+          propertyType === selectedPropertyType
+        ) {
           if (
             filters.station &&
             property.station?.toLowerCase().trim() !==
@@ -278,6 +311,7 @@ const Dashboard = () => {
     costSheets,
     propertyCategory,
     filters.station,
+    selectedPropertyType,
   ]);
 
   // Sub location options
@@ -367,11 +401,16 @@ const Dashboard = () => {
           : subscriptionFilteredProperties.resale;
 
       properties.forEach((property) => {
+        const propertyType = getEffectivePropertyType(property);
         const fieldValue =
           locationFilterType === "subLocation"
             ? property.sublocation
             : property.society;
-        if (fieldValue && property.listingState !== "Hold") {
+        if (
+          fieldValue &&
+          property.listingState !== "Hold" &&
+          propertyType === selectedPropertyType
+        ) {
           if (filters.bhkType && property.type !== filters.bhkType) {
             return;
           }
@@ -398,6 +437,7 @@ const Dashboard = () => {
     filters.station,
     propertyCategory,
     locationFilterType,
+    selectedPropertyType,
   ]);
 
   // Quick send property options
@@ -440,7 +480,20 @@ const Dashboard = () => {
   const filteredNewProperties = useMemo(() => {
     if (propertyCategory !== "New") return [];
 
-    return costSheets.filter((sheet) => {
+    const negotiatedMatchKeys = new Set<string>();
+    const getSheetKey = (sheet: CostSheet) => String(sheet.id || sheet.projectName || "");
+    const parseNumericValue = (value: unknown): number => {
+      if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+      if (typeof value === "string") {
+        const parsed = Number(value.replace(/[^0-9.]/g, ""));
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+      return 0;
+    };
+
+    const filteredSheets = costSheets.filter((sheet) => {
+      let isNegotiatedBudgetMatch = false;
+
       // Check approval status first - only show approved properties to regular users
       const isApproved = sheet.isApproved === true || sheet.approvalStatus === "approved" || sheet.approvalWorkflow?.status === "approved";
       if (!isApproved) return false;
@@ -524,6 +577,7 @@ const Dashboard = () => {
       // Budget filter for New properties - check the lowest package that matches criteria
       if (appliedFilters.minBudget || appliedFilters.maxBudget) {
         let lowestPackage = Infinity;
+        let matchingNegotiationScope = 0;
         
         // Find the lowest package that matches BHK filter
         if (sheet.typologies && Array.isArray(sheet.typologies)) {
@@ -533,11 +587,11 @@ const Dashboard = () => {
                 return;
               }
               
-              const pkgValue = typology.totalPackage;
-              const pkg = typeof pkgValue === "string" ? Number(pkgValue.replace(/[^0-9]/g, "")) : pkgValue || 0;
+              const pkg = parseNumericValue(typology.totalPackage);
               
               if (pkg > 0 && pkg < lowestPackage) {
                 lowestPackage = pkg;
+                matchingNegotiationScope = parseNumericValue((typology as any).negotiationScope);
               }
             }
           });
@@ -552,11 +606,11 @@ const Dashboard = () => {
                     return;
                   }
                   
-                  const pkgValue = config.totalPackage;
-                  const pkg = typeof pkgValue === "string" ? Number(pkgValue.replace(/[^0-9]/g, "")) : pkgValue || 0;
+                  const pkg = parseNumericValue(config.totalPackage);
                   
                   if (pkg > 0 && pkg < lowestPackage) {
                     lowestPackage = pkg;
+                    matchingNegotiationScope = parseNumericValue(config.negotiationScope);
                   }
                 }
               });
@@ -564,12 +618,34 @@ const Dashboard = () => {
           });
         }
         
-        // Apply budget filter to the lowest package
+        // Apply budget filter to the lowest package. If direct package doesn't fit,
+        // allow overlap with negotiable range [package - negotiationScope, package].
         if (lowestPackage !== Infinity) {
-          if (appliedFilters.minBudget && lowestPackage < Number(appliedFilters.minBudget)) {
-            return false;
+          const minBudget = appliedFilters.minBudget
+            ? Number(appliedFilters.minBudget)
+            : Number.NEGATIVE_INFINITY;
+          const maxBudget = appliedFilters.maxBudget
+            ? Number(appliedFilters.maxBudget)
+            : Number.POSITIVE_INFINITY;
+          const directMatch =
+            lowestPackage >= minBudget && lowestPackage <= maxBudget;
+
+          if (!directMatch) {
+            const negotiableFloor = Math.max(
+              0,
+              lowestPackage - matchingNegotiationScope
+            );
+            const hasNegotiationOverlap =
+              lowestPackage >= minBudget && negotiableFloor <= maxBudget;
+
+            if (!hasNegotiationOverlap) {
+              return false;
+            }
+
+            isNegotiatedBudgetMatch = true;
           }
-          if (appliedFilters.maxBudget && lowestPackage > Number(appliedFilters.maxBudget)) {
+        } else {
+          if (appliedFilters.minBudget || appliedFilters.maxBudget) {
             return false;
           }
         }
@@ -885,8 +961,17 @@ const Dashboard = () => {
         }
       }
 
+      if (isNegotiatedBudgetMatch) {
+        negotiatedMatchKeys.add(getSheetKey(sheet));
+      }
+
       return true;
     });
+
+    return filteredSheets.map((sheet) => ({
+      ...sheet,
+      _isNegotiatedMatch: negotiatedMatchKeys.has(getSheetKey(sheet)),
+    }));
   }, [costSheets, appliedFilters, locationFilterType]);
 
   const filteredResaleRentalProperties = useMemo(() => {
@@ -898,6 +983,11 @@ const Dashboard = () => {
         : subscriptionFilteredProperties.resale;
 
     return properties.filter((property: any) => {
+      const propertyType = getEffectivePropertyType(property);
+      if (propertyType !== selectedPropertyType) {
+        return false;
+      }
+
       if (
         property.listingState === "Hold" ||
         property.listingState === "Sold Out"
@@ -1043,6 +1133,7 @@ const Dashboard = () => {
     appliedFilters,
     propertyCategory,
     locationFilterType,
+    selectedPropertyType,
   ]);
 
   // Keyboard navigation for full viewer

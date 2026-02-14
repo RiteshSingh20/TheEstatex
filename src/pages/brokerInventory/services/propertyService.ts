@@ -168,6 +168,7 @@ export class PropertyService {
 
   private convertToOldStructure(formData: any, user: any): any {
     const now = new Date().toISOString();
+    const isAutoApproved = user?.role === 'admin';
     
     // Helper function to safely convert to number
     const safeNumber = (value: any): number | null => {
@@ -227,6 +228,14 @@ export class PropertyService {
       
       // Media fields (will be set by file upload service)
       imageUrl: formData.imageUrl || '',
+      imageUrls: Array.isArray(formData.imageUrls)
+        ? formData.imageUrls
+        : (formData.imageUrl
+            ? String(formData.imageUrl)
+                .split(',')
+                .map((url: string) => url.trim())
+                .filter(Boolean)
+            : []),
       videoUrl: formData.videoUrl || '',
       
       // New fields
@@ -241,8 +250,8 @@ export class PropertyService {
       userMarketingPhoneNumber: user.marketingPhoneNumber || user.phone,
       createdAt: formData.createdAt || now,
       updatedAt: now,
-      status: 'Pending Approval',
-      isApproved: false,
+      status: isAutoApproved ? 'Approved' : 'Pending Approval',
+      isApproved: isAutoApproved,
       listingState: 'Available',
       
       // Property classification

@@ -1,6 +1,6 @@
 import CryptoJS from 'crypto-js';
 
-const MEDIA_PROXY_URL = import.meta.env.VITE_MEDIA_PROXY_URL || 'https://signed-media-gateway-6g67budntq-el.a.run.app';
+const MEDIA_PROXY_URL = import.meta.env.VITE_MEDIA_PROXY_URL || 'http://localhost:4000';
 const SECRET_KEY = import.meta.env.VITE_SECRET_KEY || 'EstateX2024SecureMedia9f8a7b6c5d4e3f2a1b0c';
 
 // Cache for signed URLs

@@ -1,11 +1,11 @@
 import React from "react";
 import { FilterState, possessionOptions } from "../../utils/propertyConstants";
 import { KeyboardNavigableDropdown } from "../../../../../components/ui/KeyboardNavigableDropdown";
-import { TYPOLOGIES } from "../../../../../constants/typologies";
 
 interface PropertyTypeFilterProps {
   filters: FilterState;
   handleFilterChange: (name: string, value: any) => void;
+  propertyTypeOptions: { value: string; label: string }[];
   showPropertyType: boolean;
   showPossession: boolean;
   propertyCategory: string;
@@ -14,14 +14,11 @@ interface PropertyTypeFilterProps {
 const PropertyTypeFilter: React.FC<PropertyTypeFilterProps> = ({
   filters,
   handleFilterChange,
+  propertyTypeOptions,
   showPropertyType,
   showPossession,
   propertyCategory,
 }) => {
-  const propertyTypeOptions = TYPOLOGIES.map(type => ({
-    value: type,
-    label: type
-  }));
   return (
     <>
       {showPropertyType && (

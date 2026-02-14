@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { X, Download, ExternalLink } from "lucide-react";
-import { getSecureMediaUrls } from "../../../../../utils/secureMedia";
+import { getSecureMediaUrl } from "../../../../../utils/secureMedia";
 import PDFThumbnail from "../PDFThumbnail";
+
+type MediaFileEntry =
+  | string
+  | {
+      url: string;
+      name?: string;
+      isUnitPlan?: boolean;
+    };
 
 interface MediaPreviewGridModalProps {
   isOpen: boolean;
@@ -9,7 +17,7 @@ interface MediaPreviewGridModalProps {
   title: string;
   mediaSections: Array<{
     name: string;
-    files: string[];
+    files: MediaFileEntry[];
     type: "image" | "video" | "pdf";
   }>;
   onFileClick: (  
@@ -29,34 +37,16 @@ const MediaPreviewGridModal: React.FC<MediaPreviewGridModalProps> = ({
   const [secureMediaSections, setSecureMediaSections] = useState(mediaSections);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen || mediaSections.length === 0) return;
+  const getFileUrl = (file: MediaFileEntry): string => {
+    if (!file) return "";
+    if (typeof file === "string") return file;
+    if (typeof file === "object" && typeof file.url === "string") return file.url;
+    return "";
+  };
 
-    const loadSecureUrls = async () => {
-      setLoading(true);
-      try {
-        const updatedSections = await Promise.all(
-          mediaSections.map(async (section) => {
-            const secureFiles = await getSecureMediaUrls(section.files);
-            return { ...section, files: secureFiles };
-          })
-        );
-        setSecureMediaSections(updatedSections);
-      } catch (error) {
-        console.error("Error loading secure URLs:", error);
-        setSecureMediaSections(mediaSections);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSecureUrls();
-  }, [isOpen, mediaSections]);
-
-  if (!isOpen) return null;
-
-  const getFileName = (url: string): string => {
+  const extractFileNameFromUrl = (url: string): string => {
     try {
+      if (!url) return "Media File";
       if (url.includes("firebase") || url.includes("googleapis.com")) {
         const decodedUrl = decodeURIComponent(url);
         const pathMatch = decodedUrl.match(/\/([^/]+)\?/);
@@ -79,6 +69,62 @@ const MediaPreviewGridModal: React.FC<MediaPreviewGridModalProps> = ({
         return decodedFilename;
       }
       return "Media File";
+    } catch {
+      return "Media File";
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen || mediaSections.length === 0) return;
+
+    const loadSecureUrls = async () => {
+      setLoading(true);
+      try {
+        const updatedSections = await Promise.all(
+          mediaSections.map(async (section) => {
+            const secureFiles = await Promise.all(
+              section.files.map(async (file) => {
+                const originalUrl = getFileUrl(file);
+                if (!originalUrl) return file;
+
+                const secureUrl = await getSecureMediaUrl(originalUrl);
+                const fileName =
+                  typeof file === "object" && file?.name
+                    ? String(file.name)
+                    : extractFileNameFromUrl(originalUrl);
+
+                return {
+                  ...(typeof file === "object" ? file : {}),
+                  url: secureUrl,
+                  name: fileName,
+                };
+              })
+            );
+            return { ...section, files: secureFiles };
+          })
+        );
+        setSecureMediaSections(updatedSections);
+      } catch (error) {
+        console.error("Error loading secure URLs:", error);
+        setSecureMediaSections(mediaSections);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSecureUrls();
+  }, [isOpen, mediaSections]);
+
+  if (!isOpen) return null;
+
+  const getFileName = (file: MediaFileEntry): string => {
+    try {
+      if (typeof file === "object" && file?.name) {
+        return String(file.name);
+      }
+      const url = getFileUrl(file);
+      if (!url) return "Media File";
+      return extractFileNameFromUrl(url);
     } catch {
       return "Media File";
     }
@@ -115,7 +161,13 @@ const MediaPreviewGridModal: React.FC<MediaPreviewGridModalProps> = ({
                       key={fileIndex}
                       className="relative group cursor-pointer border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                       onClick={() =>
-                        onFileClick(section.files, fileIndex, section.type)
+                        onFileClick(
+                          section.files
+                            .map((entry) => getFileUrl(entry))
+                            .filter(Boolean),
+                          fileIndex,
+                          section.type
+                        )
                       }
                     >
                       {section.type === "image" ? (
@@ -128,7 +180,7 @@ const MediaPreviewGridModal: React.FC<MediaPreviewGridModalProps> = ({
                             </div>
                           </div>
                           <img
-                            src={file}
+                            src={getFileUrl(file)}
                             alt={getFileName(file)}
                             className="w-full h-full object-cover opacity-0 transition-opacity duration-300"
                             loading="lazy"
@@ -136,6 +188,11 @@ const MediaPreviewGridModal: React.FC<MediaPreviewGridModalProps> = ({
                               e.currentTarget.style.opacity = '1';
                               const loader = e.currentTarget.previousElementSibling as HTMLElement;
                               if (loader) loader.style.display = 'none';
+                            }}
+                            onError={(e) => {
+                              const loader = e.currentTarget.previousElementSibling as HTMLElement;
+                              if (loader) loader.style.display = 'none';
+                              e.currentTarget.style.opacity = '1';
                             }}
                           />
                         </div>
@@ -149,13 +206,18 @@ const MediaPreviewGridModal: React.FC<MediaPreviewGridModalProps> = ({
                             </div>
                           </div>
                           <video
-                            src={file}
+                            src={getFileUrl(file)}
                             className="w-full h-full object-cover opacity-0 transition-opacity duration-300"
                             muted
                             onLoadedData={(e) => {
                               e.currentTarget.style.opacity = '1';
                               const loader = e.currentTarget.previousElementSibling as HTMLElement;
                               if (loader) loader.style.display = 'none';
+                            }}
+                            onError={(e) => {
+                              const loader = e.currentTarget.previousElementSibling as HTMLElement;
+                              if (loader) loader.style.display = 'none';
+                              e.currentTarget.style.opacity = '1';
                             }}
                           />
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -174,13 +236,18 @@ const MediaPreviewGridModal: React.FC<MediaPreviewGridModalProps> = ({
                             </div>
                           </div>
                           <embed
-                            src={file}
+                            src={getFileUrl(file)}
                             type="application/pdf"
                             className="w-full h-full object-cover opacity-0 transition-opacity duration-300"
                             onLoad={(e) => {
                               e.currentTarget.style.opacity = '1';
                               const loader = e.currentTarget.previousElementSibling as HTMLElement;
                               if (loader) loader.style.display = 'none';
+                            }}
+                            onError={(e) => {
+                              const loader = e.currentTarget.previousElementSibling as HTMLElement;
+                              if (loader) loader.style.display = 'none';
+                              (e.currentTarget as HTMLElement).style.opacity = '1';
                             }}
                           />
                         </div>

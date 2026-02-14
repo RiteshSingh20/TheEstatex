@@ -223,8 +223,10 @@ const NewPropertiesTable: React.FC<NewPropertiesTableProps> = ({
               return (
                 <tr
                   key={sheet.id}
-                  className={`hover:bg-neutral-50 ${
-                    (sheet as any)._isNegotiatedMatch ? "bg-yellow-50" : ""
+                  className={`${
+                    (sheet as any)._isNegotiatedMatch
+                      ? "bg-yellow-50 hover:bg-yellow-50"
+                      : "hover:bg-neutral-50"
                   }`}
                 >
                   <td

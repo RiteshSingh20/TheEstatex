@@ -2763,23 +2763,35 @@ const Inventory = () => {
     return types.sort();
   }, [inventory.rental]);
 
+  const getEffectivePropertyType = (property: any): "Residential" | "Commercial" | "Plot" => {
+    const explicitType = String(property?.propertyType || "").trim().toLowerCase();
+    if (explicitType === "commercial") return "Commercial";
+    if (explicitType === "plot") return "Plot";
+    if (explicitType === "residential") return "Residential";
+
+    const configType = String(property?.type || property?.configuration || "")
+      .trim()
+      .toLowerCase();
+
+    if (
+      configType === "shop" ||
+      configType === "office" ||
+      configType === "industrial" ||
+      configType === "big commercials" ||
+      configType === "big commercial"
+    ) {
+      return "Commercial";
+    }
+
+    return "Residential";
+  };
+
   const fetchInventory = useCallback(async () => {
     if (!user) return;
     try {
-      // Determine propertyType based on activeTab
-      let propertyType: string | undefined;
-      if (activeTab === "commercial") {
-        propertyType = "Commercial";
-      } else if (activeTab === "plot") {
-        propertyType = "Plot";
-      } else {
-        // For residential tab, we want all old source properties + new source with propertyType "Residential"
-        propertyType = "Residential";
-      }
-
       const [resale, rental] = await Promise.all([
-        getResaleProperties(user.id, activeTab === "residential" ? undefined : propertyType),
-        getRentalProperties(user.id, activeTab === "residential" ? undefined : propertyType),
+        getResaleProperties(user.id),
+        getRentalProperties(user.id),
       ]);
 
       // Filter properties based on tab
@@ -2787,28 +2799,21 @@ const Inventory = () => {
       let filteredRental = rental;
 
       if (activeTab === "residential") {
-        // Show all old source + new source with propertyType "Residential" or undefined
+        // Show all records that resolve to Residential
         filteredResale = resale.filter(property => {
-          // Old source properties (no propertyType field) should be shown
-          if (!property.propertyType) return true;
-          // New source properties with propertyType "Residential"
-          return property.propertyType === "Residential";
+          return getEffectivePropertyType(property) === "Residential";
         });
         
         filteredRental = rental.filter(property => {
-          // Old source properties (no propertyType field) should be shown
-          if (!property.propertyType) return true;
-          // New source properties with propertyType "Residential"
-          return property.propertyType === "Residential";
+          return getEffectivePropertyType(property) === "Residential";
         });
       } else if (activeTab === "commercial") {
-        // Show only new source with propertyType "Commercial"
-        filteredResale = resale.filter(property => property.propertyType === "Commercial");
-        filteredRental = rental.filter(property => property.propertyType === "Commercial");
+        // Show all records that resolve to Commercial (including legacy records without propertyType)
+        filteredResale = resale.filter(property => getEffectivePropertyType(property) === "Commercial");
+        filteredRental = rental.filter(property => getEffectivePropertyType(property) === "Commercial");
       } else if (activeTab === "plot") {
-        // Show only new source with propertyType "Plot"
-        filteredResale = resale.filter(property => property.propertyType === "Plot");
-        filteredRental = rental.filter(property => property.propertyType === "Plot");
+        filteredResale = resale.filter(property => getEffectivePropertyType(property) === "Plot");
+        filteredRental = rental.filter(property => getEffectivePropertyType(property) === "Plot");
       }
 
       const updatedResale = await Promise.all(
@@ -5218,14 +5223,23 @@ const Inventory = () => {
                         </span>
                         <span className="text-sm font-medium text-neutral-900">
                           {viewProperty.imageUrl ? (
-                            <a
-                              href={viewProperty.imageUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 underline hover:text-blue-800"
-                            >
-                              View Images
-                            </a>
+                            <span className="flex flex-col gap-1">
+                              {String(viewProperty.imageUrl)
+                                .split(",")
+                                .map((url) => url.trim())
+                                .filter(Boolean)
+                                .map((url, idx) => (
+                                  <a
+                                    key={`resale-image-${idx}`}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline hover:text-blue-800"
+                                  >
+                                    View Image {idx + 1}
+                                  </a>
+                                ))}
+                            </span>
                           ) : (
                             "N/A"
                           )}
@@ -5603,14 +5617,23 @@ const Inventory = () => {
                         </span>
                         <span className="text-sm font-medium text-neutral-900">
                           {viewRentalProperty.imageUrl ? (
-                            <a
-                              href={viewRentalProperty.imageUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 underline hover:text-blue-800"
-                            >
-                              View Images
-                            </a>
+                            <span className="flex flex-col gap-1">
+                              {String(viewRentalProperty.imageUrl)
+                                .split(",")
+                                .map((url) => url.trim())
+                                .filter(Boolean)
+                                .map((url, idx) => (
+                                  <a
+                                    key={`rental-image-${idx}`}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline hover:text-blue-800"
+                                  >
+                                    View Image {idx + 1}
+                                  </a>
+                                ))}
+                            </span>
                           ) : (
                             "N/A"
                           )}

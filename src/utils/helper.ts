@@ -1,5 +1,9 @@
 import { User, SubscriptionLocation } from "../types";
 
+const VIEWFILES_BASE_URL = import.meta.env.PROD
+  ? "https://viewfiles.in"
+  : "http://localhost:4000";
+
 // Helper function to format storey data
 export const formatStorey = (storey: string): string => {
   if (!storey) return "-";
@@ -80,6 +84,59 @@ const getFloorCategory = (
   if (percentage < 40) return "Lower Floor";
   if (percentage > 65) return "Higher Floor";
   return "Middle Floor";
+};
+
+const pickMediaUrl = (value: any): string | null => {
+  if (!value) return null;
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "object" && typeof value.url === "string" && value.url.trim()) {
+    return value.url;
+  }
+  return null;
+};
+
+const pickFirstMediaUrlFromList = (list: any[]): string | null => {
+  for (const item of list) {
+    if (!item) continue;
+
+    if (Array.isArray(item)) {
+      const nested = pickFirstMediaUrlFromList(item);
+      if (nested) return nested;
+      continue;
+    }
+
+    const direct = pickMediaUrl(item);
+    if (direct) return direct;
+  }
+  return null;
+};
+
+const getFirstImageUrl = (mediaFiles: any): string | null => {
+  if (!mediaFiles || typeof mediaFiles !== "object") return null;
+
+  const typologyImages = mediaFiles.typologyImages
+    ? Object.values(mediaFiles.typologyImages)
+    : [];
+
+  return pickFirstMediaUrlFromList([
+    mediaFiles.elevationImages,
+    mediaFiles.amenitiesImages,
+    mediaFiles.floorPlanImages,
+    typologyImages,
+  ]);
+};
+
+const getFirstVideoUrl = (mediaFiles: any): string | null => {
+  if (!mediaFiles || typeof mediaFiles !== "object") return null;
+
+  const typologyVideos = mediaFiles.typologyVideos
+    ? Object.values(mediaFiles.typologyVideos)
+    : [];
+
+  return pickFirstMediaUrlFromList([
+    mediaFiles.projectWalkthrough,
+    typologyVideos,
+  ]);
 };
 
 // Generate WhatsApp sharing text for properties
@@ -277,10 +334,33 @@ export const generateWhatsAppText = (
         text += `*Possession by : ${sortedPossessions.join(" | ")}*\n\n`;
       }
 
-      // Add media links placeholders
-      // text += `*Brochure*\t: {link}\n`;
-      // text += `*Images*\t: {link}\n`;
-      // text += `*Videos*\t: {link}\n\n`;
+      const mediaFiles = property.mediaFiles || {};
+      const sendingPropertiesFirestoreDocumentId =
+        property?.id || property?.docId || property?.propertyId;
+
+      const hasBrochure = Boolean(pickMediaUrl(mediaFiles.brochure));
+      const hasImage = Boolean(getFirstImageUrl(mediaFiles));
+      const hasVideo = Boolean(getFirstVideoUrl(mediaFiles));
+
+      const imageUrl =
+        hasImage && sendingPropertiesFirestoreDocumentId
+          ? `${VIEWFILES_BASE_URL}/${encodeURIComponent(String(sendingPropertiesFirestoreDocumentId))}/img`
+          : null;
+      const brochureUrl =
+        hasBrochure && sendingPropertiesFirestoreDocumentId
+          ? `${VIEWFILES_BASE_URL}/${encodeURIComponent(String(sendingPropertiesFirestoreDocumentId))}/br`
+          : null;
+      const videoUrl =
+        hasVideo && sendingPropertiesFirestoreDocumentId
+          ? `${VIEWFILES_BASE_URL}/${encodeURIComponent(String(sendingPropertiesFirestoreDocumentId))}/vd`
+          : null;
+
+      if (imageUrl || brochureUrl || videoUrl) {
+        if (imageUrl) text += `image : ${imageUrl}\n`;
+        if (brochureUrl) text += `brochure : ${brochureUrl}\n`;
+        if (videoUrl) text += `video : ${videoUrl}\n`;
+        text += `\n`;
+      }
 
       const firmName = user?.firmName || "us";
       text += `Thank you for considering ${firmName}.\n\nBest regards,\n${

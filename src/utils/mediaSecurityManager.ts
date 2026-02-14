@@ -2,7 +2,8 @@ import CryptoJS from "crypto-js";
 
 const SECRET_KEY =
   import.meta.env.VITE_SECRET_KEY || "your-secret-key-change-this";
-const MEDIA_SERVER_URL = "https://signed-media-gateway-6g67budntq-el.a.run.app";
+const MEDIA_SERVER_URL =
+  import.meta.env.VITE_MEDIA_SERVER_URL || "http://localhost:4000";
 
 // Cache for 12 minutes (shorter than server TTL)
 const CACHE_TTL = 12 * 60 * 1000;

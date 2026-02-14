@@ -8,8 +8,14 @@ import { updateCostSheet } from "../../utils/firestoreListings";
 import { sanitizeInput } from "../../utils/formSubmissionUtils";
 import Button from "../ui/Button";
 import { TYPOLOGIES } from "../../constants/typologies";
-import { SecureImage } from "../SecureImage";
-import { SecureVideo } from "../SecureVideo";
+
+type MediaFileEntry =
+  | string
+  | {
+      url?: string;
+      name?: string;
+      [key: string]: any;
+    };
 
 interface NewPropertyModalProps {
   Section: any;
@@ -207,8 +213,19 @@ export function NewPropertyModal({
     }
   }, [wingNumbers, activeTab, fromDashboard, selectedTypology]);
 
-  const openMediaModal = (title: string, files: string[], type: 'image' | 'video' | 'pdf' = 'image') => {
-    setMediaModal({isOpen: true, title, files, type});
+  const getMediaFileUrl = (file: MediaFileEntry): string => {
+    if (!file) return "";
+    if (typeof file === "string") return file;
+    if (typeof file === "object" && typeof file.url === "string") return file.url;
+    return "";
+  };
+
+  const normalizeMediaFiles = (files: MediaFileEntry[] = []): string[] => {
+    return files.map((file) => getMediaFileUrl(file)).filter(Boolean);
+  };
+
+  const openMediaModal = (title: string, files: MediaFileEntry[], type: 'image' | 'video' | 'pdf' = 'image') => {
+    setMediaModal({isOpen: true, title, files: normalizeMediaFiles(files), type});
   };
 
   const openFullViewer = (files: string[], index: number, type: 'image' | 'video' | 'pdf') => {
@@ -1135,12 +1152,7 @@ export function NewPropertyModal({
                     </div>
                   ) : mediaModal.type === 'video' ? (
                     <div className="aspect-square relative overflow-hidden">
-                      <SecureVideo
-                        src={file}
-                        className="w-full h-full object-cover"
-                        muted
-                        securityOptions={{ expiryHours: 4 }}
-                      />
+                      <video src={file} className="w-full h-full object-cover" muted />
                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
                         <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z" />
@@ -1148,12 +1160,7 @@ export function NewPropertyModal({
                       </div>
                     </div>
                   ) : (
-                    <SecureImage
-                      src={file}
-                      alt={`Media ${index + 1}`}
-                      className="w-full aspect-square object-cover"
-                      securityOptions={{ expiryHours: 4 }}
-                    />
+                    <img src={file} alt={`Media ${index + 1}`} className="w-full aspect-square object-cover" />
                   )}
                   <div className="p-1">
                     <p className="text-xs text-gray-600 truncate">{mediaModal.type === 'pdf' ? 'PDF' : mediaModal.type === 'video' ? 'Video' : 'Image'} {index + 1}</p>
@@ -1189,19 +1196,9 @@ export function NewPropertyModal({
             {fullViewer.type === 'pdf' ? (
               <iframe src={fullViewer.files[fullViewer.currentIndex]} className="w-[90vw] h-[90vh] bg-white rounded" />
             ) : fullViewer.type === 'video' ? (
-              <SecureVideo
-                controls
-                className="max-w-[90vw] max-h-[90vh]"
-                src={fullViewer.files[fullViewer.currentIndex]}
-                securityOptions={{ expiryHours: 4 }}
-              />
+              <video controls className="max-w-[90vw] max-h-[90vh]" src={fullViewer.files[fullViewer.currentIndex]} />
             ) : (
-              <SecureImage
-                src={fullViewer.files[fullViewer.currentIndex]}
-                alt="Full size media"
-                className="max-w-[90vw] max-h-[90vh] object-contain"
-                securityOptions={{ expiryHours: 4 }}
-              />
+              <img src={fullViewer.files[fullViewer.currentIndex]} alt="Full size media" className="max-w-[90vw] max-h-[90vh] object-contain" />
             )}
           </div>
           

@@ -92,6 +92,13 @@ export function handlePropertyDetails(
   fullViewer: {isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'},
   setFullViewer: React.Dispatch<React.SetStateAction<{isOpen: boolean, files: string[], currentIndex: number, type: 'image' | 'video' | 'pdf'}>>
 ) {
+  type MediaFileEntry =
+    | string
+    | {
+        url?: string;
+        [key: string]: any;
+      };
+
   const formatLandParcel = (parcel: any, unit: any) => {
     if (parcel === undefined || parcel === null || String(parcel).trim() === "") {
       return "-";
@@ -106,8 +113,19 @@ export function handlePropertyDetails(
     return `${parcel}${normalizedUnit ? ` ${normalizedUnit}` : ""}`;
   };
 
-  const openMediaModal = (title: string, files: string[], type: 'image' | 'video' | 'pdf' = 'image') => {
-    setMediaModal({isOpen: true, title, files, type});
+  const getMediaFileUrl = (file: MediaFileEntry): string => {
+    if (!file) return "";
+    if (typeof file === "string") return file;
+    if (typeof file === "object" && typeof file.url === "string") return file.url;
+    return "";
+  };
+
+  const normalizeMediaFiles = (files: MediaFileEntry[] = []): string[] => {
+    return files.map((file) => getMediaFileUrl(file)).filter(Boolean);
+  };
+
+  const openMediaModal = (title: string, files: MediaFileEntry[], type: 'image' | 'video' | 'pdf' = 'image') => {
+    setMediaModal({isOpen: true, title, files: normalizeMediaFiles(files), type});
   };
 
   const openFullViewer = (files: string[], index: number, type: 'image' | 'video' | 'pdf') => {
@@ -983,7 +1001,7 @@ export function handlePropertyDetails(
                                 <div className="flex justify-between items-center">
                                   <span className="text-sm font-medium text-gray-900">Floor Plan Images ({showPropertyDetails.mediaFiles?.floorPlanImages?.length || 0})</span>
                                   {showPropertyDetails.mediaFiles?.floorPlanImages?.length > 0 ? (
-                                    <button onClick={() => window.open(showPropertyDetails.mediaFiles.floorPlanImages[0], '_blank')} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                    <button onClick={() => openMediaModal('Floor Plan Images', showPropertyDetails.mediaFiles.floorPlanImages, 'image')} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                                       <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />

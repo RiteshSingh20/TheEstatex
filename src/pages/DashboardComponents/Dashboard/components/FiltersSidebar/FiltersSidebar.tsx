@@ -11,6 +11,13 @@ import { formatPriceDisplay } from "../../utils/propertyFormatters";
 
 // Dynamic filter configuration based on selected category
 const getFilterConfig = (selectedCategory: string, propertyCategory: string, dynamicPropertyTypeOptions: any[]) => {
+  const defaultCommercialOptions = [
+    { value: "Shop", label: "Shop" },
+    { value: "Office", label: "Office" },
+    { value: "Big Commercials", label: "Big Commercials" },
+    { value: "Industrial", label: "Industrial" },
+  ];
+
   switch (selectedCategory) {
     case "residential":
       return {
@@ -25,7 +32,10 @@ const getFilterConfig = (selectedCategory: string, propertyCategory: string, dyn
     case "commercial":
       return {
         showPropertyType: true,
-        propertyTypeOptions: dynamicPropertyTypeOptions,
+        propertyTypeOptions:
+          dynamicPropertyTypeOptions.length > 0
+            ? dynamicPropertyTypeOptions
+            : defaultCommercialOptions,
         showPossession: propertyCategory === "New",
         showCosmo: false,
         showGalleryTerrace: false,
@@ -271,7 +281,7 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({
                 variant="primary"
                 fullWidth
                 onClick={applyFilters}
-                disabled={selectedCategory !== "residential"}
+                disabled={selectedCategory === "plot"}
               >
                 Apply Filters
               </Button>
